@@ -1,0 +1,35 @@
+copyright: 2019 Jean-Charles Quillet
+maintainer: jeancharles.quillet@gmail.com
+dependencies:
+- ansi-terminal
+- base >= 4.7 && < 5
+- brick
+- esqueleto
+- microlens-platform
+- monad-loops
+- mtl
+- persistent
+- persistent-sqlite
+- persistent-template
+- random
+- random-shuffle
+- safe
+- text
+- text-zipper
+- vty
+- MonadRandom
+name: hscalendar
+version: 0.1.0.0
+#extra-source-files:
+author: Jean-Charles Quillet
+github: jecaro/haskell/hscalendar
+license: BSD3
+executables:
+  hscalendar:
+    source-dirs: ./
+    main: Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+#description: 
