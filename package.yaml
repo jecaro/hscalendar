@@ -11,16 +11,13 @@ dependencies:
 - persistent
 - persistent-sqlite
 - persistent-template
-- random
-- random-shuffle
 - safe
+- time
 - text
 - text-zipper
 - vty
-- MonadRandom
 name: hscalendar
 version: 0.1.0.0
-#extra-source-files:
 author: Jean-Charles Quillet
 github: jecaro/haskell/hscalendar
 license: BSD3
@@ -32,4 +29,3 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-#description: 
