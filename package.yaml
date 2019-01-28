@@ -8,6 +8,7 @@ dependencies:
 - microlens-platform
 - monad-loops
 - mtl
+- optparse-applicative
 - persistent
 - persistent-sqlite
 - persistent-template
