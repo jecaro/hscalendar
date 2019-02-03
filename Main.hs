@@ -22,6 +22,7 @@ import           Options.Applicative
 import           HalfDayType
 import           TimeInDay
 import           Office
+import           CommandLine
 
 -- Synopsis
 -- hsmaster diary date Morning|Afternoon [commands]
@@ -45,110 +46,10 @@ import           Office
 -- - Make diary date/TimeInDay optional
 -- - Append note
 -- - Launch editor
--- - Command line into separate module
 
 -- Ideas
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
-
-data Cmd = ProjList                             |
-           ProjRm String                        |
-           ProjAdd String                       |
-           DiaryDisplay Day TimeInDay           |
-           DiaryEdit Day TimeInDay [EditOption] |
-           DiaryDelete Day TimeInDay 
-  deriving (Eq, Show)
-
-data EditOption = SetProj String       |
-                  SetNote String       |
-                  SetArrived TimeOfDay |
-                  SetLeft TimeOfDay    |
-                  SetOffice Office
-   deriving (Eq, Show)
-
-projRm :: Parser Cmd
-projRm = ProjRm <$> argument str (metavar "PROJECT...")
-
-projAdd :: Parser Cmd
-projAdd = ProjAdd <$> argument str (metavar "PROJECT...")
-
-projCmd :: Parser Cmd
-projCmd = subparser
-   (  command "list" (info (pure ProjList) (progDesc "List current projects"))
-   <> command "add"  (info projAdd         (progDesc "Add project"))
-   <> command "rm"   (info projRm          (progDesc "Remove project"))
-   )
-
-diaryDisplay :: Parser Cmd
-diaryDisplay = DiaryDisplay <$> 
-   argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY")
-   
-diaryDelete :: Parser Cmd
-diaryDelete = DiaryDelete <$> 
-   argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY")
-
-diaryEdit :: Parser Cmd
-diaryEdit = DiaryEdit <$> 
-   argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY") <*>
-   some editOption
-
-diaryCmd :: Parser Cmd
-diaryCmd = hsubparser
-   (  command "display" (info diaryDisplay (progDesc "Display entry"))
-   <> command "edit"    (info diaryEdit    (progDesc "Edit entry"))
-   <> command "delete"  (info diaryDelete  (progDesc "Delete entry"))
-   )
-
-editOption :: Parser EditOption
-editOption = editOptionSetProj    <|> 
-             editOptionSetNote    <|>
-             editOptionSetArrived <|>
-             editOptionSetLeft    <|>
-             editOptionSetOffice
-
-editOptionSetProj :: Parser EditOption
-editOptionSetProj = SetProj <$> strOption
-   (  long "project"
-   <> short 'p'
-   <> metavar "PROJECT"
-   <> help "Set the project" )
-
-editOptionSetNote :: Parser EditOption
-editOptionSetNote = SetNote <$> strOption
-   (  long "note"
-   <> short 'n'
-   <> metavar "NOTE"
-   <> help "Set the note" )
-
-editOptionSetArrived :: Parser EditOption
-editOptionSetArrived = SetArrived <$> option auto
-   (  long "arrived"
-   <> short 'a'
-   <> metavar "TIME"
-   <> help "Time of arrival" )
-
-editOptionSetLeft :: Parser EditOption
-editOptionSetLeft = SetLeft <$> option auto
-   (  long "left"
-   <> short 'l'
-   <> metavar "TIME"
-   <> help "Time of leaving" )
-
-editOptionSetOffice :: Parser EditOption
-editOptionSetOffice = SetOffice <$> option auto
-   (  long "office"
-   <> short 'o'
-   <> metavar "OFFICE"
-   <> help "Office" )
-
-cmd :: Parser Cmd
-cmd = hsubparser
-   (  command "project" (info projCmd  (progDesc "Project"))
-   <> command "diary"   (info diaryCmd (progDesc "Diary"))
-   )
 
 run :: Cmd -> IO()
 run ProjList = putStrLn "List project"
@@ -158,9 +59,6 @@ run (DiaryDisplay day time) = putStrLn $ "Display diary " ++ show day ++ " " ++ 
 run (DiaryEdit day time opts) = putStrLn $ "Edit diary " ++ 
    show day ++ " " ++ show time ++ " " ++ show opts
    
-opts :: ParserInfo Cmd
-opts = info (cmd <**> helper) idm
-
 main :: IO ()
 main = execParser opts >>= run
 
