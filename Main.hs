@@ -9,7 +9,6 @@
 {-# LANGUAGE TypeFamilies               #-}
 
 import           Control.Monad.IO.Class  (liftIO)
-import           Data.List
 import           Data.Monoid
 import           Database.Persist
 import           Database.Persist.Sqlite
@@ -51,37 +50,53 @@ import           CommandLine
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+Project
+   name String
+   UniqueName name 
+   deriving Show
+HalfDay
+   day         Day        
+   timeInDay   TimeInDay   -- morning/afternoon
+   halfDayType HalfDayType -- worked/holiday
+   FullDay day timeInDay   -- One morning, one afternoon everyday
+   deriving Show
+HalfDayWorked -- Only for WorkedOpenDay
+	notes     String
+	arrived   TimeOfDay 
+	left      TimeOfDay --Constraint Left > Arrived
+   office    Office
+   projectId ProjectId 
+   halfDayId HalfDayId
+   deriving Show
+|]
+
+database = "./file.db"
+runDB = runSqlite database
+
 run :: Cmd -> IO()
-run ProjList = putStrLn "List project"
-run (ProjRm name) = putStrLn $ "Remove project " ++ name
-run (ProjAdd name) = putStrLn $ "Adding project " ++ name
+run ProjList = runDB $ do 
+   projects <- selectList ([] :: [Filter Project]) []
+   liftIO $ print projects
+
+run (ProjAdd name) = runDB $ do 
+   insert $ Project name
+   return ()
+
+run (ProjRm name) = runDB $ do
+   maybeProject <- getBy $ UniqueName name
+   case maybeProject of
+      Nothing -> liftIO $ putStrLn "Project not found"
+      Just (Entity projectId project) -> delete projectId
+
 run (DiaryDisplay day time) = putStrLn $ "Display diary " ++ show day ++ " " ++ show time
 run (DiaryEdit day time opts) = putStrLn $ "Edit diary " ++ 
    show day ++ " " ++ show time ++ " " ++ show opts
    
 main :: IO ()
-main = execParser opts >>= run
-
--- share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
--- Project
---     name String
---     UniqueName name 
---     deriving Show
--- HalfDay
---     day         Day        
---     timeInDay   TimeInDay   -- morning/afternoon
---     halfDayType HalfDayType -- worked/holiday
---     FullDay day timeInDay   -- One morning, one afternoon everyday
---     deriving Show
--- HalfDayWorked -- Only for WorkedOpenDay
--- 	notes     String
--- 	arrived   TimeOfDay 
--- 	left      TimeOfDay --Constraint Left > Arrived
---     office    Office
---     projectId ProjectId 
---     halfDayId HalfDayId
---     deriving Show
--- |]
+main = do 
+   runDB $ runMigration migrateAll
+   execParser opts >>= run
 
 -- main :: IO ()
 -- main = do
