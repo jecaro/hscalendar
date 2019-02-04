@@ -8,6 +8,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
+import           Control.Monad
 import           Control.Monad.IO.Class  (liftIO)
 import           Data.Monoid
 import           Database.Persist
@@ -45,6 +46,7 @@ import           CommandLine
 -- - Make diary date/TimeInDay optional
 -- - Append note
 -- - Launch editor
+-- - Project empty string
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -76,13 +78,15 @@ runDB = runSqlite database
 
 run :: Cmd -> IO()
 run ProjList = runDB $ do 
-   projects <- selectList ([] :: [Filter Project]) []
-   liftIO $ print projects
+   projects <- selectList [] [Asc ProjectName]
+   let names = map (projectName . entityVal) projects
+   liftIO $ print names
 
-run (ProjAdd name) = runDB $ do 
-   insert $ Project name
-   return ()
+-- TODO add error handling checkUnique
+run (ProjAdd name) = runDB $ void (insert $ Project name) 
 
+-- Remove project
+-- TODO: check in the HalfDay Worked Table before
 run (ProjRm name) = runDB $ do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
