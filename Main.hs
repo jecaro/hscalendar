@@ -74,22 +74,29 @@ HalfDayWorked -- Only for WorkedOpenDay
    deriving Show
 |]
 
+-- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
 run ProjList = do 
    projects <- selectList [] [Asc ProjectName]
    let names = map (projectName . entityVal) projects
    liftIO $ mapM_ putStrLn names
 
--- TODO add error handling checkUnique
-run (ProjAdd name) = void . insert $ Project name 
+-- Add a project
+run (ProjAdd name) = do
+   maybeProject <- getBy $ UniqueName name
+   case maybeProject of
+      Nothing -> void . insert $ Project name 
+      Just (Entity _ _) -> liftIO . putStrLn $ "The project " ++ name ++ 
+                                               " is already in the database"
 
--- Remove project
+-- Remove a project
 -- TODO: check in the HalfDay Worked Table before
 run (ProjRm name) = do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
-      Nothing -> liftIO $ putStrLn $ "Project " ++ name ++ " not found"
-      Just (Entity projectId project) -> delete projectId
+      Nothing -> liftIO $ putStrLn $ "The project " ++ name ++ 
+                                     " is not in the database"
+      Just (Entity projectId _) -> delete projectId
 
 run (DiaryDisplay day time) = liftIO . putStrLn $ "Display diary " ++ show day ++ " " ++ show time
 run (DiaryEdit day time opts) = liftIO . putStrLn $ "Edit diary " ++ 
