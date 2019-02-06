@@ -9,7 +9,8 @@
 {-# LANGUAGE TypeFamilies               #-}
 
 import           Control.Monad
-import           Control.Monad.IO.Class  (liftIO)
+import           Control.Monad.IO.Class
+import           Control.Monad.Logger
 import           Data.Monoid
 import           Database.Persist
 import           Database.Persist.Sqlite
@@ -73,34 +74,33 @@ HalfDayWorked -- Only for WorkedOpenDay
    deriving Show
 |]
 
-database = "./file.db"
-runDB = runSqlite database
-
-run :: Cmd -> IO()
-run ProjList = runDB $ do 
+run :: MonadIO m => Cmd -> SqlPersistT m ()
+run ProjList = do 
    projects <- selectList [] [Asc ProjectName]
    let names = map (projectName . entityVal) projects
    liftIO $ print names
 
 -- TODO add error handling checkUnique
-run (ProjAdd name) = runDB $ void (insert $ Project name) 
+run (ProjAdd name) = void . insert $ Project name 
 
 -- Remove project
 -- TODO: check in the HalfDay Worked Table before
-run (ProjRm name) = runDB $ do
+run (ProjRm name) = do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
       Nothing -> liftIO $ putStrLn "Project not found"
       Just (Entity projectId project) -> delete projectId
 
-run (DiaryDisplay day time) = putStrLn $ "Display diary " ++ show day ++ " " ++ show time
-run (DiaryEdit day time opts) = putStrLn $ "Edit diary " ++ 
+run (DiaryDisplay day time) = liftIO . putStrLn $ "Display diary " ++ show day ++ " " ++ show time
+run (DiaryEdit day time opts) = liftIO . putStrLn $ "Edit diary " ++ 
    show day ++ " " ++ show time ++ " " ++ show opts
    
 main :: IO ()
-main = do 
-   runDB $ runMigration migrateAll
-   execParser opts >>= run
+-- runNoLoggingT or runStdoutLoggingT
+main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do 
+   runMigration migrateAll
+   cmd <- liftIO $ execParser opts
+   run cmd
 
 -- main :: IO ()
 -- main = do

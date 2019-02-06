@@ -7,6 +7,7 @@ dependencies:
 - esqueleto
 - microlens-platform
 - monad-loops
+- monad-logger
 - mtl
 - optparse-applicative
 - persistent
