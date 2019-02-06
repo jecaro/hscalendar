@@ -88,7 +88,7 @@ run (ProjAdd name) = void . insert $ Project name
 run (ProjRm name) = do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
-      Nothing -> liftIO $ putStrLn "Project not found"
+      Nothing -> liftIO $ putStrLn $ "Project " ++ name ++ " not found"
       Just (Entity projectId project) -> delete projectId
 
 run (DiaryDisplay day time) = liftIO . putStrLn $ "Display diary " ++ show day ++ " " ++ show time
