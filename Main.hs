@@ -99,8 +99,7 @@ main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
 main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do 
    runMigration migrateAll
-   cmd <- liftIO $ execParser opts
-   run cmd
+   (liftIO $ execParser opts) >>= run 
 
 -- main :: IO ()
 -- main = do
