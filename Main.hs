@@ -78,7 +78,7 @@ run :: MonadIO m => Cmd -> SqlPersistT m ()
 run ProjList = do 
    projects <- selectList [] [Asc ProjectName]
    let names = map (projectName . entityVal) projects
-   liftIO $ print names
+   liftIO $ mapM_ putStrLn names
 
 -- TODO add error handling checkUnique
 run (ProjAdd name) = void . insert $ Project name 
