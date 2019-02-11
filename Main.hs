@@ -26,13 +26,14 @@ import           Office
 import           CommandLine
 
 -- Synopsis
--- hsmaster diary date Morning|Afternoon [commands]
+-- hsmaster diary work date Morning|Afternoon [commands]
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
 --     -a 00:00     set arrived time
 --     -l 00:00     set left time
---     -d           delete record 
+-- hsmaster diary holiday date Morning|Afternoon
+-- hsmaster diary rm date Morning|Afternoon
 -- hsmaster project list
 -- hsmaster project remove project
 -- hsmaster project add project
@@ -48,6 +49,7 @@ import           CommandLine
 -- - Append note
 -- - Launch editor
 -- - Project empty string
+-- - Put model into a separate module
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -55,28 +57,36 @@ import           CommandLine
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Project
-   name String
+   -- Fields
+   name       String
+   -- Constraint
    UniqueName name 
    deriving Show
 HalfDay
-   day         Day        
-   timeInDay   TimeInDay   -- morning/afternoon
-   halfDayType HalfDayType -- worked/holiday
-   FullDay day timeInDay   -- One morning, one afternoon everyday
+   -- Fields
+   day             Day        
+   timeInDay       TimeInDay   -- morning/afternoon
+   type            HalfDayType -- worked/holiday
+   -- Constraint
+   DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
    deriving Show
 HalfDayWorked -- Only for WorkedOpenDay
-	notes     String
+   -- Fields
+	notes     String -- default empty string
 	arrived   TimeOfDay 
 	left      TimeOfDay --Constraint Left > Arrived
    office    Office
+   -- Foreign keys
    projectId ProjectId 
    halfDayId HalfDayId
+   -- Constraints
+   UniqueHalfDayId halfDayId
    deriving Show
 |]
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
-run ProjList = do 
+run ProjList = do
    projects <- selectList [] [Asc ProjectName]
    let names = map (projectName . entityVal) projects
    liftIO $ mapM_ putStrLn names
@@ -85,54 +95,56 @@ run ProjList = do
 run (ProjAdd name) = do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
-      Nothing -> void . insert $ Project name 
-      Just (Entity _ _) -> liftIO . putStrLn $ "The project " ++ name ++ 
+      Nothing -> void . insert $ Project name
+      Just (Entity _ _) -> liftIO . putStrLn $ "The project " ++ name ++
                                                " is already in the database"
 
 -- Remove a project
 -- TODO: check in the HalfDay Worked Table before
 run (ProjRm name) = do
-   maybeProject <- getBy $ UniqueName name
-   case maybeProject of
-      Nothing -> liftIO $ putStrLn $ "The project " ++ name ++ 
+   mbProject <- getBy $ UniqueName name
+   case mbProject of
+      Nothing -> liftIO $ putStrLn $ "The project " ++ name ++
                                      " is not in the database"
       Just (Entity projectId _) -> delete projectId
 
-run (DiaryDisplay day time) = liftIO . putStrLn $ "Display diary " ++ show day ++ " " ++ show time
-run (DiaryEdit day time opts) = liftIO . putStrLn $ "Edit diary " ++ 
-   show day ++ " " ++ show time ++ " " ++ show opts
-   
+-- Display an entry
+run (DiaryDisplay day time) = do
+   -- Display input
+   liftIO . putStrLn $ show day ++ " " ++ show time
+   mbHalfDayId <- getBy $ DayAndTimeInDay day time
+   liftIO $ putStrLn $ case mbHalfDayId of
+      Nothing -> "No entry"
+      Just (Entity id halfDay) -> show $ halfDayType halfDay
+         
+-- Set a work entry
+run (DiaryWork day time opts) = do
+   mbHalfDayId <- getBy $ DayAndTimeInDay day time
+   case mbHalfDayId of
+      -- Edit an existing entry
+      Just (Entity id _) -> mapM_ (runEdit id) opts
+      -- Create a new entry - check if we got a project
+      Nothing -> return ()
+
+-- Set a holiday entry
+run (DiaryHoliday day time) = do
+   mbHalfDayId <- getBy $ DayAndTimeInDay day time
+   case mbHalfDayId of
+      -- Edit an existing entry
+      Just (Entity id _) -> update id [HalfDayType =. Holiday]
+      -- Create a new entry 
+      Nothing -> void $ insert $ HalfDay day time Holiday
+
+runEdit :: MonadIO m => HalfDayId -> WorkOption -> SqlPersistT m()
+runEdit id (SetProj name)     = undefined
+runEdit id (SetNote note)     = undefined
+runEdit id (SetArrived time)  = undefined
+runEdit id (SetLeft time)     = undefined
+runEdit id (SetOffice office) = undefined
+
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
-main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do 
+main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do
    runMigration migrateAll
-   (liftIO $ execParser opts) >>= run 
-
--- main :: IO ()
--- main = do
-
---     today <- localDay . zonedTimeToLocalTime <$> getZonedTime
-
---     runSqlite ":memory:" $ do
---         runMigration migrateAll
-
---         -- New project and half day
---         projectId <- insert $ Project "A project"
-
---         dayId <- insert $ HalfDay today Morning Worked  
-
---         let eight = TimeOfDay 08 15 00 
-
---         halfDayId <- insert $ HalfDayWorked "Note" eight midday Rennes projectId dayId
-
---         -- Getting content
---         halfDay <- get halfDayId
-
---         liftIO $ print halfDay
-
---         -- Update
---         update halfDayId [HalfDayWorkedNotes =. "Coucou"]
-
---         -- Delete 
---         delete halfDayId
+   liftIO (execParser opts) >>= run
 
