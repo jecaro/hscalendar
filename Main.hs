@@ -53,6 +53,7 @@ import           CommandLine
 projectNotFound name = "The project " ++ name ++ " is not in the database"
 projectAlready name = "The project " ++ name ++ " is already in the database"
 noEntry = "No entry"
+timeShouldBeLowerThan arrived left = "Time " ++ show arrived ++ " should be lower than " ++ show left
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -95,7 +96,7 @@ run (DiaryWork day time opts) = do
          mbHDWId <- getBy $ UniqueHalfDayId hdId
          case mbHDWId of 
             Nothing -> undefined -- Error
-            Just (Entity hdwId _) -> mapM_ (runEdit hdwId) opts
+            Just (Entity hdwId hdw) -> mapM_ (runEdit hdwId hdw) opts
       -- Create a new entry - check if we got a project
       Nothing -> return ()
 
@@ -112,18 +113,36 @@ run (DiaryHoliday day time) = do
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
+-- Make sure arrived < left
+checkTimeContraint :: HalfDayWorked -> Maybe String
+checkTimeContraint hdw = if arrived > left
+   then Just $ timeShouldBeLowerThan arrived left
+   else Nothing
+      where arrived = halfDayWorkedArrived hdw
+            left = halfDayWorkedLeft hdw
+
 -- Edit an entry
--- TODO: make sure arrived < left and it's coherent with morning/afternoon
-runEdit :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
-runEdit hdwId (SetProj name) = do
+-- TODO: make sure time is coherent with morning/afternoon
+--       pass Entity instead
+--       factorize time edit
+runEdit :: MonadIO m => HalfDayWorkedId -> HalfDayWorked -> WorkOption -> SqlPersistT m()
+runEdit hdwId _ (SetProj name) = do
    mbPId <- getBy $ UniqueName name
    case mbPId of 
       Nothing             -> liftIO . putStrLn $ projectNotFound name
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
-runEdit hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
-runEdit hdwId (SetArrived time)  = update hdwId [HalfDayWorkedArrived =. time]
-runEdit hdwId (SetLeft time)     = update hdwId [HalfDayWorkedLeft    =. time]
-runEdit hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
+runEdit hdwId _ (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
+runEdit hdwId _ (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
+runEdit hdwId hdw (SetArrived time) = do
+   let hdw' = hdw { halfDayWorkedArrived = time }
+   case checkTimeContraint hdw' of
+      Just msg -> liftIO . putStrLn $ msg
+      Nothing  -> replace hdwId hdw'
+runEdit hdwId hdw (SetLeft time) = do
+   let hdw' = hdw { halfDayWorkedLeft = time }
+   case checkTimeContraint hdw' of
+      Just msg -> liftIO . putStrLn $ msg
+      Nothing  -> replace hdwId hdw'
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
