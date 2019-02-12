@@ -44,6 +44,7 @@ import           CommandLine
 -- - Launch editor
 -- - Project empty string
 -- - Put model into a separate module
+-- - Add unit testing
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -95,8 +96,12 @@ run (DiaryWork day time opts) = do
 run (DiaryHoliday day time) = do
    mbHalfDayId <- getBy $ DayAndTimeInDay day time
    case mbHalfDayId of
-      -- Edit an existing entry
-      Just (Entity id _) -> update id [HalfDayType =. Holiday]
+      -- Edit an existing entry 
+      Just (Entity id _) -> do
+         -- Delete entry from HalfDayWorked if it exists
+         deleteWhere [HalfDayWorkedHalfDayId ==. id]
+         -- Update entry
+         update id [HalfDayType =. Holiday]
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
