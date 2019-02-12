@@ -50,6 +50,10 @@ import           CommandLine
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
+projectNotFound name = "The project " ++ name ++ " is not in the database"
+projectAlready name = "The project " ++ name ++ " is already in the database"
+noEntry = "No entry"
+
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
 run ProjList = do
@@ -62,16 +66,14 @@ run (ProjAdd name) = do
    maybeProject <- getBy $ UniqueName name
    case maybeProject of
       Nothing -> void . insert $ Project name
-      Just (Entity _ _) -> liftIO . putStrLn $ "The project " ++ name ++
-                                               " is already in the database"
+      Just (Entity _ _) -> liftIO . putStrLn $ projectAlready name
 
 -- Remove a project
 -- TODO: check in the HalfDay Worked Table before
 run (ProjRm name) = do
    mbProject <- getBy $ UniqueName name
    case mbProject of
-      Nothing -> liftIO $ putStrLn $ "The project " ++ name ++
-                                     " is not in the database"
+      Nothing -> liftIO $ putStrLn $ projectNotFound name
       Just (Entity projectId _) -> delete projectId
 
 -- Display an entry
@@ -80,7 +82,7 @@ run (DiaryDisplay day time) = do
    liftIO . putStrLn $ show day ++ " " ++ show time
    mbHalfDayId <- getBy $ DayAndTimeInDay day time
    liftIO $ putStrLn $ case mbHalfDayId of
-      Nothing -> "No entry"
+      Nothing -> noEntry
       Just (Entity id halfDay) -> show $ halfDayType halfDay
          
 -- Set a work entry
@@ -88,7 +90,11 @@ run (DiaryWork day time opts) = do
    mbHalfDayId <- getBy $ DayAndTimeInDay day time
    case mbHalfDayId of
       -- Edit an existing entry
-      Just (Entity id _) -> mapM_ (runEdit id) opts
+      Just (Entity hdId _) -> do
+         mbHalfDayWorkedId <- getBy $ UniqueHalfDayId hdId
+         case mbHalfDayWorkedId of 
+            Nothing -> undefined -- Error
+            Just (Entity hdwId _) -> mapM_ (runEdit hdwId) opts
       -- Create a new entry - check if we got a project
       Nothing -> return ()
 
@@ -105,12 +111,18 @@ run (DiaryHoliday day time) = do
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
-runEdit :: MonadIO m => HalfDayId -> WorkOption -> SqlPersistT m()
-runEdit id (SetProj name)     = undefined
-runEdit id (SetNote note)     = undefined
-runEdit id (SetArrived time)  = undefined
-runEdit id (SetLeft time)     = undefined
-runEdit id (SetOffice office) = undefined
+-- Edit an entry
+-- TODO: make sure arrived < left and it's coherent with morning/afternoon
+runEdit :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
+runEdit id (SetProj name)     = do
+   mbProjectId <- getBy $ UniqueName name
+   case mbProjectId of 
+      Nothing             -> liftIO . putStrLn $ projectNotFound name
+      Just (Entity pId _) -> update id [HalfDayWorkedProjectId =. pId]
+runEdit id (SetNote note)     = update id [HalfDayWorkedNotes   =. note]
+runEdit id (SetArrived time)  = update id [HalfDayWorkedArrived =. time]
+runEdit id (SetLeft time)     = update id [HalfDayWorkedLeft    =. time]
+runEdit id (SetOffice office) = update id [HalfDayWorkedOffice  =. office]
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
