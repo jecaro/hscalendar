@@ -25,7 +25,7 @@ data Cmd = ProjList                             |
   deriving (Eq, Show)
 
 data WorkOption = SetProj String       |
-                  SetNote String       |
+                  SetNotes String      |
                   SetArrived TimeOfDay |
                   SetLeft TimeOfDay    |
                   SetOffice Office
@@ -75,7 +75,7 @@ diaryCmd = hsubparser
 
 workOption :: Parser WorkOption
 workOption = workOptionSetProj    <|> 
-             workOptionSetNote    <|>
+             workOptionSetNotes   <|>
              workOptionSetArrived <|>
              workOptionSetLeft    <|>
              workOptionSetOffice
@@ -87,12 +87,12 @@ workOptionSetProj = SetProj <$> strOption
    <> metavar "PROJECT"
    <> help "Set the project" )
 
-workOptionSetNote :: Parser WorkOption
-workOptionSetNote = SetNote <$> strOption
-   (  long "note"
+workOptionSetNotes :: Parser WorkOption
+workOptionSetNotes = SetNotes <$> strOption
+   (  long "notes"
    <> short 'n'
-   <> metavar "NOTE"
-   <> help "Set the note" )
+   <> metavar "NOTES"
+   <> help "Set the notes" )
 
 workOptionSetArrived :: Parser WorkOption
 workOptionSetArrived = SetArrived <$> option auto

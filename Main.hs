@@ -114,15 +114,15 @@ run (DiaryHoliday day time) = do
 -- Edit an entry
 -- TODO: make sure arrived < left and it's coherent with morning/afternoon
 runEdit :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
-runEdit id (SetProj name)     = do
+runEdit hdwId (SetProj name) = do
    mbProjectId <- getBy $ UniqueName name
    case mbProjectId of 
       Nothing             -> liftIO . putStrLn $ projectNotFound name
-      Just (Entity pId _) -> update id [HalfDayWorkedProjectId =. pId]
-runEdit id (SetNote note)     = update id [HalfDayWorkedNotes   =. note]
-runEdit id (SetArrived time)  = update id [HalfDayWorkedArrived =. time]
-runEdit id (SetLeft time)     = update id [HalfDayWorkedLeft    =. time]
-runEdit id (SetOffice office) = update id [HalfDayWorkedOffice  =. office]
+      Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
+runEdit hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
+runEdit hdwId (SetArrived time)  = update hdwId [HalfDayWorkedArrived =. time]
+runEdit hdwId (SetLeft time)     = update hdwId [HalfDayWorkedLeft    =. time]
+runEdit hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
