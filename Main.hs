@@ -69,12 +69,13 @@ run (ProjAdd name) = do
       Just (Entity _ _) -> liftIO . putStrLn $ projectAlready name
 
 -- Remove a project
--- TODO: check in the HalfDay Worked Table before
 run (ProjRm name) = do
-   mbProject <- getBy $ UniqueName name
-   case mbProject of
+   mbPId <- getBy $ UniqueName name
+   case mbPId of
       Nothing -> liftIO $ putStrLn $ projectNotFound name
-      Just (Entity projectId _) -> delete projectId
+      Just (Entity pId _) -> do
+         deleteWhere [HalfDayWorkedProjectId ==. pId]
+         delete pId
 
 -- Display an entry
 run (DiaryDisplay day time) = do
@@ -87,12 +88,12 @@ run (DiaryDisplay day time) = do
          
 -- Set a work entry
 run (DiaryWork day time opts) = do
-   mbHalfDayId <- getBy $ DayAndTimeInDay day time
-   case mbHalfDayId of
+   mbHDId <- getBy $ DayAndTimeInDay day time
+   case mbHDId of
       -- Edit an existing entry
       Just (Entity hdId _) -> do
-         mbHalfDayWorkedId <- getBy $ UniqueHalfDayId hdId
-         case mbHalfDayWorkedId of 
+         mbHDWId <- getBy $ UniqueHalfDayId hdId
+         case mbHDWId of 
             Nothing -> undefined -- Error
             Just (Entity hdwId _) -> mapM_ (runEdit hdwId) opts
       -- Create a new entry - check if we got a project
@@ -100,14 +101,14 @@ run (DiaryWork day time opts) = do
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
-   mbHalfDayId <- getBy $ DayAndTimeInDay day time
-   case mbHalfDayId of
+   mbHDId <- getBy $ DayAndTimeInDay day time
+   case mbHDId of
       -- Edit an existing entry 
-      Just (Entity id _) -> do
+      Just (Entity hdId _) -> do
          -- Delete entry from HalfDayWorked if it exists
-         deleteWhere [HalfDayWorkedHalfDayId ==. id]
+         deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
          -- Update entry
-         update id [HalfDayType =. Holiday]
+         update hdId [HalfDayType =. Holiday]
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
@@ -115,8 +116,8 @@ run (DiaryHoliday day time) = do
 -- TODO: make sure arrived < left and it's coherent with morning/afternoon
 runEdit :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
 runEdit hdwId (SetProj name) = do
-   mbProjectId <- getBy $ UniqueName name
-   case mbProjectId of 
+   mbPId <- getBy $ UniqueName name
+   case mbPId of 
       Nothing             -> liftIO . putStrLn $ projectNotFound name
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
 runEdit hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
