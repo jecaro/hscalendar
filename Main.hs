@@ -96,7 +96,7 @@ run (DiaryWork day time opts) = do
          mbHDWId <- getBy $ UniqueHalfDayId hdId
          case mbHDWId of 
             Nothing -> undefined -- Error
-            Just (Entity hdwId hdw) -> mapM_ (runEdit hdwId hdw) opts
+            Just entity -> mapM_ (runEdit entity) opts
       -- Create a new entry - check if we got a project
       Nothing -> return ()
 
@@ -123,22 +123,24 @@ checkTimeContraint hdw = if arrived > left
 
 -- Edit an entry
 -- TODO: make sure time is coherent with morning/afternoon
---       pass Entity instead
 --       factorize time edit
-runEdit :: MonadIO m => HalfDayWorkedId -> HalfDayWorked -> WorkOption -> SqlPersistT m()
-runEdit hdwId _ (SetProj name) = do
+runEdit :: MonadIO m => Entity HalfDayWorked -> WorkOption -> SqlPersistT m()
+runEdit (Entity hdwId _) (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
+runEdit (Entity hdwId _) (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
+-- Set project
+runEdit (Entity hdwId _) (SetProj name) = do
    mbPId <- getBy $ UniqueName name
    case mbPId of 
       Nothing             -> liftIO . putStrLn $ projectNotFound name
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
-runEdit hdwId _ (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
-runEdit hdwId _ (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
-runEdit hdwId hdw (SetArrived time) = do
+-- Set arrived time
+runEdit (Entity hdwId hdw) (SetArrived time) = do
    let hdw' = hdw { halfDayWorkedArrived = time }
    case checkTimeContraint hdw' of
       Just msg -> liftIO . putStrLn $ msg
       Nothing  -> replace hdwId hdw'
-runEdit hdwId hdw (SetLeft time) = do
+-- Set left time
+runEdit (Entity hdwId hdw) (SetLeft time) = do
    let hdw' = hdw { halfDayWorkedLeft = time }
    case checkTimeContraint hdw' of
       Just msg -> liftIO . putStrLn $ msg
