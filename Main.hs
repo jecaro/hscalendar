@@ -6,6 +6,8 @@
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.Maybe
 import           Database.Persist
 import           Database.Persist.Sqlite
 import           Data.Time.Clock
@@ -121,6 +123,28 @@ checkTimeContraint hdw = if arrived > left
       where arrived = halfDayWorkedArrived hdw
             left = halfDayWorkedLeft hdw
 
+checkTimeContraint' :: HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
+checkTimeContraint' = undefined
+
+-- From a half-day return the other half-day
+otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
+otherHdFromHd hd = do
+   let tid = other $ halfDayTimeInDay hd
+       day = halfDayDay hd
+   getBy $ DayAndTimeInDay day tid
+
+-- From a half-day worked return the other half-day
+otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
+otherHdFromHdw hdw = runMaybeT $ do
+   hdId <- MaybeT $ get $ halfDayWorkedHalfDayId hdw
+   MaybeT $ otherHdFromHd hdId
+
+-- From a worked half-day, return the other worked half-day
+otherHdwFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDayWorked))
+otherHdwFromHdw hdw = runMaybeT $ do
+   otherHdId <- MaybeT $ otherHdFromHdw hdw
+   MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
+  
 -- Edit an entry
 -- TODO: make sure time is coherent with morning/afternoon
 --       factorize time edit
