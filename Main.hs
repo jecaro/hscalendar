@@ -148,21 +148,18 @@ otherHdFromHd hd = getBy $ DayAndTimeInDay day tid
          day = halfDayDay hd
    
 -- From a half-day worked return the other half-day
--- TODO: remove MaybeT
 otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
 otherHdFromHdw hdw = runMaybeT $ do
    hdId <- MaybeT $ get $ halfDayWorkedHalfDayId hdw
    MaybeT $ otherHdFromHd hdId
 
 -- From a worked half-day, return the other worked half-day
--- TODO: remove MaybeT
 otherHdwFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDayWorked))
 otherHdwFromHdw hdw = runMaybeT $ do
    otherHdId <- MaybeT $ otherHdFromHdw hdw
    MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
 
 -- Simple edit action using only hdwid
--- TODO: remove MaybeT
 runEditSimple :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
 runEditSimple hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 runEditSimple hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
