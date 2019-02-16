@@ -128,15 +128,16 @@ isSorted []       = True
 isSorted [x]      = True
 isSorted (x:y:xs) = x <= y && isSorted (y:xs)
 
+-- Check that the constraint on the times are valid between the two days
 checkTimeConstraint :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-checkTimeConstraint tid hdw Nothing = 
-   if isSorted $ timesOfDay hdw
+checkTimeConstraint Morning hdw mbOtherHdw =
+   if isSorted $ timesOfDay hdw ++ otherTimes
    then Nothing
    else Just timesAreWrong
-checkTimeConstraint Morning hdw (Just otherHdw) =
-   if isSorted $ timesOfDay hdw ++ timesOfDay otherHdw
-   then Nothing
-   else Just timesAreWrong
+      where otherTimes = case mbOtherHdw of 
+                           Nothing -> []
+                           Just otherHdw -> timesOfDay otherHdw
+-- We switch the arguments and call the same function
 checkTimeConstraint Afternoon hdw (Just otherHdw) =
    checkTimeConstraint Morning otherHdw (Just hdw)
 
