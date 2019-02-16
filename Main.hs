@@ -55,7 +55,7 @@ import           CommandLine
 projectNotFound name = "The project " ++ name ++ " is not in the database"
 projectAlready name = "The project " ++ name ++ " is already in the database"
 noEntry = "No entry"
-timeShouldBeLowerThan arrived left = "Time " ++ show arrived ++ " should be lower than " ++ show left
+dbInconstistency = "Database inconsistency"
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -88,17 +88,19 @@ run (DiaryDisplay day time) = do
    liftIO $ putStrLn $ case mbHalfDayId of
       Nothing -> noEntry
       Just (Entity id halfDay) -> show $ halfDayType halfDay
-         
+
 -- Set a work entry
 run (DiaryWork day time opts) = do
-   mbHDId <- getBy $ DayAndTimeInDay day time
-   case mbHDId of
-      -- Edit an existing entry
-      Just (Entity hdId _) -> do
-         mbHDWId <- getBy $ UniqueHalfDayId hdId
-         case mbHDWId of 
-            Nothing -> undefined -- Error
-            Just entity -> mapM_ (runEdit entity) opts
+   -- Getting HaflDay from date/time
+   mbHdId <- getBy $ DayAndTimeInDay day time
+   case mbHdId of
+      -- It exists, edit it 
+      Just hd@(Entity hdId _) -> do
+         -- In this case it is mandatory to have a hdw as well
+         mbHdwId <- getBy $ UniqueHalfDayId hdId
+         case mbHdwId of
+            Nothing -> liftIO . putStrLn $ dbInconstistency
+            Just hdw -> mapM_ (runEdit hd hdw) opts
       -- Create a new entry - check if we got a project
       Nothing -> return ()
 
@@ -115,16 +117,24 @@ run (DiaryHoliday day time) = do
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
--- Make sure arrived < left
-checkTimeContraint :: HalfDayWorked -> Maybe String
-checkTimeContraint hdw = if arrived > left
-   then Just $ timeShouldBeLowerThan arrived left
-   else Nothing
-      where arrived = halfDayWorkedArrived hdw
-            left = halfDayWorkedLeft hdw
+-- Return the times in the day in a list
+timesOfDay :: HalfDayWorked -> [TimeOfDay]
+timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
 
-checkTimeContraint' :: HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-checkTimeContraint' = undefined
+-- Return true if the list is sorted
+isSorted :: (Ord a) => [a] -> Bool
+isSorted []       = True
+isSorted [x]      = True
+isSorted (x:y:xs) = x <= y && isSorted (y:xs)
+
+checkTimeConstraint :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
+checkTimeConstraint tid hdw Nothing = Nothing
+checkTimeConstraint Morning hdw (Just otherHdw) =
+   if isSorted $ timesOfDay hdw ++ timesOfDay otherHdw
+   then Nothing
+   else Just "Times are wrong"
+checkTimeConstraint Afternoon hdw (Just otherHdw) =
+   checkTimeConstraint Morning otherHdw (Just hdw)
 
 -- From a half-day return the other half-day
 otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
@@ -134,41 +144,61 @@ otherHdFromHd hd = do
    getBy $ DayAndTimeInDay day tid
 
 -- From a half-day worked return the other half-day
+-- TODO: remove MaybeT
 otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
 otherHdFromHdw hdw = runMaybeT $ do
    hdId <- MaybeT $ get $ halfDayWorkedHalfDayId hdw
    MaybeT $ otherHdFromHd hdId
 
 -- From a worked half-day, return the other worked half-day
+-- TODO: remove MaybeT
 otherHdwFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDayWorked))
 otherHdwFromHdw hdw = runMaybeT $ do
    otherHdId <- MaybeT $ otherHdFromHdw hdw
    MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
-  
--- Edit an entry
--- TODO: make sure time is coherent with morning/afternoon
---       factorize time edit
-runEdit :: MonadIO m => Entity HalfDayWorked -> WorkOption -> SqlPersistT m()
-runEdit (Entity hdwId _) (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
-runEdit (Entity hdwId _) (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
--- Set project
-runEdit (Entity hdwId _) (SetProj name) = do
+
+-- Simple edit action using only hdwid
+-- TODO: remove MaybeT
+runEditSimple :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
+runEditSimple hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
+runEditSimple hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
+runEditSimple hdwId (SetProj name) = do
    mbPId <- getBy $ UniqueName name
-   case mbPId of 
+   case mbPId of
       Nothing             -> liftIO . putStrLn $ projectNotFound name
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
+
+-- Edit an entry
+-- TODO: factorize time edit
+runEdit :: MonadIO m => Entity HalfDay -> Entity HalfDayWorked -> WorkOption -> SqlPersistT m()
 -- Set arrived time
-runEdit (Entity hdwId hdw) (SetArrived time) = do
-   let hdw' = hdw { halfDayWorkedArrived = time }
-   case checkTimeContraint hdw' of
+runEdit (Entity _ hd) (Entity hdwId hdw) (SetArrived time) = do
+   -- Getting time in day of current half day
+   let tid = halfDayTimeInDay hd
+   -- Apply time to arrived hdw
+       hdw' = hdw { halfDayWorkedArrived = time }
+   -- Getting other hdw
+   otherHdwE <- otherHdwFromHdw hdw
+   let otherHdw = fmap entityVal otherHdwE
+   -- Check if it works
+   case checkTimeConstraint tid hdw' otherHdw of
       Just msg -> liftIO . putStrLn $ msg
       Nothing  -> replace hdwId hdw'
 -- Set left time
-runEdit (Entity hdwId hdw) (SetLeft time) = do
-   let hdw' = hdw { halfDayWorkedLeft = time }
-   case checkTimeContraint hdw' of
+runEdit (Entity _ hd) (Entity hdwId hdw) (SetLeft time) = do
+   -- Getting time in day of current half day
+   let tid = halfDayTimeInDay hd
+   -- Apply time to left hdw
+       hdw' = hdw { halfDayWorkedLeft = time }
+   -- Getting other hdw
+   otherHdwE <- otherHdwFromHdw hdw
+   let otherHdw = fmap entityVal otherHdwE
+   -- Check if it works
+   case checkTimeConstraint tid hdw' otherHdw of
       Just msg -> liftIO . putStrLn $ msg
       Nothing  -> replace hdwId hdw'
+-- Simple actions handling
+runEdit _ (Entity hdwId _) action = runEditSimple hdwId action
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
