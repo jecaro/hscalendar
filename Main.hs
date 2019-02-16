@@ -143,11 +143,10 @@ checkTimeConstraint Afternoon hdw (Just otherHdw) =
 
 -- From a half-day return the other half-day
 otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
-otherHdFromHd hd = do
-   let tid = other $ halfDayTimeInDay hd
-       day = halfDayDay hd
-   getBy $ DayAndTimeInDay day tid
-
+otherHdFromHd hd = getBy $ DayAndTimeInDay day tid
+   where tid = other $ halfDayTimeInDay hd
+         day = halfDayDay hd
+   
 -- From a half-day worked return the other half-day
 -- TODO: remove MaybeT
 otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
