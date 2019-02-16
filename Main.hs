@@ -56,6 +56,7 @@ projectNotFound name = "The project " ++ name ++ " is not in the database"
 projectAlready name = "The project " ++ name ++ " is already in the database"
 noEntry = "No entry"
 dbInconstistency = "Database inconsistency"
+timesAreWrong = "Times are wrong"
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -128,11 +129,14 @@ isSorted [x]      = True
 isSorted (x:y:xs) = x <= y && isSorted (y:xs)
 
 checkTimeConstraint :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-checkTimeConstraint tid hdw Nothing = Nothing
+checkTimeConstraint tid hdw Nothing = 
+   if isSorted $ timesOfDay hdw
+   then Nothing
+   else Just timesAreWrong
 checkTimeConstraint Morning hdw (Just otherHdw) =
    if isSorted $ timesOfDay hdw ++ timesOfDay otherHdw
    then Nothing
-   else Just "Times are wrong"
+   else Just timesAreWrong
 checkTimeConstraint Afternoon hdw (Just otherHdw) =
    checkTimeConstraint Morning otherHdw (Just hdw)
 
