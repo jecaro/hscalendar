@@ -101,7 +101,7 @@ run (DiaryWork day time opts) = do
          mbHdwId <- getBy $ UniqueHalfDayId hdId
          case mbHdwId of
             Nothing -> liftIO . putStrLn $ dbInconstistency
-            Just hdw -> mapM_ (runEdit hd hdw) opts
+            Just hdw -> mapM_ (dispatchEdit hd hdw) opts
       -- Create a new entry - check if we got a project
       Nothing -> return ()
 
@@ -129,24 +129,24 @@ isSorted [x]      = True
 isSorted (x:y:xs) = x <= y && isSorted (y:xs)
 
 -- Check that the constraint on the times are valid between the two days
-checkTimeConstraint :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-checkTimeConstraint Morning hdw mbOtherHdw =
+checkTimeConstraints :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
+checkTimeConstraints Morning hdw mbOtherHdw =
    if isSorted $ timesOfDay hdw ++ otherTimes
    then Nothing
    else Just timesAreWrong
-      where otherTimes = case mbOtherHdw of 
+      where otherTimes = case mbOtherHdw of
                            Nothing -> []
                            Just otherHdw -> timesOfDay otherHdw
 -- We switch the arguments and call the same function
-checkTimeConstraint Afternoon hdw (Just otherHdw) =
-   checkTimeConstraint Morning otherHdw (Just hdw)
+checkTimeConstraints Afternoon hdw (Just otherHdw) =
+   checkTimeConstraints Morning otherHdw (Just hdw)
 
 -- From a half-day return the other half-day
 otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
 otherHdFromHd hd = getBy $ DayAndTimeInDay day tid
    where tid = other $ halfDayTimeInDay hd
          day = halfDayDay hd
-   
+
 -- From a half-day worked return the other half-day
 otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
 otherHdFromHdw hdw = runMaybeT $ do
@@ -160,46 +160,54 @@ otherHdwFromHdw hdw = runMaybeT $ do
    MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
 
 -- Simple edit action using only hdwid
-runEditSimple :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
-runEditSimple hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
-runEditSimple hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
-runEditSimple hdwId (SetProj name) = do
+editSimpleById :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
+editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
+editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
+editSimpleById hdwId (SetProj name) = do
    mbPId <- getBy $ UniqueName name
    case mbPId of
       Nothing             -> liftIO . putStrLn $ projectNotFound name
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
 
--- Edit an entry
--- TODO: factorize time edit
-runEdit :: MonadIO m => Entity HalfDay -> Entity HalfDayWorked -> WorkOption -> SqlPersistT m()
+-- Dispatch edit
+dispatchEdit :: MonadIO m => 
+   Entity HalfDay 
+   -> Entity HalfDayWorked 
+   -> WorkOption 
+   -> SqlPersistT m()
 -- Set arrived time
-runEdit (Entity _ hd) (Entity hdwId hdw) (SetArrived time) = do
-   -- Getting time in day of current half day
-   let tid = halfDayTimeInDay hd
-   -- Apply time to arrived hdw
-       hdw' = hdw { halfDayWorkedArrived = time }
-   -- Getting other hdw
-   otherHdwE <- otherHdwFromHdw hdw
-   let otherHdw = fmap entityVal otherHdwE
-   -- Check if it works
-   case checkTimeConstraint tid hdw' otherHdw of
-      Just msg -> liftIO . putStrLn $ msg
-      Nothing  -> replace hdwId hdw'
+dispatchEdit eHd eHdw (SetArrived time) = editTime eHd eHdw $ setArrivedTime time
 -- Set left time
-runEdit (Entity _ hd) (Entity hdwId hdw) (SetLeft time) = do
+dispatchEdit eHd eHdw (SetLeft time) = editTime eHd eHdw $ setLeftTime time
+-- Simple actions handling
+dispatchEdit _ (Entity hdwId _) action = editSimpleById hdwId action
+
+-- Edit arrived time function
+setArrivedTime :: TimeOfDay -> HalfDayWorked -> HalfDayWorked
+setArrivedTime time hdw = hdw { halfDayWorkedArrived = time }
+
+-- Edit left time function
+setLeftTime :: TimeOfDay -> HalfDayWorked -> HalfDayWorked
+setLeftTime time hdw = hdw { halfDayWorkedLeft = time }
+
+-- Set arrived/left time
+editTime :: MonadIO m =>
+   Entity HalfDay
+   -> Entity HalfDayWorked
+   -> (HalfDayWorked -> HalfDayWorked)
+   -> SqlPersistT m ()
+editTime (Entity _ hd) (Entity hdwId hdw) setTime = do
    -- Getting time in day of current half day
    let tid = halfDayTimeInDay hd
-   -- Apply time to left hdw
-       hdw' = hdw { halfDayWorkedLeft = time }
+   -- Apply time to arrived/left hdw
+       hdw' = setTime hdw
    -- Getting other hdw
    otherHdwE <- otherHdwFromHdw hdw
    let otherHdw = fmap entityVal otherHdwE
    -- Check if it works
-   case checkTimeConstraint tid hdw' otherHdw of
+   case checkTimeConstraints tid hdw' otherHdw of
       Just msg -> liftIO . putStrLn $ msg
       Nothing  -> replace hdwId hdw'
--- Simple actions handling
-runEdit _ (Entity hdwId _) action = runEditSimple hdwId action
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
