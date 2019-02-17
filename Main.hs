@@ -10,6 +10,7 @@ import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Database.Persist
 import           Database.Persist.Sqlite
+import           Data.List (partition)
 import           Data.Time.Clock
 import           Data.Time.Calendar
 import           Data.Time.LocalTime
@@ -57,6 +58,9 @@ projectAlready name = "The project " ++ name ++ " is already in the database"
 noEntry = "No entry"
 dbInconstistency = "Database inconsistency"
 timesAreWrong = "Times are wrong"
+projCmdIsMandatory = "There should be only one project command"
+tooManyProjCmd = "Too many project commands"
+
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -67,12 +71,13 @@ run ProjList = do
 
 -- Add a project
 run (ProjAdd name) = do
-   maybeProject <- getBy $ UniqueName name
-   case maybeProject of
+   mbPId <- getBy $ UniqueName name
+   case mbPId of
       Nothing -> void . insert $ Project name
       Just (Entity _ _) -> liftIO . putStrLn $ projectAlready name
 
 -- Remove a project
+-- TODO refactor using Either
 run (ProjRm name) = do
    mbPId <- getBy $ UniqueName name
    case mbPId of
@@ -103,7 +108,15 @@ run (DiaryWork day time opts) = do
             Nothing -> liftIO . putStrLn $ dbInconstistency
             Just hdw -> mapM_ (dispatchEdit hd hdw) opts
       -- Create a new entry - check if we got a project
-      Nothing -> return ()
+      Nothing -> do
+         let (projCmds, otherCmds) = partition isProjOption opts
+         case length projCmds of
+            -- No project there is nothing we can do
+            0 -> liftIO . putStrLn $ projCmdIsMandatory
+            -- Every thing is ok 
+            1 -> runCreateEntry day time (head projCmds) otherCmds
+            -- Too many commands
+            _ -> liftIO . putStrLn $ tooManyProjCmd
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
@@ -118,6 +131,36 @@ run (DiaryHoliday day time) = do
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
 
+-- Return true is the work option is a setProj command
+isProjOption :: WorkOption -> Bool
+isProjOption (SetProj _) = True
+isProjOption _ = False
+
+-- Create an entry
+runCreateEntry :: (MonadIO m) =>
+   Day
+   -> TimeInDay
+   -> WorkOption
+   -> [WorkOption]
+   -> SqlPersistT m ()
+runCreateEntry day time (SetProj name) otherCmds = do
+   mbPId <- getBy $ UniqueName name
+   case mbPId of
+      Nothing -> liftIO $ putStrLn $ projectNotFound name
+      Just (Entity pId _) -> do
+         -- Create half-day
+         let hd = HalfDay day time Worked
+         hdId <- insert hd
+         let notes = ""
+             (arrived, left) = if time == Morning 
+               then (TimeOfDay 8 20 0, TimeOfDay 12 0 0)
+               else (TimeOfDay 13 0 0, TimeOfDay 17 0 0)
+             office  = Rennes
+         -- Create half-day
+             hdw = HalfDayWorked notes arrived left office pId hdId
+         hdwId <- insert hdw
+         mapM_ (dispatchEdit (Entity hdId hd) (Entity hdwId hdw)) otherCmds
+         
 -- Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [TimeOfDay]
 timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
@@ -170,10 +213,10 @@ editSimpleById hdwId (SetProj name) = do
       Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
 
 -- Dispatch edit
-dispatchEdit :: MonadIO m => 
-   Entity HalfDay 
-   -> Entity HalfDayWorked 
-   -> WorkOption 
+dispatchEdit :: MonadIO m =>
+   Entity HalfDay
+   -> Entity HalfDayWorked
+   -> WorkOption
    -> SqlPersistT m()
 -- Set arrived time
 dispatchEdit eHd eHdw (SetArrived time) = editTime eHd eHdw $ setArrivedTime time
