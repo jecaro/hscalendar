@@ -15,6 +15,7 @@ import           Data.Time.Clock
 import           Data.Time.Calendar
 import           Data.Time.LocalTime
 import           Options.Applicative
+import           Safe
 
 import           Model
 import           HalfDayType
@@ -48,6 +49,7 @@ import           CommandLine
 -- - Project empty string
 -- - Put model into a separate module
 -- - Add unit testing
+-- - Remove public holiday
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -58,9 +60,38 @@ projectAlready name = "The project " ++ name ++ " is already in the database"
 noEntry = "No entry"
 dbInconstistency = "Database inconsistency"
 timesAreWrong = "Times are wrong"
-projCmdIsMandatory = "There should be only one project command"
+projCmdIsMandatory = "There should be one project command"
 tooManyProjCmd = "Too many project commands"
 
+-- Check if it is possible to create a new entry in HalfDayWorked.
+-- We need a SetProj command with a valid project name
+checkCreateConditions :: MonadIO m => 
+   [WorkOption] 
+   -> SqlPersistT m (Maybe (Key Project, [WorkOption]))
+checkCreateConditions opts = do
+   -- We try to find SetProj command
+   let (projCmds, otherCmds) = partition isProjOption opts
+   projCmd <- case length projCmds of
+         -- No SetProj command here, there is nothing we can do
+         0 -> do
+            liftIO $ putStrLn projCmdIsMandatory
+            return Nothing
+         -- Every thing is ok 
+         1 -> return $ headMay projCmds
+         -- Too many commands
+         _ -> do
+            liftIO $ putStrLn tooManyProjCmd
+            return Nothing
+   case projCmd of
+      -- Ok there is a SetProj command, check if it exists in the Project table
+      Just (SetProj name) -> do
+         mbPId <- getBy $ UniqueName name
+         case mbPId of
+            Nothing -> do
+               liftIO $ putStrLn $ projectNotFound name
+               return Nothing
+            Just (Entity pId _) -> return $ Just (pId, otherCmds)
+      Nothing -> return Nothing
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -78,6 +109,7 @@ run (ProjAdd name) = do
 
 -- Remove a project
 -- TODO refactor using Either
+--      ask for confirmation when erasing hdw
 run (ProjRm name) = do
    mbPId <- getBy $ UniqueName name
    case mbPId of
@@ -97,26 +129,47 @@ run (DiaryDisplay day time) = do
 
 -- Set a work entry
 run (DiaryWork day time opts) = do
-   -- Getting HaflDay from date/time
-   mbHdId <- getBy $ DayAndTimeInDay day time
-   case mbHdId of
+  -- Getting HalfDay from date/time
+  mbHdId <- getBy $ DayAndTimeInDay day time
+  case mbHdId of
       -- It exists, edit it 
-      Just hd@(Entity hdId _) -> do
-         -- In this case it is mandatory to have a hdw as well
-         mbHdwId <- getBy $ UniqueHalfDayId hdId
-         case mbHdwId of
-            Nothing -> liftIO . putStrLn $ dbInconstistency
-            Just hdw -> mapM_ (dispatchEdit hd hdw) opts
-      -- Create a new entry - check if we got a project
+      Just hdE@(Entity hdId hd) ->
+         -- Check the type
+         case halfDayType hd of
+            -- Type work, only have to edit it
+            Worked -> do
+               mbHdwId <- getBy $ UniqueHalfDayId hdId
+               case mbHdwId of
+                  Nothing -> liftIO . putStrLn $ dbInconstistency
+                  Just hdwE -> mapM_ (dispatchEdit hdE hdwE) opts
+            -- Type holiday
+            Holiday -> do
+               -- Check if the conditions are ok
+               conditions <- checkCreateConditions opts
+               case conditions of
+                  -- Nope
+                  Nothing -> return ()
+                  -- Everything ok carry on
+                  Just (projId, otherCmds) -> do
+                     -- Override HD
+                     let hd' = hd { halfDayType = Worked }
+                     replace hdId hd'
+                     -- Create Hdw
+                     runCreateEntry day time (Entity hdId hd') projId otherCmds
+      -- Create a new entry 
       Nothing -> do
-         let (projCmds, otherCmds) = partition isProjOption opts
-         case length projCmds of
-            -- No project there is nothing we can do
-            0 -> liftIO . putStrLn $ projCmdIsMandatory
-            -- Every thing is ok 
-            1 -> runCreateEntry day time (head projCmds) otherCmds
-            -- Too many commands
-            _ -> liftIO . putStrLn $ tooManyProjCmd
+         -- Check if the conditions are ok
+         conditions <- checkCreateConditions opts
+         case conditions of
+            -- Nope
+            Nothing -> return ()
+            -- Everything ok carry on
+            Just (projId, otherCmds) -> do
+               -- Create HD
+               let hd = HalfDay day time Worked
+               hdId <- insert hd
+               -- Create Hdw
+               runCreateEntry day time (Entity hdId hd) projId otherCmds
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
@@ -140,27 +193,22 @@ isProjOption _ = False
 runCreateEntry :: (MonadIO m) =>
    Day
    -> TimeInDay
-   -> WorkOption
+   -> Entity HalfDay
+   -> Key Project
    -> [WorkOption]
    -> SqlPersistT m ()
-runCreateEntry day time (SetProj name) otherCmds = do
-   mbPId <- getBy $ UniqueName name
-   case mbPId of
-      Nothing -> liftIO $ putStrLn $ projectNotFound name
-      Just (Entity pId _) -> do
-         -- Create half-day
-         let hd = HalfDay day time Worked
-         hdId <- insert hd
-         let notes = ""
-             (arrived, left) = if time == Morning 
-               then (TimeOfDay 8 20 0, TimeOfDay 12 0 0)
-               else (TimeOfDay 13 0 0, TimeOfDay 17 0 0)
-             office  = Rennes
-         -- Create half-day
-             hdw = HalfDayWorked notes arrived left office pId hdId
-         hdwId <- insert hdw
-         mapM_ (dispatchEdit (Entity hdId hd) (Entity hdwId hdw)) otherCmds
-         
+runCreateEntry day time (Entity hdId hd) pId otherCmds = do
+   -- Create half-day
+   let notes           = ""
+       (arrived, left) = if time == Morning
+          then (TimeOfDay 8 20 0, TimeOfDay 12 0 0)
+          else (TimeOfDay 13 0 0, TimeOfDay 17 0 0)
+       office = Rennes
+   -- Create half-day
+       hdw    = HalfDayWorked notes arrived left office pId hdId
+   hdwId <- insert hdw
+   mapM_ (dispatchEdit (Entity hdId hd) (Entity hdwId hdw)) otherCmds
+
 -- Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [TimeOfDay]
 timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
