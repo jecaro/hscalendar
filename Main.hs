@@ -60,7 +60,6 @@ noEntry = "No entry"
 dbInconstistency = "Database inconsistency"
 timesAreWrong = "Times are wrong"
 projCmdIsMandatory = "There should be one project command"
-tooManyProjCmd = "Too many project commands"
 
 -- Find a project option in a list of options, gets its name and return 
 -- remaining options
@@ -173,11 +172,6 @@ run (DiaryHoliday day time) = do
          update hdId [HalfDayType =. Holiday]
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
-
--- Return true is the work option is a setProj command
-isProjOption :: WorkOption -> Bool
-isProjOption (SetProj _) = True
-isProjOption _ = False
 
 -- Create an entry
 runCreateEntry :: (MonadIO m) =>
