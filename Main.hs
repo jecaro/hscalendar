@@ -47,7 +47,6 @@ import           CommandLine
 -- - Append note
 -- - Launch editor
 -- - Project empty string
--- - Put model into a separate module
 -- - Add unit testing
 -- - Remove public holiday
 
@@ -63,35 +62,32 @@ timesAreWrong = "Times are wrong"
 projCmdIsMandatory = "There should be one project command"
 tooManyProjCmd = "Too many project commands"
 
+-- Find a project option in a list of options, gets its name and return 
+-- remaining options
+findProjCmd :: [WorkOption] -> (Maybe String, [WorkOption])
+findProjCmd (SetProj str:xs) = (Just str, xs)
+findProjCmd (x:xs) = (prjName, x:options)
+   where (prjName, options) = findProjCmd xs
+
 -- Check if it is possible to create a new entry in HalfDayWorked.
 -- We need a SetProj command with a valid project name
-checkCreateConditions :: MonadIO m => 
-   [WorkOption] 
+checkCreateConditions :: MonadIO m =>
+   [WorkOption]
    -> SqlPersistT m (Maybe (Key Project, [WorkOption]))
 checkCreateConditions opts = do
    -- We try to find SetProj command
-   let (projCmds, otherCmds) = partition isProjOption opts
-   projCmd <- case length projCmds of
-         -- No SetProj command here, there is nothing we can do
-         0 -> do
-            liftIO $ putStrLn projCmdIsMandatory
-            return Nothing
-         -- Every thing is ok 
-         1 -> return $ headMay projCmds
-         -- Too many commands
-         _ -> do
-            liftIO $ putStrLn tooManyProjCmd
-            return Nothing
-   case projCmd of
-      -- Ok there is a SetProj command, check if it exists in the Project table
-      Just (SetProj name) -> do
+   let (mbProjName, otherCmds) = findProjCmd opts
+   case mbProjName of 
+      Nothing -> do
+         liftIO $ putStrLn projCmdIsMandatory
+         return Nothing
+      Just name -> do
          mbPId <- getBy $ UniqueName name
          case mbPId of
             Nothing -> do
                liftIO $ putStrLn $ projectNotFound name
                return Nothing
             Just (Entity pId _) -> return $ Just (pId, otherCmds)
-      Nothing -> return Nothing
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
