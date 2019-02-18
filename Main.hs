@@ -65,6 +65,14 @@ findProjCmd :: [WorkOption] -> (Maybe String, [WorkOption])
 findProjCmd (SetProj str:xs) = (Just str, xs)
 findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
+ 
+-- Get a project return an error message if the project cannot be found
+getProject :: MonadIO m => String -> SqlPersistT m (Either String (Entity Project))
+getProject name = do
+   mbPId <- getBy $ UniqueName name
+   return $ case mbPId of
+      Nothing -> Left $ projectNotFound name
+      Just entity -> Right entity
 
 -- Check if it is possible to create a new entry in HalfDayWorked.
 -- We need a SetProj command with a valid project name
@@ -75,10 +83,10 @@ checkCreateConditions :: MonadIO m =>
 checkCreateConditions opts = case findProjCmd opts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
-      mbPId <- getBy $ UniqueName name
-      case mbPId of
-         Nothing -> return $ Left $ projectNotFound name
-         Just (Entity pId _) -> return $ Right (pId, otherCmds)
+      eiProject <- getProject name
+      case eiProject of
+         Left msg -> return $ Left msg
+         Right (Entity pId _) -> return $ Right (pId, otherCmds)
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -95,17 +103,17 @@ run (ProjAdd name) = do
       Just (Entity _ _) -> liftIO . putStrLn $ projectAlready name
 
 -- Remove a project
--- TODO refactor using Either
---      ask for confirmation when erasing hdw
+-- TODO ask for confirmation when erasing hdw
 run (ProjRm name) = do
-   mbPId <- getBy $ UniqueName name
-   case mbPId of
-      Nothing -> liftIO $ putStrLn $ projectNotFound name
-      Just (Entity pId _) -> do
+   eiProject <- getProject name 
+   case eiProject of
+      Left msg -> liftIO . putStrLn $ msg
+      Right (Entity pId _) -> do 
          deleteWhere [HalfDayWorkedProjectId ==. pId]
          delete pId
 
 -- Display an entry
+-- TODO show work day
 run (DiaryDisplay day time) = do
    -- Display input
    liftIO . putStrLn $ show day ++ " " ++ show time
@@ -238,10 +246,10 @@ editSimpleById :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
 editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 editSimpleById hdwId (SetProj name) = do
-   mbPId <- getBy $ UniqueName name
-   case mbPId of
-      Nothing             -> liftIO . putStrLn $ projectNotFound name
-      Just (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
+   eiProject <- getProject name
+   case eiProject of 
+      Left msg -> liftIO . putStrLn $ msg
+      Right (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
 
 -- Dispatch edit
 dispatchEdit :: MonadIO m =>
