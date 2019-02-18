@@ -10,12 +10,10 @@ import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Database.Persist
 import           Database.Persist.Sqlite
-import           Data.List (partition)
 import           Data.Time.Clock
 import           Data.Time.Calendar
 import           Data.Time.LocalTime
 import           Options.Applicative
-import           Safe
 
 import           Model
 import           HalfDayType
@@ -117,6 +115,7 @@ run (DiaryDisplay day time) = do
       Just (Entity id halfDay) -> show $ halfDayType halfDay
 
 -- Set a work entry
+-- TODO: factorise edit holiday and create new
 run (DiaryWork day time opts) = do
   -- Getting HalfDay from date/time
   mbHdId <- getBy $ DayAndTimeInDay day time
