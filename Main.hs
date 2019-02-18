@@ -71,23 +71,17 @@ findProjCmd (x:xs) = (prjName, x:options)
 
 -- Check if it is possible to create a new entry in HalfDayWorked.
 -- We need a SetProj command with a valid project name
+-- We try to find SetProj command
 checkCreateConditions :: MonadIO m =>
    [WorkOption]
-   -> SqlPersistT m (Maybe (Key Project, [WorkOption]))
-checkCreateConditions opts = do
-   -- We try to find SetProj command
-   let (mbProjName, otherCmds) = findProjCmd opts
-   case mbProjName of 
-      Nothing -> do
-         liftIO $ putStrLn projCmdIsMandatory
-         return Nothing
-      Just name -> do
-         mbPId <- getBy $ UniqueName name
-         case mbPId of
-            Nothing -> do
-               liftIO $ putStrLn $ projectNotFound name
-               return Nothing
-            Just (Entity pId _) -> return $ Just (pId, otherCmds)
+   -> SqlPersistT m (Either String (Key Project, [WorkOption]))
+checkCreateConditions opts = case findProjCmd opts of 
+   (Nothing, _) -> return $ Left projCmdIsMandatory
+   (Just name, otherCmds) -> do
+      mbPId <- getBy $ UniqueName name
+      case mbPId of
+         Nothing -> return $ Left $ projectNotFound name
+         Just (Entity pId _) -> return $ Right (pId, otherCmds)
 
 -- List projects
 run :: MonadIO m => Cmd -> SqlPersistT m ()
@@ -144,9 +138,9 @@ run (DiaryWork day time opts) = do
                conditions <- checkCreateConditions opts
                case conditions of
                   -- Nope
-                  Nothing -> return ()
+                  Left msg -> liftIO . putStrLn $ msg
                   -- Everything ok carry on
-                  Just (projId, otherCmds) -> do
+                  Right (projId, otherCmds) -> do
                      -- Override HD
                      let hd' = hd { halfDayType = Worked }
                      replace hdId hd'
@@ -158,9 +152,9 @@ run (DiaryWork day time opts) = do
          conditions <- checkCreateConditions opts
          case conditions of
             -- Nope
-            Nothing -> return ()
+            Left msg -> liftIO . putStrLn $ msg
             -- Everything ok carry on
-            Just (projId, otherCmds) -> do
+            Right (projId, otherCmds) -> do
                -- Create HD
                let hd = HalfDay day time Worked
                hdId <- insert hd
