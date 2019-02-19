@@ -123,49 +123,52 @@ run (DiaryDisplay day time) = do
       Just (Entity id halfDay) -> show $ halfDayType halfDay
 
 -- Set a work entry
--- TODO: factorise edit holiday and create new
 run (DiaryWork day time opts) = do
-  -- Getting HalfDay from date/time
-  mbHdId <- getBy $ DayAndTimeInDay day time
-  case mbHdId of
-      -- It exists, edit it 
-      Just hdE@(Entity hdId hd) ->
-         -- Check the type
-         case halfDayType hd of
-            -- Type work, only have to edit it
-            Worked -> do
-               mbHdwId <- getBy $ UniqueHalfDayId hdId
-               case mbHdwId of
-                  Nothing -> liftIO . putStrLn $ dbInconstistency
-                  Just hdwE -> mapM_ (dispatchEdit hdE hdwE) opts
-            -- Type holiday
-            Holiday -> do
-               -- Check if the conditions are ok
-               conditions <- checkCreateConditions opts
-               case conditions of
-                  -- Nope
-                  Left msg -> liftIO . putStrLn $ msg
-                  -- Everything ok carry on
-                  Right (projId, otherCmds) -> do
-                     -- Override HD
-                     let hd' = hd { halfDayType = Worked }
-                     replace hdId hd'
-                     -- Create Hdw
-                     runCreateEntry day time (Entity hdId hd') projId otherCmds
-      -- Create a new entry 
-      Nothing -> do
-         -- Check if the conditions are ok
-         conditions <- checkCreateConditions opts
-         case conditions of
-            -- Nope
-            Left msg -> liftIO . putStrLn $ msg
-            -- Everything ok carry on
-            Right (projId, otherCmds) -> do
-               -- Create HD
-               let hd = HalfDay day time Worked
-               hdId <- insert hd
-               -- Create Hdw
-               runCreateEntry day time (Entity hdId hd) projId otherCmds
+
+   -- Get half-day 
+   mbHdE <- getBy $ DayAndTimeInDay day time
+   -- Get half-day type
+   let mbHdType = fmap (halfDayType . entityVal) mbHdE 
+   -- Get half-day worked TODO find a better way to do it
+   mbHdwE <- case mbHdE of 
+      Nothing -> return Nothing
+      (Just (Entity hdId _)) -> getBy $ UniqueHalfDayId hdId
+   -- Get conditions for creating new hdw  
+   eiConditions <- checkCreateConditions opts  
+   
+   -- Get hd, hdw and options depending on the cases
+   -- If we create hdw we need a set project option so it is removed from
+   -- the list of commands
+   eiHdEHdwE <- case (mbHdE, mbHdType, mbHdwE, eiConditions) of
+      -- First case, hdw exists return it
+      (Just hdE, Just Worked, Just hdwE, _) -> return $ Right (hdE, hdwE, opts)
+      -- Worked day but no hdw, error
+      (Just hdE, Just Worked, Nothing, _)   -> return $ Left dbInconstistency
+      -- The two following cases need conditions, but no condition here so error
+      (_, _, _, Left msg)            -> return $ Left msg
+      -- Holiday and condition, carry on
+      (Just hdE@(Entity hdId hd), Just Holiday, _, Right (projId, otherOpts)) -> do 
+         -- Override HD
+         let hd' = hd { halfDayType = Worked }
+         replace hdId hd'
+         -- Create Hdw
+         hdwE <- runCreateHdw time hdId projId
+         return $ Right (hdE, hdwE, otherOpts)
+      -- No hd, create everything
+      (Nothing, _, _, Right (projId, otherOpts)) -> do 
+         -- Create HD
+         let hd = HalfDay day time Worked
+         hdE@(Entity hdId _) <- insertEntity hd
+         -- Create Hdw
+         hdwE <- runCreateHdw time hdId projId 
+         return $ Right (hdE, hdwE, otherOpts)
+      -- This should never happens
+      _ -> undefined
+      
+   -- Check output of last command and apply remaining commands
+   case eiHdEHdwE of
+      Left msg -> liftIO $ putStrLn msg
+      Right (hdE, hdwE, opts) -> mapM_ (dispatchEdit hdE hdwE) opts
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
@@ -181,14 +184,12 @@ run (DiaryHoliday day time) = do
       Nothing -> void $ insert $ HalfDay day time Holiday
 
 -- Create an entry
-runCreateEntry :: (MonadIO m) =>
-   Day
-   -> TimeInDay
-   -> Entity HalfDay
+runCreateHdw :: (MonadIO m) =>
+   TimeInDay
+   -> Key HalfDay
    -> Key Project
-   -> [WorkOption]
-   -> SqlPersistT m ()
-runCreateEntry day time (Entity hdId hd) pId otherCmds = do
+   -> SqlPersistT m (Entity HalfDayWorked)
+runCreateHdw time hdId pId = do
    -- Create half-day
    let notes           = ""
        (arrived, left) = if time == Morning
@@ -196,9 +197,7 @@ runCreateEntry day time (Entity hdId hd) pId otherCmds = do
           else (TimeOfDay 13 0 0, TimeOfDay 17 0 0)
        office = Rennes
    -- Create half-day
-       hdw    = HalfDayWorked notes arrived left office pId hdId
-   hdwId <- insert hdw
-   mapM_ (dispatchEdit (Entity hdId hd) (Entity hdwId hdw)) otherCmds
+   insertEntity $ HalfDayWorked notes arrived left office pId hdId
 
 -- Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [TimeOfDay]
