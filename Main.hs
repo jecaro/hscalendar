@@ -14,6 +14,7 @@ import           Data.Time.Clock
 import           Data.Time.Calendar
 import           Data.Time.LocalTime
 import           Options.Applicative
+import           Data.Foldable
 
 import           Model
 import           HalfDayType
@@ -50,6 +51,7 @@ import           CommandLine
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
 -- - Potential bug time before after
+-- - Use Lens instead of records
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -117,15 +119,29 @@ run (ProjRm name) = do
          delete pId
 
 -- Display an entry
--- TODO show work day
 run (DiaryDisplay day time) = do
    -- Display input
    liftIO . putStrLn $ show day ++ " " ++ show time
+   -- TODO Refactor
    mbHalfDayId <- getBy $ DayAndTimeInDay day time
-   liftIO $ putStrLn $ case mbHalfDayId of
-      Nothing -> noEntry
-      Just (Entity id halfDay) -> show $ halfDayType halfDay
-
+   case mbHalfDayId of
+      Nothing -> liftIO $ putStrLn $ noEntry
+      Just (Entity _ (HalfDay _ _ Holiday)) -> liftIO $ putStrLn $ show Holiday
+      Just (Entity hdId (HalfDay _ _ Worked)) -> do
+         mbHdw <- getBy $ UniqueHalfDayId hdId
+         case mbHdw of
+            Nothing -> liftIO $ putStrLn $ dbInconstistency
+            Just (Entity _ (HalfDayWorked notes arrived left office projectId halfDayId)) -> do
+               mbProject <- get projectId
+               case mbProject of
+                  Nothing -> liftIO $ putStrLn $ dbInconstistency
+                  Just (Project name) -> do
+                     liftIO $ putStrLn $ "Arrived: "  ++ (show arrived)
+                     liftIO $ putStrLn $ "Left: "     ++ (show left)
+                     liftIO $ putStrLn $ "Office: "   ++ (show office)
+                     liftIO $ putStrLn $ "Project: "  ++ name
+                     liftIO $ putStrLn $ "Notes: "    ++ notes
+               
 -- Set a work entry
 run (DiaryWork day time opts) = do
 
@@ -223,10 +239,7 @@ timeAreOrdered times = if isOrdered times
 -- Check that the constraints on the times are valid between the two days
 timesAreOrderedInDay :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
 timesAreOrderedInDay Morning hdw mbOtherHdw = timeAreOrdered $ timesOfDay hdw ++ otherTimes
--- TODO there should be a better way to write this
-   where otherTimes = case mbOtherHdw of
-                           Nothing -> []
-                           Just otherHdw -> timesOfDay otherHdw
+   where otherTimes = concatMap timesOfDay mbOtherHdw
 -- We switch the arguments and call the same function
 timesAreOrderedInDay Afternoon hdw (Just otherHdw) = 
    timesAreOrderedInDay Morning otherHdw (Just hdw)
