@@ -129,10 +129,10 @@ run (DiaryWork day time opts) = do
    mbHdE <- getBy $ DayAndTimeInDay day time
    -- Get half-day type
    let mbHdType = fmap (halfDayType . entityVal) mbHdE 
-   -- Get half-day worked TODO find a better way to do it
-   mbHdwE <- case mbHdE of 
-      Nothing -> return Nothing
-      (Just (Entity hdId _)) -> getBy $ UniqueHalfDayId hdId
+   -- Get half-day worked 
+   -- Traverse goes inside the maybe monad and getBy returns maybe. This results
+   -- maybe maybe that must be joined
+   mbHdwE <- join <$> traverse (getBy . UniqueHalfDayId . entityKey) mbHdE
    -- Get conditions for creating new hdw  
    eiConditions <- checkCreateConditions opts  
    
