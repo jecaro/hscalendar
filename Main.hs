@@ -49,6 +49,7 @@ import           CommandLine
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
+-- - Potential bug time before after
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -207,23 +208,30 @@ timesOfDay :: HalfDayWorked -> [TimeOfDay]
 timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
 
 -- Return true if the list is sorted
-isSorted :: (Ord a) => [a] -> Bool
-isSorted []       = True
-isSorted [x]      = True
-isSorted (x:y:xs) = x <= y && isSorted (y:xs)
+isOrdered :: (Ord a) => [a] -> Bool
+isOrdered []       = True
+isOrdered [x]      = True
+isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
 
--- Check that the constraint on the times are valid between the two days
-checkTimeConstraints :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-checkTimeConstraints Morning hdw mbOtherHdw =
-   if isSorted $ timesOfDay hdw ++ otherTimes
+-- Return Nothing if the times in the list are ordered. Return an error message
+-- otherwise
+timeAreOrdered :: [TimeOfDay] -> Maybe String
+timeAreOrdered times = if isOrdered times
    then Nothing
    else Just timesAreWrong
-      where otherTimes = case mbOtherHdw of
+
+-- Check that the constraints on the times are valid between the two days
+timesAreOrderedInDay :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
+timesAreOrderedInDay Morning hdw mbOtherHdw = timeAreOrdered $ timesOfDay hdw ++ otherTimes
+-- TODO there should be a better way to write this
+   where otherTimes = case mbOtherHdw of
                            Nothing -> []
                            Just otherHdw -> timesOfDay otherHdw
 -- We switch the arguments and call the same function
-checkTimeConstraints Afternoon hdw (Just otherHdw) =
-   checkTimeConstraints Morning otherHdw (Just hdw)
+timesAreOrderedInDay Afternoon hdw (Just otherHdw) = 
+   timesAreOrderedInDay Morning otherHdw (Just hdw)
+-- Afternoon only, just need to check for half day
+timesAreOrderedInDay Afternoon hdw Nothing = timeAreOrdered $ timesOfDay hdw
 
 -- From a half-day return the other half-day
 otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
@@ -289,7 +297,7 @@ editTime (Entity _ hd) (Entity hdwId hdw) setTime = do
    otherHdwE <- otherHdwFromHdw hdw
    let otherHdw = fmap entityVal otherHdwE
    -- Check if it works
-   case checkTimeConstraints tid hdw' otherHdw of
+   case timesAreOrderedInDay tid hdw' otherHdw of
       Just msg -> liftIO . putStrLn $ msg
       Nothing  -> replace hdwId hdw'
 
