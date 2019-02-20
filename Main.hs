@@ -47,6 +47,8 @@ import           CommandLine
 -- - Project empty string
 -- - Add unit testing
 -- - Remove public holiday
+-- - Put -p as positional parameter
+-- - Display entry after edit/new
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -65,6 +67,7 @@ findProjCmd :: [WorkOption] -> (Maybe String, [WorkOption])
 findProjCmd (SetProj str:xs) = (Just str, xs)
 findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
+findProjCmd [] = (Nothing, [])
  
 -- Get a project return an error message if the project cannot be found
 getProject :: MonadIO m => String -> SqlPersistT m (Either String (Entity Project))
@@ -130,9 +133,9 @@ run (DiaryWork day time opts) = do
    -- Get half-day type
    let mbHdType = fmap (halfDayType . entityVal) mbHdE 
    -- Get half-day worked 
-   -- Traverse goes inside the maybe monad and getBy returns maybe. This results
+   -- mapM goes inside the maybe monad and getBy returns maybe. This results
    -- maybe maybe that must be joined
-   mbHdwE <- join <$> traverse (getBy . UniqueHalfDayId . entityKey) mbHdE
+   mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
    -- Get conditions for creating new hdw  
    eiConditions <- checkCreateConditions opts  
    
