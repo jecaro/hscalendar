@@ -120,28 +120,28 @@ run (ProjRm name) = do
 
 -- Display an entry
 run (DiaryDisplay day time) = do
-   -- Display input
+   -- Display input date
    liftIO . putStrLn $ show day ++ " " ++ show time
-   -- TODO Refactor
-   mbHalfDayId <- getBy $ DayAndTimeInDay day time
-   case mbHalfDayId of
-      Nothing -> liftIO $ putStrLn $ noEntry
-      Just (Entity _ (HalfDay _ _ Holiday)) -> liftIO $ putStrLn $ show Holiday
-      Just (Entity hdId (HalfDay _ _ Worked)) -> do
-         mbHdw <- getBy $ UniqueHalfDayId hdId
-         case mbHdw of
-            Nothing -> liftIO $ putStrLn $ dbInconstistency
-            Just (Entity _ (HalfDayWorked notes arrived left office projectId halfDayId)) -> do
-               mbProject <- get projectId
-               case mbProject of
-                  Nothing -> liftIO $ putStrLn $ dbInconstistency
-                  Just (Project name) -> do
-                     liftIO $ putStrLn $ "Arrived: "  ++ (show arrived)
-                     liftIO $ putStrLn $ "Left: "     ++ (show left)
-                     liftIO $ putStrLn $ "Office: "   ++ (show office)
-                     liftIO $ putStrLn $ "Project: "  ++ name
-                     liftIO $ putStrLn $ "Notes: "    ++ notes
-               
+   -- Get Half-Day
+   mbHdE <- getBy $ DayAndTimeInDay day time
+   -- Get Half-Day worked
+   mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
+   -- Get Project
+   mbP <- join <$> mapM (get . halfDayWorkedProjectId . entityVal ) mbHdwE
+   -- Get output lines
+   let lines = case (mbHdE, mbHdwE, mbP) of
+         (Nothing, _, _)                               -> [ noEntry ]
+         (Just (Entity _ (HalfDay _ _ Holiday)), _, _) -> [ show Holiday ]
+         (Just (Entity _ (HalfDay _ _ Worked)), 
+            Just (Entity _ (HalfDayWorked notes arrived left office _ _)), 
+            Just (Project name))                       -> 
+               [ show office ++ ":  " ++ (show arrived) ++ " - " ++ (show left)
+               , "Project: " ++ name
+               , "Notes:   " ++ notes ]
+         (_, _, _)                                     -> [ dbInconstistency ]
+   -- Print it
+   liftIO $ mapM_ putStrLn lines
+ 
 -- Set a work entry
 run (DiaryWork day time opts) = do
 
