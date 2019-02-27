@@ -2,6 +2,7 @@ copyright: 2019 Jean-Charles Quillet
 maintainer: jeancharles.quillet@gmail.com
 dependencies:
 - ansi-terminal
+- attoparsec
 - base >= 4.7 && < 5
 - brick
 - esqueleto

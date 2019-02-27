@@ -36,6 +36,7 @@ import           CommandLine
 -- hsmaster project add project
 
 -- TODO:
+-- - Error handling in parser
 -- - Add consistency check
 -- - Add import CSV
 -- - Add stats for a year

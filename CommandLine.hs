@@ -1,9 +1,14 @@
+{-# LANGUAGE OverloadedStrings          #-}
+
 module CommandLine (
   Cmd(..),
   WorkOption(..),
   cmd,
   opts
 ) where
+
+import qualified Data.Attoparsec.Text as A
+import qualified Data.Text as T
 
 import           Data.Time.Calendar
 import           Data.Time.Clock
@@ -13,7 +18,6 @@ import           Options.Applicative
 
 import           Office
 import           TimeInDay
-
 
 data Cmd = ProjList                             |
            ProjRm String                        |
@@ -32,18 +36,19 @@ data WorkOption = SetProj String       |
                   SetOffice Office
    deriving (Eq, Show)
 
+attoReadM :: A.Parser a -> ReadM a
+attoReadM p = eitherReader (A.parseOnly p . T.pack)  
+
 parseOffice :: ReadM Office
-parseOffice = eitherReader $ \s -> case map toLower s of
-   "rennes" -> Right Rennes
-   "home"   -> Right Home
-   _        -> Left $ "Wrong office " ++ s
+parseOffice = attoReadM parser
+   where parser = A.string "rennes" *> pure Rennes
+              <|> A.string "home"   *> pure Home
    
 parseTimeInDay :: ReadM TimeInDay
-parseTimeInDay = eitherReader $ \s -> case map toLower s of
-   "morning"   -> Right Morning
-   "afternoon" -> Right Afternoon
-   _           -> Left $ "Wrong time in day " ++ s
-   
+parseTimeInDay = attoReadM parser
+   where parser = A.string "morning"   *> pure Morning
+              <|> A.string "afternoon" *> pure Afternoon
+
 projRm :: Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
 
