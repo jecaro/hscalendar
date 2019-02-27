@@ -8,6 +8,7 @@ module CommandLine (
 import           Data.Time.Calendar
 import           Data.Time.Clock
 import           Data.Time.LocalTime
+import           Data.Char
 import           Options.Applicative
 
 import           Office
@@ -31,6 +32,18 @@ data WorkOption = SetProj String       |
                   SetOffice Office
    deriving (Eq, Show)
 
+parseOffice :: ReadM Office
+parseOffice = eitherReader $ \s -> case map toLower s of
+   "rennes" -> Right Rennes
+   "home"   -> Right Home
+   _        -> Left $ "Wrong office " ++ s
+   
+parseTimeInDay :: ReadM TimeInDay
+parseTimeInDay = eitherReader $ \s -> case map toLower s of
+   "morning"   -> Right Morning
+   "afternoon" -> Right Afternoon
+   _           -> Left $ "Wrong time in day " ++ s
+   
 projRm :: Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
 
@@ -47,22 +60,22 @@ projCmd = subparser
 diaryDisplay :: Parser Cmd
 diaryDisplay = DiaryDisplay <$> 
    argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY")
+   argument parseTimeInDay (metavar "TIMEINDAY")
    
 diaryRm :: Parser Cmd
 diaryRm = DiaryRm <$> 
    argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY")
+   argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Parser Cmd
 diaryHoliday = DiaryHoliday <$> 
    argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY")
+   argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Parser Cmd
 diaryWork = DiaryWork <$> 
    argument auto (metavar "DAY") <*> 
-   argument auto (metavar "TIMEINDAY") <*>
+   argument parseTimeInDay (metavar "TIMEINDAY") <*>
    some workOption
 
 diaryCmd :: Parser Cmd
@@ -109,7 +122,7 @@ workOptionSetLeft = SetLeft <$> option auto
    <> help "Time of leaving" )
 
 workOptionSetOffice :: Parser WorkOption
-workOptionSetOffice = SetOffice <$> option auto
+workOptionSetOffice = SetOffice <$> option parseOffice
    (  long "office"
    <> short 'o'
    <> metavar "OFFICE"

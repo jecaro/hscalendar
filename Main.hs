@@ -27,8 +27,8 @@ import           CommandLine
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
---     -a 00:00     set arrived time
---     -l 00:00     set left time
+--     -a 00:00:00  set arrived time
+--     -l 00:00:00  set left time
 -- hsmaster diary holiday date Morning|Afternoon
 -- hsmaster diary rm date Morning|Afternoon
 -- hsmaster project list
