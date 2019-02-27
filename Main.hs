@@ -36,15 +36,14 @@ import           CommandLine
 -- hsmaster project add project
 
 -- TODO:
+-- - Import qualified everything, import only used functions
 -- - Error handling in parser -> show message
--- - But need to apply times in the same time
--- - Dont display seconds
+-- - Bug need to apply times in the same time
 -- - Add consistency check
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
 -- - Add keywords today, yesterday, tomorrow
--- - Parse time as 12:00
 -- - Make diary date/TimeInDay optional
 -- - Append note
 -- - Launch editor
@@ -53,7 +52,6 @@ import           CommandLine
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
--- - Potential bug time before after
 -- - Use Lens instead of records
 
 -- Ideas
@@ -138,9 +136,10 @@ run (DiaryDisplay day time) = do
          (Just (Entity _ (HalfDay _ _ Worked)), 
             Just (Entity _ (HalfDayWorked notes arrived left office _ _)), 
             Just (Project name))                       -> 
-               [ show office ++ ":  " ++ (show arrived) ++ " - " ++ (show left)
+               [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
                , "Project: " ++ name
                , "Notes:   " ++ notes ]
+                  where showTime (TimeOfDay h m _) = show h ++ ":" ++ show m
          (_, _, _)                                     -> [ dbInconstistency ]
    -- Print it
    liftIO $ mapM_ putStrLn lines

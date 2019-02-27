@@ -7,6 +7,7 @@ module CommandLine (
   opts
 ) where
 
+import           Data.Functor
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Text as T
 
@@ -26,7 +27,7 @@ data Cmd = ProjList                             |
            DiaryRm Day TimeInDay                |
            DiaryHoliday Day TimeInDay           |
            DiaryWork Day TimeInDay [WorkOption] |
-           DiaryDelete Day TimeInDay 
+           DiaryDelete Day TimeInDay
   deriving (Eq, Show)
 
 data WorkOption = SetProj String       |
@@ -37,17 +38,17 @@ data WorkOption = SetProj String       |
    deriving (Eq, Show)
 
 attoReadM :: A.Parser a -> ReadM a
-attoReadM p = eitherReader (A.parseOnly p . T.pack)  
+attoReadM p = eitherReader (A.parseOnly p . T.pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
-   where parser = A.string "rennes" *> pure Rennes
-              <|> A.string "home"   *> pure Home
-   
+   where parser = A.string "rennes" $> Rennes
+              <|> A.string "home"   $> Home
+
 parseTimeInDay :: ReadM TimeInDay
 parseTimeInDay = attoReadM parser
-   where parser = A.string "morning"   *> pure Morning
-              <|> A.string "afternoon" *> pure Afternoon
+   where parser = A.string "morning"   $> Morning
+              <|> A.string "afternoon" $> Afternoon
 
 parseTimeOfDay :: ReadM TimeOfDay
 parseTimeOfDay = attoReadM parser
@@ -72,23 +73,23 @@ projCmd = subparser
    )
 
 diaryDisplay :: Parser Cmd
-diaryDisplay = DiaryDisplay <$> 
-   argument auto (metavar "DAY") <*> 
+diaryDisplay = DiaryDisplay <$>
+   argument auto (metavar "DAY") <*>
    argument parseTimeInDay (metavar "TIMEINDAY")
-   
+
 diaryRm :: Parser Cmd
-diaryRm = DiaryRm <$> 
-   argument auto (metavar "DAY") <*> 
+diaryRm = DiaryRm <$>
+   argument auto (metavar "DAY") <*>
    argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Parser Cmd
-diaryHoliday = DiaryHoliday <$> 
-   argument auto (metavar "DAY") <*> 
+diaryHoliday = DiaryHoliday <$>
+   argument auto (metavar "DAY") <*>
    argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Parser Cmd
-diaryWork = DiaryWork <$> 
-   argument auto (metavar "DAY") <*> 
+diaryWork = DiaryWork <$>
+   argument auto (metavar "DAY") <*>
    argument parseTimeInDay (metavar "TIMEINDAY") <*>
    some workOption
 
@@ -101,7 +102,7 @@ diaryCmd = hsubparser
    )
 
 workOption :: Parser WorkOption
-workOption = workOptionSetProj    <|> 
+workOption = workOptionSetProj    <|>
              workOptionSetNotes   <|>
              workOptionSetArrived <|>
              workOptionSetLeft    <|>
@@ -150,5 +151,4 @@ cmd = hsubparser
 
 opts :: ParserInfo Cmd
 opts = info (cmd <**> helper) idm
-   
-   
+
