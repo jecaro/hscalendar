@@ -36,7 +36,9 @@ import           CommandLine
 -- hsmaster project add project
 
 -- TODO:
--- - Error handling in parser
+-- - Error handling in parser -> show message
+-- - But need to apply times in the same time
+-- - Dont display seconds
 -- - Add consistency check
 -- - Add import CSV
 -- - Add stats for a year

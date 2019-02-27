@@ -49,6 +49,15 @@ parseTimeInDay = attoReadM parser
    where parser = A.string "morning"   *> pure Morning
               <|> A.string "afternoon" *> pure Afternoon
 
+parseTimeOfDay :: ReadM TimeOfDay
+parseTimeOfDay = attoReadM parser
+   where parser = do
+            h <- A.decimal
+            A.char ':'
+            m <- A.decimal
+            return $ TimeOfDay h m 0
+
+
 projRm :: Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
 
@@ -113,14 +122,14 @@ workOptionSetNotes = SetNotes <$> strOption
    <> help "Set the notes" )
 
 workOptionSetArrived :: Parser WorkOption
-workOptionSetArrived = SetArrived <$> option auto
+workOptionSetArrived = SetArrived <$> option parseTimeOfDay
    (  long "arrived"
    <> short 'a'
    <> metavar "TIME"
    <> help "Time of arrival" )
 
 workOptionSetLeft :: Parser WorkOption
-workOptionSetLeft = SetLeft <$> option auto
+workOptionSetLeft = SetLeft <$> option parseTimeOfDay
    (  long "left"
    <> short 'l'
    <> metavar "TIME"
