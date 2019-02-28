@@ -15,6 +15,7 @@ import           Data.Time.Calendar
 import           Data.Time.LocalTime
 import           Options.Applicative
 import           Data.Foldable
+import           Text.Printf
 
 import           Model
 import           HalfDayType
@@ -55,7 +56,6 @@ import           CommandLine
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
 -- - Use Lens instead of records
--- - Date zero padding
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -141,8 +141,10 @@ run (DiaryDisplay day time) = do
             Just (Project name))                       -> 
                [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
                , "Project: " ++ name
-               , "Notes:   " ++ notes ]
-                  where showTime (TimeOfDay h m _) = show h ++ ":" ++ show m
+               , "Notes:   " ++ notes 
+               ]
+                  where showTime (TimeOfDay h m _) = 
+                           printf "%02d" h ++ ":" ++ printf "%02d" m
          (_, _, _)                                     -> [ dbInconstistency ]
    -- Print it
    liftIO $ mapM_ putStrLn lines
