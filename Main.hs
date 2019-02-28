@@ -27,10 +27,10 @@ import           CommandLine
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
---     -a 00:00:00  set arrived time
---     -l 00:00:00  set left time
--- hsmaster diary holiday date Morning|Afternoon
--- hsmaster diary rm date Morning|Afternoon
+--     -a 00:00     set arrived time
+--     -l 00:00     set left time
+-- hsmaster diary holiday date morning|afternoon
+-- hsmaster diary rm date morning|afternoon
 -- hsmaster project list
 -- hsmaster project remove project
 -- hsmaster project add project
@@ -43,8 +43,10 @@ import           CommandLine
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
--- - Add keywords today, yesterday, tomorrow
--- - Make diary date/TimeInDay optional
+-- - Add keywords today, yesterday, tomorrow, change date 
+--   for 22/03/1979, or 22/03 for current year, or 22 for 
+--   current month
+-- - Make diary date/TimeInDay optional default today
 -- - Append note
 -- - Launch editor
 -- - Project empty string
@@ -53,6 +55,7 @@ import           CommandLine
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
 -- - Use Lens instead of records
+-- - Date zero padding
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -192,6 +195,9 @@ run (DiaryWork day time opts) = do
       Left msg -> liftIO $ putStrLn msg
       Right (hdE, hdwE, opts) -> mapM_ (dispatchEdit hdE hdwE) opts
 
+   -- Display new Half-Day
+   run $ DiaryDisplay day time
+
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
    mbHDId <- getBy $ DayAndTimeInDay day time
@@ -204,6 +210,9 @@ run (DiaryHoliday day time) = do
          update hdId [HalfDayType =. Holiday]
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
+
+   -- Display new Half-Day
+   run $ DiaryDisplay day time
 
 -- Create an entry
 runCreateHdw :: (MonadIO m) =>
