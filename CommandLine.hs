@@ -25,8 +25,7 @@ data Cmd = ProjList                             |
            DiaryDisplay Day TimeInDay           |
            DiaryRm Day TimeInDay                |
            DiaryHoliday Day TimeInDay           |
-           DiaryWork Day TimeInDay [WorkOption] |
-           DiaryDelete Day TimeInDay 
+           DiaryWork Day TimeInDay [WorkOption]
   deriving (Eq, Show)
 
 data WorkOption = SetProj String       |

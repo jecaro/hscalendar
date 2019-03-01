@@ -6,21 +6,17 @@
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger
-import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Database.Persist
 import           Database.Persist.Sqlite
-import           Data.Time.Clock
-import           Data.Time.Calendar
 import           Data.Time.LocalTime
-import           Options.Applicative
-import           Data.Foldable
+import           Options.Applicative (execParser)
 
 import           Model
 import           HalfDayType
 import           TimeInDay
 import           Office
-import           CommandLine
+import           CommandLine (WorkOption(..), Cmd(..), opts)
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -55,22 +51,34 @@ import           CommandLine
 -- - Display entry after edit/new
 -- - Potential bug time before after
 -- - Use Lens instead of records
+-- - Implement DiaryRm
 
 -- Ideas
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
+projectNotFound :: String -> String
 projectNotFound name = "The project " ++ name ++ " is not in the database"
+
+projectAlready :: String -> String
 projectAlready name = "The project " ++ name ++ " is already in the database"
+
+noEntry :: String
 noEntry = "No entry"
+
+dbInconstistency :: String
 dbInconstistency = "Database inconsistency"
+
+timesAreWrong :: String
 timesAreWrong = "Times are wrong"
+
+projCmdIsMandatory :: String
 projCmdIsMandatory = "There should be one project command"
 
 -- Find a project option in a list of options, gets its name and return 
 -- remaining options
 findProjCmd :: [WorkOption] -> (Maybe String, [WorkOption])
-findProjCmd (SetProj str:xs) = (Just str, xs)
+findProjCmd (SetProj x:xs) = (Just x, xs)
 findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
 findProjCmd [] = (Nothing, [])
@@ -89,7 +97,7 @@ getProject name = do
 checkCreateConditions :: MonadIO m =>
    [WorkOption]
    -> SqlPersistT m (Either String (Key Project, [WorkOption]))
-checkCreateConditions opts = case findProjCmd opts of 
+checkCreateConditions wopts = case findProjCmd wopts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
       eiProject <- getProject name
@@ -132,7 +140,7 @@ run (DiaryDisplay day time) = do
    -- Get Project
    mbP <- join <$> mapM (get . halfDayWorkedProjectId . entityVal ) mbHdwE
    -- Get output lines
-   let lines = case (mbHdE, mbHdwE, mbP) of
+   let hdStr = case (mbHdE, mbHdwE, mbP) of
          (Nothing, _, _)                               -> [ noEntry ]
          (Just (Entity _ (HalfDay _ _ Holiday)), _, _) -> [ show Holiday ]
          (Just (Entity _ (HalfDay _ _ Worked)), 
@@ -143,10 +151,10 @@ run (DiaryDisplay day time) = do
                , "Notes:   " ++ notes ]
          (_, _, _)                                     -> [ dbInconstistency ]
    -- Print it
-   liftIO $ mapM_ putStrLn lines
+   liftIO $ mapM_ putStrLn hdStr
  
 -- Set a work entry
-run (DiaryWork day time opts) = do
+run (DiaryWork day time wopts) = do
 
    -- Get half-day 
    mbHdE <- getBy $ DayAndTimeInDay day time
@@ -157,16 +165,16 @@ run (DiaryWork day time opts) = do
    -- maybe maybe that must be joined
    mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
    -- Get conditions for creating new hdw  
-   eiConditions <- checkCreateConditions opts  
+   eiConditions <- checkCreateConditions wopts  
    
    -- Get hd, hdw and options depending on the cases
    -- If we create hdw we need a set project option so it is removed from
    -- the list of commands
    eiHdEHdwE <- case (mbHdE, mbHdType, mbHdwE, eiConditions) of
       -- First case, hdw exists return it
-      (Just hdE, Just Worked, Just hdwE, _) -> return $ Right (hdE, hdwE, opts)
+      (Just hdE, Just Worked, Just hdwE, _) -> return $ Right (hdE, hdwE, wopts)
       -- Worked day but no hdw, error
-      (Just hdE, Just Worked, Nothing, _)   -> return $ Left dbInconstistency
+      (Just _, Just Worked, Nothing, _)   -> return $ Left dbInconstistency
       -- The two following cases need conditions, but no condition here so error
       (_, _, _, Left msg)            -> return $ Left msg
       -- Holiday and condition, carry on
@@ -191,7 +199,7 @@ run (DiaryWork day time opts) = do
    -- Check output of last command and apply remaining commands
    case eiHdEHdwE of
       Left msg -> liftIO $ putStrLn msg
-      Right (hdE, hdwE, opts) -> mapM_ (dispatchEdit hdE hdwE) opts
+      Right (hdE, hdwE, otherOpts) -> mapM_ (dispatchEdit hdE hdwE) otherOpts
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
@@ -205,6 +213,9 @@ run (DiaryHoliday day time) = do
          update hdId [HalfDayType =. Holiday]
       -- Create a new entry 
       Nothing -> void $ insert $ HalfDay day time Holiday
+
+-- Delete an entry
+run (DiaryRm _ _) = undefined
 
 -- Create an entry
 runCreateHdw :: (MonadIO m) =>
@@ -229,7 +240,7 @@ timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
 -- Return true if the list is sorted
 isOrdered :: (Ord a) => [a] -> Bool
 isOrdered []       = True
-isOrdered [x]      = True
+isOrdered [_]      = True
 isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
 
 -- Return Nothing if the times in the list are ordered. Return an error message
@@ -276,6 +287,8 @@ editSimpleById hdwId (SetProj name) = do
    case eiProject of 
       Left msg -> liftIO . putStrLn $ msg
       Right (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
+editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
+editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
 
 -- Dispatch edit
 dispatchEdit :: MonadIO m =>
