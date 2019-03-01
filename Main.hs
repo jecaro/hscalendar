@@ -68,7 +68,6 @@ import           TimeInDay (TimeInDay(..), other)
 -- - Put -p as positional parameter
 -- - Display entry after edit/new
 -- - Use Lens instead of records
--- - Implement DiaryRm
 -- - Cascade delete
 
 -- Ideas
@@ -242,7 +241,16 @@ run (DiaryHoliday day time) = do
    run $ DiaryDisplay day time
 
 -- Delete an entry
-run (DiaryRm _ _) = undefined
+run (DiaryRm day time) = do
+   mbHDId <- getBy $ DayAndTimeInDay day time
+   case mbHDId of
+      -- Nothing to do
+      Nothing -> liftIO $ putStrLn noEntry
+      -- Found an entry to delete 
+      Just (Entity hdId _) -> do
+         -- Delete entry from HalfDayWorked if it exists
+         deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
+         delete hdId
 
 -- Create an entry
 runCreateHdw :: (MonadIO m) =>
