@@ -3,21 +3,38 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
-import           Control.Monad
-import           Control.Monad.IO.Class
-import           Control.Monad.Logger
-import           Control.Monad.Trans.Maybe
-import           Database.Persist
-import           Database.Persist.Sqlite
-import           Data.Time.LocalTime
+import           Control.Monad (void, join)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Logger (runNoLoggingT)
+import           Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
+import           Database.Persist.Sqlite 
+   ( Entity(..)
+   , SelectOpt(Asc)
+   , SqlPersistT
+   , delete
+   , deleteWhere
+   , get
+   , getBy
+   , insert
+   , insertEntity
+   , replace
+   , runMigration
+   , runSqlPool
+   , selectList
+   , update
+   , withSqlitePool
+   , (=.)
+   , (==.)
+   )
+import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
-import           Text.Printf
+import           Text.Printf (printf) 
 
-import           Model
-import           HalfDayType
-import           TimeInDay
-import           Office
 import           CommandLine (WorkOption(..), Cmd(..), opts)
+import           HalfDayType (HalfDayType(..))
+import           Model
+import           Office (Office(..))
+import           TimeInDay (TimeInDay(..), other)
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -33,7 +50,6 @@ import           CommandLine (WorkOption(..), Cmd(..), opts)
 -- hsmaster project add project
 
 -- TODO:
--- - Import qualified everything, import only used functions
 -- - Error handling in parser -> show message
 -- - Bug need to apply times in the same time
 -- - Add consistency check
@@ -53,6 +69,7 @@ import           CommandLine (WorkOption(..), Cmd(..), opts)
 -- - Display entry after edit/new
 -- - Use Lens instead of records
 -- - Implement DiaryRm
+-- - Cascade delete
 
 -- Ideas
 -- - put default values for starting ending time in a config file

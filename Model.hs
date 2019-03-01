@@ -10,17 +10,20 @@
 
 module Model where
 
-import           Data.Time.Calendar
-import           Data.Time.LocalTime
+import           Data.Time.Calendar (Day)
+import           Data.Time.LocalTime (TimeOfDay)
 
-import           Database.Persist
-import           Database.Persist.Sqlite
-import           Database.Persist.TH
+import           Database.Persist.TH 
+   ( mkMigrate
+   , mkPersist
+   , persistLowerCase
+   , share
+   , sqlSettings
+   )
 
-import           HalfDayType
-import           TimeInDay
-import           Office
-import           CommandLine
+import           HalfDayType (HalfDayType)
+import           TimeInDay (TimeInDay)
+import           Office (Office)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Project

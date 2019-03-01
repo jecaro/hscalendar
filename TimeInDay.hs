@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module TimeInDay where
 
-import Database.Persist.TH
+import Database.Persist.TH (derivePersistField)
 
 data TimeInDay = Morning | Afternoon
     deriving (Show, Read, Eq, Ord)
