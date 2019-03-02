@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
-module CommandLine (
-  Cmd(..),
-  WorkOption(..),
-  cmd,
-  opts
-) where
+module CommandLine 
+   ( Cmd(..)
+   , WorkOption(..)
+   , cmd
+   , opts
+   ) where
 
 import           Data.Attoparsec.Text as Atto
    ( Parser

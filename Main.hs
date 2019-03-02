@@ -113,7 +113,7 @@ getProject name = do
 -- We try to find SetProj command
 checkCreateConditions :: MonadIO m =>
    [WorkOption]
-   -> SqlPersistT m (Either String (Key Project, [WorkOption]))
+   -> SqlPersistT m (Either String (ProjectId, [WorkOption]))
 checkCreateConditions wopts = case findProjCmd wopts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
@@ -255,8 +255,8 @@ run (DiaryRm day time) = do
 -- Create an entry
 runCreateHdw :: (MonadIO m) =>
    TimeInDay
-   -> Key HalfDay
-   -> Key Project
+   -> HalfDayId
+   -> ProjectId
    -> SqlPersistT m (Entity HalfDayWorked)
 runCreateHdw time hdId pId = do
    -- Create half-day
