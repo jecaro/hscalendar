@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
-import           Control.Exception.Safe (MonadCatch, try)
+import           Control.Exception.Safe (MonadCatch, try, catch)
 import           Control.Monad (void, join)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
@@ -119,19 +119,12 @@ run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ putStrLn 
 
 -- Add a project
-run (ProjAdd name) = do
-   eiProjId <- try $ projAdd name
-   case eiProjId of
-      Left (ModelException msg) -> liftIO . putStrLn $ msg
-      Right _ -> return ()
+run (ProjAdd name) = 
+   catch (void $ projAdd name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
-run (ProjRm name) = do
-   eiProject <- try $ projRm name
-   case eiProject of
-      Left (ModelException msg) -> liftIO . putStrLn $ msg
-      Right _ -> return ()
+run (ProjRm name) = catch (projRm name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Display an entry
 run (DiaryDisplay day time) = do
