@@ -41,10 +41,7 @@ errProjNotFound name = "The project " ++ name ++ " is not in the database"
 errProjExists :: String -> String
 errProjExists name = "The project " ++ name ++ " exists in the database"
 
-projGet 
-  :: (MonadIO m, MonadThrow m) 
-  => String 
-  -> SqlPersistT m (Entity Project)
+projGet :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m (Entity Project)
 projGet name = do
   mbProj <- getBy $ UniqueName name 
   case mbProj of
@@ -54,10 +51,7 @@ projGet name = do
 projExists :: MonadIO m => String -> SqlPersistT m Bool
 projExists name = isJust <$> getBy (UniqueName name)
 
-projAdd 
-  :: (MonadIO m, MonadThrow m)
-  => String
-  -> SqlPersistT m ProjectId
+projAdd :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ProjectId
 projAdd name = do
   pExists <- projExists name
   if pExists
@@ -65,15 +59,12 @@ projAdd name = do
     else insert $ Project name
 
 projList :: MonadIO m => SqlPersistT m [String]
-projList = do
-  projects <- selectList [] [Asc ProjectName]
-  return $ map (projectName . entityVal) projects
+projList = map (projectName . entityVal) <$> selectList [] [Asc ProjectName] 
 
-projRm 
-  :: (MonadIO m, MonadThrow m) 
-  => String
-  -> SqlPersistT m ()
+projRm :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ()
 projRm name = do
-  (Entity pId _) <- projGet name -- can throw exception
+  -- The following can throw exception same exception apply to this function
+  -- so we dont catch it here
+  (Entity pId _) <- projGet name 
   deleteWhere [HalfDayWorkedProjectId ==. pId]
   delete pId
