@@ -58,7 +58,6 @@ import           ModelFcts
 -- TODO:
 -- - Error handling in parser -> show message
 -- - Bug need to apply times in the same time
--- - Add consistency check
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
@@ -75,6 +74,7 @@ import           ModelFcts
 -- - Display entry after edit/new
 -- - Use Lens instead of records
 -- - Cascade delete
+-- - Add project rename
 
 -- Ideas
 -- - put default values for starting ending time in a config file
