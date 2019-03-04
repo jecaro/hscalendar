@@ -36,7 +36,7 @@ import           HalfDayType (HalfDayType(..))
 import           Model
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
-import           ModelFcts (ModelException(..), getProjectExc)
+import           ModelFcts (ModelException(..), getProject)
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -76,9 +76,6 @@ import           ModelFcts (ModelException(..), getProjectExc)
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
-projectNotFound :: String -> String
-projectNotFound name = "The project " ++ name ++ " is not in the database"
-
 projectAlready :: String -> String
 projectAlready name = "The project " ++ name ++ " is already in the database"
 
@@ -102,27 +99,19 @@ findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
 findProjCmd [] = (Nothing, [])
  
--- Get a project return an error message if the project cannot be found
-getProject :: MonadIO m => String -> SqlPersistT m (Either String (Entity Project))
-getProject name = do
-   mbPId <- getBy $ UniqueName name
-   return $ case mbPId of
-      Nothing -> Left $ projectNotFound name
-      Just entity -> Right entity
-
 -- Check if it is possible to create a new entry in HalfDayWorked.
 -- We need a SetProj command with a valid project name
 -- We try to find SetProj command
-checkCreateConditions :: MonadIO m =>
+checkCreateConditions :: (MonadIO m, MonadCatch m) =>
    [WorkOption]
    -> SqlPersistT m (Either String (ProjectId, [WorkOption]))
 checkCreateConditions wopts = case findProjCmd wopts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
-      eiProject <- getProject name
+      eiProject <- try $ getProject name
       case eiProject of
-         Left msg -> return $ Left msg
-         Right (Entity pId _) -> return $ Right (pId, otherCmds)
+         Left  (ModelException msg) -> return $ Left msg
+         Right (Entity pId _)       -> return $ Right (pId, otherCmds)
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
@@ -141,8 +130,8 @@ run (ProjAdd name) = do
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
 run (ProjRm name) = do
-   eiProject <- try $ getProjectExc name
-   case eiProject :: (Either ModelException (Entity Project)) of
+   eiProject <- try $ getProject name
+   case eiProject of
       Left (ModelException msg) -> liftIO $ putStrLn msg
       Right (Entity pId _) -> do 
          deleteWhere [HalfDayWorkedProjectId ==. pId]
@@ -316,20 +305,25 @@ otherHdwFromHdw hdw = runMaybeT $ do
    MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
 
 -- Simple edit action using only hdwid
-editSimpleById :: MonadIO m => HalfDayWorkedId -> WorkOption -> SqlPersistT m()
+editSimpleById 
+   :: (MonadIO m, MonadCatch m)
+   => HalfDayWorkedId 
+   -> WorkOption 
+   -> SqlPersistT m()
 editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 editSimpleById hdwId (SetProj name) = do
-   eiProject <- getProject name
+   eiProject <- try $ getProject name
    case eiProject of 
-      Left msg -> liftIO . putStrLn $ msg
+      Left (ModelException msg) -> liftIO . putStrLn $ msg
       Right (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
 editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
 editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
 
 -- Dispatch edit
-dispatchEdit :: MonadIO m =>
-   Entity HalfDay
+dispatchEdit 
+   :: (MonadIO m, MonadCatch m) 
+   => Entity HalfDay
    -> Entity HalfDayWorked
    -> WorkOption
    -> SqlPersistT m()

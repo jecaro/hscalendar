@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances           #-}
 
 module ModelFcts 
-  ( getProjectExc
+  ( getProject
   , ModelException(..) 
   ) where
 
@@ -26,11 +26,11 @@ instance Exception ModelException
 projectNotFound :: String -> String
 projectNotFound name = "The project " ++ name ++ " is not in the database"
 
-getProjectExc 
+getProject 
   :: (MonadIO m, MonadThrow m) 
   => String 
   -> SqlPersistT m (Entity Project)
-getProjectExc name = do
+getProject name = do
   mbProj <- getBy $ UniqueName name 
   case mbProj of
     Nothing -> throwM $ ModelException $ projectNotFound name 
