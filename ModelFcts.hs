@@ -52,9 +52,7 @@ projGet name = do
     Just e  -> return e
 
 projExists :: MonadIO m => String -> SqlPersistT m Bool
-projExists name = do
-  mbProj <- getBy $ UniqueName name 
-  return $ isJust mbProj
+projExists name = isJust <$> getBy (UniqueName name)
 
 projAdd 
   :: (MonadIO m, MonadThrow m)
