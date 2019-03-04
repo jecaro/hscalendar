@@ -80,9 +80,6 @@ import           ModelFcts
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
-projectAlready :: String -> String
-projectAlready name = "The project " ++ name ++ " is already in the database"
-
 noEntry :: String
 noEntry = "No entry"
 
@@ -119,9 +116,7 @@ checkCreateConditions wopts = case findProjCmd wopts of
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
-run ProjList = do
-   names <- projList
-   liftIO $ mapM_ putStrLn names
+run ProjList = projList >>= liftIO . mapM_ putStrLn 
 
 -- Add a project
 run (ProjAdd name) = do
