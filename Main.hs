@@ -36,7 +36,11 @@ import           HalfDayType (HalfDayType(..))
 import           Model
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
-import           ModelFcts (ModelException(..), getProject)
+import           ModelFcts 
+   ( ModelException(..)
+   , addProject
+   , getProject
+   )
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -122,10 +126,10 @@ run ProjList = do
 
 -- Add a project
 run (ProjAdd name) = do
-   mbPId <- getBy $ UniqueName name
-   case mbPId of
-      Nothing -> void . insert $ Project name
-      Just (Entity _ _) -> liftIO . putStrLn $ projectAlready name
+   eiProjId <- try $ addProject name
+   case eiProjId of
+      Left (ModelException msg) -> liftIO . putStrLn $ msg
+      Right _ -> return ()
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
