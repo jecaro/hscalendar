@@ -4,6 +4,7 @@ module ModelFcts
   ( addProject
   , getProject
   , projectExists
+  , projectList
   , ModelException(..) 
   ) where
 
@@ -15,9 +16,11 @@ import           Control.Exception.Safe
 import           Control.Monad.IO.Class (MonadIO)
 import           Database.Persist.Sqlite 
    ( Entity(..)
+   , SelectOpt(Asc)
    , SqlPersistT
    , getBy
    , insert
+   , selectList
    )
 
 import           Data.Maybe (isJust)
@@ -58,3 +61,8 @@ addProject name = do
   if pExists
     then throwM $ ModelException $ errProjExists name
     else insert $ Project name
+
+projectList :: MonadIO m => SqlPersistT m [String]
+projectList = do
+  projects <- selectList [] [Asc ProjectName]
+  return $ map (projectName . entityVal) projects

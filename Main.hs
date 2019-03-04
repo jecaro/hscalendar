@@ -10,7 +10,6 @@ import           Control.Monad.Logger (runNoLoggingT)
 import           Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import           Database.Persist.Sqlite 
    ( Entity(..)
-   , SelectOpt(Asc)
    , SqlPersistT
    , delete
    , deleteWhere
@@ -21,7 +20,6 @@ import           Database.Persist.Sqlite
    , replace
    , runMigration
    , runSqlPool
-   , selectList
    , update
    , withSqlitePool
    , (=.)
@@ -40,6 +38,7 @@ import           ModelFcts
    ( ModelException(..)
    , addProject
    , getProject
+   , projectList
    )
 
 -- Synopsis
@@ -120,8 +119,7 @@ checkCreateConditions wopts = case findProjCmd wopts of
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = do
-   projects <- selectList [] [Asc ProjectName]
-   let names = map (projectName . entityVal) projects
+   names <- projectList
    liftIO $ mapM_ putStrLn names
 
 -- Add a project
