@@ -36,9 +36,10 @@ import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
-   , addProject
-   , getProject
-   , projectList
+   , projAdd
+   , projGet
+   , projList
+   , projRm
    )
 
 -- Synopsis
@@ -111,7 +112,7 @@ checkCreateConditions :: (MonadIO m, MonadCatch m) =>
 checkCreateConditions wopts = case findProjCmd wopts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
-      eiProject <- try $ getProject name
+      eiProject <- try $ projGet name
       case eiProject of
          Left  (ModelException msg) -> return $ Left msg
          Right (Entity pId _)       -> return $ Right (pId, otherCmds)
@@ -119,12 +120,12 @@ checkCreateConditions wopts = case findProjCmd wopts of
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = do
-   names <- projectList
+   names <- projList
    liftIO $ mapM_ putStrLn names
 
 -- Add a project
 run (ProjAdd name) = do
-   eiProjId <- try $ addProject name
+   eiProjId <- try $ projAdd name
    case eiProjId of
       Left (ModelException msg) -> liftIO . putStrLn $ msg
       Right _ -> return ()
@@ -132,12 +133,10 @@ run (ProjAdd name) = do
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
 run (ProjRm name) = do
-   eiProject <- try $ getProject name
+   eiProject <- try $ projRm name
    case eiProject of
-      Left (ModelException msg) -> liftIO $ putStrLn msg
-      Right (Entity pId _) -> do 
-         deleteWhere [HalfDayWorkedProjectId ==. pId]
-         delete pId
+      Left (ModelException msg) -> liftIO . putStrLn $ msg
+      Right _ -> return ()
 
 -- Display an entry
 run (DiaryDisplay day time) = do
@@ -315,10 +314,10 @@ editSimpleById
 editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 editSimpleById hdwId (SetProj name) = do
-   eiProject <- try $ getProject name
+   eiProject <- try $ projGet name
    case eiProject of 
       Left (ModelException msg) -> liftIO . putStrLn $ msg
-      Right (Entity pId _) -> update hdwId [HalfDayWorkedProjectId =. pId]
+      Right (Entity pId _)      -> update hdwId [HalfDayWorkedProjectId =. pId]
 editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
 editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
 

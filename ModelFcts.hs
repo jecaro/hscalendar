@@ -1,10 +1,11 @@
 {-# LANGUAGE FlexibleInstances           #-}
 
 module ModelFcts 
-  ( addProject
-  , getProject
-  , projectExists
-  , projectList
+  ( projAdd
+  , projExists
+  , projGet
+  , projList
+  , projRm
   , ModelException(..) 
   ) where
 
@@ -18,9 +19,12 @@ import           Database.Persist.Sqlite
    ( Entity(..)
    , SelectOpt(Asc)
    , SqlPersistT
+   , delete
+   , deleteWhere
    , getBy
    , insert
    , selectList
+   , (==.)
    )
 
 import           Data.Maybe (isJust)
@@ -37,32 +41,41 @@ errProjNotFound name = "The project " ++ name ++ " is not in the database"
 errProjExists :: String -> String
 errProjExists name = "The project " ++ name ++ " exists in the database"
 
-getProject 
+projGet 
   :: (MonadIO m, MonadThrow m) 
   => String 
   -> SqlPersistT m (Entity Project)
-getProject name = do
+projGet name = do
   mbProj <- getBy $ UniqueName name 
   case mbProj of
     Nothing -> throwM $ ModelException $ errProjNotFound name 
     Just e  -> return e
 
-projectExists :: MonadIO m => String -> SqlPersistT m Bool
-projectExists name = do
+projExists :: MonadIO m => String -> SqlPersistT m Bool
+projExists name = do
   mbProj <- getBy $ UniqueName name 
   return $ isJust mbProj
 
-addProject 
+projAdd 
   :: (MonadIO m, MonadThrow m)
   => String
   -> SqlPersistT m ProjectId
-addProject name = do
-  pExists <- projectExists name
+projAdd name = do
+  pExists <- projExists name
   if pExists
     then throwM $ ModelException $ errProjExists name
     else insert $ Project name
 
-projectList :: MonadIO m => SqlPersistT m [String]
-projectList = do
+projList :: MonadIO m => SqlPersistT m [String]
+projList = do
   projects <- selectList [] [Asc ProjectName]
   return $ map (projectName . entityVal) projects
+
+projRm 
+  :: (MonadIO m, MonadThrow m) 
+  => String
+  -> SqlPersistT m ()
+projRm name = do
+  (Entity pId _) <- projGet name -- can throw exception
+  deleteWhere [HalfDayWorkedProjectId ==. pId]
+  delete pId
