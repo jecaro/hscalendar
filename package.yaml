@@ -15,6 +15,7 @@ dependencies:
 - persistent-sqlite
 - persistent-template
 - safe
+- safe-exceptions
 - transformers
 - time
 - text

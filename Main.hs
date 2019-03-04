@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
+import           Control.Exception.Safe (MonadCatch, try)
 import           Control.Monad (void, join)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
@@ -35,6 +36,7 @@ import           HalfDayType (HalfDayType(..))
 import           Model
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
+import           ModelFcts (ModelException(..), getProjectExc)
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -123,7 +125,7 @@ checkCreateConditions wopts = case findProjCmd wopts of
          Right (Entity pId _) -> return $ Right (pId, otherCmds)
 
 -- List projects
-run :: MonadIO m => Cmd -> SqlPersistT m ()
+run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = do
    projects <- selectList [] [Asc ProjectName]
    let names = map (projectName . entityVal) projects
@@ -139,9 +141,9 @@ run (ProjAdd name) = do
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
 run (ProjRm name) = do
-   eiProject <- getProject name 
-   case eiProject of
-      Left msg -> liftIO . putStrLn $ msg
+   eiProject <- try $ getProjectExc name
+   case eiProject :: (Either ModelException (Entity Project)) of
+      Left (ModelException msg) -> liftIO $ putStrLn msg
       Right (Entity pId _) -> do 
          deleteWhere [HalfDayWorkedProjectId ==. pId]
          delete pId
