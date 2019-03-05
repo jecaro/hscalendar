@@ -16,6 +16,7 @@ import           Control.Exception.Safe
   , throwM
   , try
   )
+import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO)
 import           Database.Persist.Sqlite 
    ( Entity(..)
@@ -41,11 +42,11 @@ newtype ModelException = ModelException String deriving (Show)
 
 instance Exception ModelException
 
-errProjNotFound :: String -> String
-errProjNotFound name = "The project " ++ name ++ " is not in the database"
+errProjNotFound :: Project -> String
+errProjNotFound (Project name) = "The project " ++ name ++ " is not in the database"
 
-errProjExists :: String -> String
-errProjExists name = "The project " ++ name ++ " exists in the database"
+errProjExists :: Project -> String
+errProjExists (Project name) = "The project " ++ name ++ " exists in the database"
 
 errHdNotFound :: Day -> TimeInDay -> String
 errHdNotFound day tid = "Nothing for " ++ show day ++ " " ++ show tid
@@ -59,37 +60,32 @@ errProjIdNotFound pId = "No project entry for " ++ show pId
 errDbInconsistency :: String
 errDbInconsistency = "Warning db inconsistency"
 
--- TODO Take a Project as Parameter return only Id 
---      Should be internal
-projGet :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m (Entity Project)
-projGet name = do
+-- TODO Should be internal only
+projGet :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m (Key Project)
+projGet project@(Project name) = do
   mbProj <- getBy $ UniqueName name 
   case mbProj of
-    Nothing -> throwM $ ModelException $ errProjNotFound name 
-    Just e  -> return e
+    Nothing -> throwM $ ModelException $ errProjNotFound project
+    Just (Entity pId _)  -> return pId
 
--- TODO Take a Project as parameter
-projExists :: MonadIO m => String -> SqlPersistT m Bool
-projExists name = isJust <$> getBy (UniqueName name)
+projExists :: MonadIO m => Project -> SqlPersistT m Bool
+projExists (Project name) = isJust <$> getBy (UniqueName name)
 
--- TODO Take a Project as parameter
-projAdd :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ProjectId
-projAdd name = do
-  pExists <- projExists name
+projAdd :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
+projAdd project = do
+  pExists <- projExists project
   if pExists
-    then throwM $ ModelException $ errProjExists name
-    else insert $ Project name
+    then throwM $ ModelException $ errProjExists project
+    else void $ insert $ project
 
--- TODO do not return [String] but [Project]
-projList :: MonadIO m => SqlPersistT m [String]
-projList = map (projectName . entityVal) <$> selectList [] [Asc ProjectName] 
+projList :: MonadIO m => SqlPersistT m [Project]
+projList = map (entityVal) <$> selectList [] [Asc ProjectName] 
 
--- TODO Take a Project as parameter
-projRm :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ()
-projRm name = do
+projRm :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
+projRm project = do
   -- The following can throw exception same exception apply to this function
   -- so we dont catch it here
-  (Entity pId _) <- projGet name 
+  pId <- projGet project 
   deleteWhere [HalfDayWorkedProjectId ==. pId]
   delete pId
 

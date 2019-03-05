@@ -112,22 +112,22 @@ checkCreateConditions :: (MonadIO m, MonadCatch m) =>
 checkCreateConditions wopts = case findProjCmd wopts of 
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
-      eiProject <- try $ projGet name
+      eiProject <- try $ projGet $ Project name
       case eiProject of
          Left  (ModelException msg) -> return $ Left msg
-         Right (Entity pId _)       -> return $ Right (pId, otherCmds)
+         Right pId                  -> return $ Right (pId, otherCmds)
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
-run ProjList = projList >>= liftIO . mapM_ putStrLn 
+run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd name) = 
-   catch (void $ projAdd name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+   catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
-run (ProjRm name) = catch (projRm name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Display an entry
 run (DiaryDisplay day time) = do
@@ -305,10 +305,10 @@ editSimpleById
 editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 editSimpleById hdwId (SetProj name) = do
-   eiProject <- try $ projGet name
+   eiProject <- try $ projGet $ Project name
    case eiProject of 
       Left (ModelException msg) -> liftIO . putStrLn $ msg
-      Right (Entity pId _)      -> update hdwId [HalfDayWorkedProjectId =. pId]
+      Right pId                 -> update hdwId [HalfDayWorkedProjectId =. pId]
 editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
 editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
 
