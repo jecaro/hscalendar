@@ -8,7 +8,8 @@ module ModelFcts
   , projList
   , projRm
   , hdGet
-  , hdwGet
+  , hdwProjGet
+  , hdHdwProjGet
   ) where
 
 import           Control.Exception.Safe 
@@ -25,6 +26,7 @@ import           Database.Persist.Sqlite
    , SqlPersistT
    , delete
    , deleteWhere
+   , get
    , getBy
    , insert
    , selectList
@@ -51,8 +53,11 @@ errProjExists name = "The project " ++ name ++ " exists in the database"
 errHdNotFound :: Day -> TimeInDay -> String
 errHdNotFound day tid = "Nothing for " ++ show day ++ " " ++ show tid
 
-errHdwNotFound :: HalfDayId -> String
-errHdwNotFound hdId = "No half-day worked entry for " ++ show hdId
+errHdwIdNotFound :: HalfDayId -> String
+errHdwIdNotFound hdwId = "No half-day worked entry for " ++ show hdwId
+
+errProjIdNotFound :: ProjectId -> String
+errProjIdNotFound pId = "No project entry for " ++ show pId
 
 errDbInconsistency :: String
 errDbInconsistency = "Warning db inconsistency"
@@ -92,27 +97,31 @@ hdGet day tid = do
     Nothing  -> throwM $ ModelException $ errHdNotFound day tid
     Just e   -> return e
 
--- todo unwrap entity
-hdwGet :: (MonadIO m, MonadThrow m) => (Entity HalfDay) -> SqlPersistT m (Entity HalfDayWorked)
-hdwGet (Entity hdId _) = do
+hdwProjGet :: (MonadIO m, MonadThrow m) => (Entity HalfDay) -> SqlPersistT m (Entity HalfDayWorked, String)
+hdwProjGet (Entity hdId _) = do
   mbHdw <- getBy $ UniqueHalfDayId hdId
   case mbHdw of
-    Nothing  -> throwM $ ModelException $ errHdwNotFound hdId
-    Just e   -> return e
+    Nothing -> throwM $ ModelException $ errHdwIdNotFound hdId
+    Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
+      mbProj <- get pId
+      let name = case mbProj of 
+                  Nothing -> throwM $ ModelException $ errProjIdNotFound pId
+                  Just (Project name) -> name
+      return (e, name)
 
-hdAndHdwGet 
+hdHdwProjGet 
   :: (MonadIO m, MonadCatch m) 
   => Day
   -> TimeInDay 
-  -> SqlPersistT m (Entity HalfDay, Maybe (Entity HalfDayWorked))
-hdAndHdwGet day tid = do
-  hd@(Entity _ eHd) <- hdGet day tid 
-  eiHdw <- try $ hdwGet hd
-  let mbHdw = case eiHdw of 
+  -> SqlPersistT m (Entity HalfDay, Maybe (Entity HalfDayWorked, String))
+hdHdwProjGet day tid = do
+  eHd@(Entity _ hd) <- hdGet day tid 
+  eiHdwProj <- try $ hdwProjGet eHd
+  let mbHdw = case eiHdwProj of 
                 Left (ModelException _) -> Nothing
                 Right e                 -> Just e
   -- Check for consistency
-  case (eHd, mbHdw) of
+  case (hd, mbHdw) of
     (HalfDay _ _ Worked, Nothing) -> throwM $ ModelException errDbInconsistency
     (HalfDay _ _ Holiday, Just _) -> throwM $ ModelException errDbInconsistency
-    (_, _) -> return (hd, mbHdw)
+    (_, _) -> return (eHd, mbHdw)

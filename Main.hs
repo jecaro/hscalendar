@@ -40,6 +40,9 @@ import           ModelFcts
    , projGet
    , projList
    , projRm
+   , hdGet
+   , hdHdwProjGet
+   , hdwProjGet
    )
 
 -- Synopsis
@@ -75,6 +78,8 @@ import           ModelFcts
 -- - Use Lens instead of records
 -- - Cascade delete
 -- - Add project rename
+-- - Use unliftio instead of safe-exceptions
+-- - Try to remove mtl
 
 -- Ideas
 -- - put default values for starting ending time in a config file
