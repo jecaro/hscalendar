@@ -40,9 +40,6 @@ import           ModelFcts
    , projGet
    , projList
    , projRm
-   , hdGet
-   , hdHdwProjGet
-   , hdwProjGet
    )
 
 -- Synopsis
@@ -80,6 +77,7 @@ import           ModelFcts
 -- - Add project rename
 -- - Use unliftio instead of safe-exceptions
 -- - Try to remove mtl
+-- - Use project type instead of string
 
 -- Ideas
 -- - put default values for starting ending time in a config file

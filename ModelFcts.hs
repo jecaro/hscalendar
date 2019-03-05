@@ -7,9 +7,6 @@ module ModelFcts
   , projGet
   , projList
   , projRm
-  , hdGet
-  , hdwProjGet
-  , hdHdwProjGet
   ) where
 
 import           Control.Exception.Safe 
@@ -62,6 +59,8 @@ errProjIdNotFound pId = "No project entry for " ++ show pId
 errDbInconsistency :: String
 errDbInconsistency = "Warning db inconsistency"
 
+-- TODO Take a Project as Parameter return only Id 
+--      Should be internal
 projGet :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m (Entity Project)
 projGet name = do
   mbProj <- getBy $ UniqueName name 
@@ -69,9 +68,11 @@ projGet name = do
     Nothing -> throwM $ ModelException $ errProjNotFound name 
     Just e  -> return e
 
+-- TODO Take a Project as parameter
 projExists :: MonadIO m => String -> SqlPersistT m Bool
 projExists name = isJust <$> getBy (UniqueName name)
 
+-- TODO Take a Project as parameter
 projAdd :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ProjectId
 projAdd name = do
   pExists <- projExists name
@@ -79,9 +80,11 @@ projAdd name = do
     then throwM $ ModelException $ errProjExists name
     else insert $ Project name
 
+-- TODO do not return [String] but [Project]
 projList :: MonadIO m => SqlPersistT m [String]
 projList = map (projectName . entityVal) <$> selectList [] [Asc ProjectName] 
 
+-- TODO Take a Project as parameter
 projRm :: (MonadIO m, MonadThrow m) => String -> SqlPersistT m ()
 projRm name = do
   -- The following can throw exception same exception apply to this function
@@ -90,6 +93,7 @@ projRm name = do
   deleteWhere [HalfDayWorkedProjectId ==. pId]
   delete pId
 
+-- Keep internal
 hdGet :: (MonadIO m, MonadThrow m) => Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
 hdGet day tid = do
   mbHd <- getBy $ DayAndTimeInDay day tid
@@ -97,6 +101,7 @@ hdGet day tid = do
     Nothing  -> throwM $ ModelException $ errHdNotFound day tid
     Just e   -> return e
 
+-- Keep internal
 hdwProjGet :: (MonadIO m, MonadThrow m) => (Entity HalfDay) -> SqlPersistT m (Entity HalfDayWorked, String)
 hdwProjGet (Entity hdId _) = do
   mbHdw <- getBy $ UniqueHalfDayId hdId
@@ -109,6 +114,7 @@ hdwProjGet (Entity hdId _) = do
                   Just (Project name) -> name
       return (e, name)
 
+-- Main function
 hdHdwProjGet 
   :: (MonadIO m, MonadCatch m) 
   => Day
