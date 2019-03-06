@@ -37,6 +37,7 @@ import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
    , hdHdwProjGet
+   , hdwSetOffice
    , projAdd
    , projGet
    , projList
@@ -196,10 +197,10 @@ run (DiaryWork day time wopts) = do
    -- Check output of last command and apply remaining commands
    case eiHdEHdwE of
       Left msg -> liftIO $ putStrLn msg
-      Right (hdE, hdwE, otherOpts) -> mapM_ (dispatchEdit hdE hdwE) otherOpts
-
-   -- Display new Half-Day
-   run $ DiaryDisplay day time
+      Right (hdE, hdwE, otherOpts) -> do
+         mapM_ (dispatchEdit hdE hdwE) otherOpts
+         -- Display new Half-Day
+         run $ DiaryDisplay day time
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
@@ -297,12 +298,12 @@ editSimpleById
    -> WorkOption 
    -> SqlPersistT m()
 editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
-editSimpleById hdwId (SetOffice office) = update hdwId [HalfDayWorkedOffice  =. office]
 editSimpleById hdwId (SetProj name) = do
    eiProject <- try $ projGet $ Project name
    case eiProject of 
       Left (ModelException msg) -> liftIO . putStrLn $ msg
       Right pId                 -> update hdwId [HalfDayWorkedProjectId =. pId]
+editSimpleById _ (SetOffice _)  = error "SetOffice command not handled by this function"
 editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
 editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
 
@@ -318,6 +319,7 @@ dispatchEdit eHd eHdw (SetArrived time) = editTime eHd eHdw $ setArrivedTime tim
 -- Set left time
 dispatchEdit eHd eHdw (SetLeft time) = editTime eHd eHdw $ setLeftTime time
 -- Simple actions handling
+dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetOffice office) = hdwSetOffice day tid office
 dispatchEdit _ (Entity hdwId _) action = editSimpleById hdwId action
 
 -- Edit arrived time function

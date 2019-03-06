@@ -3,6 +3,7 @@
 module ModelFcts 
   ( ModelException(..)
   , hdHdwProjGet
+  , hdwSetOffice
   , projAdd
   , projExists
   , projGet
@@ -29,15 +30,18 @@ import           Database.Persist.Sqlite
    , getBy
    , insert
    , selectList
+   , update
+   , (=.)
    , (==.)
    )
 
 import           Data.Maybe (isJust)
 import           Data.Time.Calendar (Day)
 
-import           Model
-import           TimeInDay(TimeInDay)
 import           HalfDayType(HalfDayType(..))
+import           Model
+import           Office (Office(..))
+import           TimeInDay(TimeInDay)
 
 newtype ModelException = ModelException String deriving (Show)
 
@@ -99,8 +103,8 @@ hdGetInt day tid = do
     Nothing -> throwM $ ModelException $ errHdNotFound day tid
     Just e  -> return e
 
--- Keep internal
-hdwProjGetInt :: (MonadIO m, MonadThrow m) => HalfDayId -> SqlPersistT m (Entity HalfDayWorked, Project)
+-- Keep internal 
+hdwProjGetInt :: (MonadIO m, MonadThrow m) => HalfDayId -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
 hdwProjGetInt hdId = do
   mbHdw <- getBy $ UniqueHalfDayId hdId
   case mbHdw of
@@ -109,8 +113,19 @@ hdwProjGetInt hdId = do
       mbProj <- get pId
       project <- case mbProj of 
         Nothing -> throwM $ ModelException $ errProjIdNotFound pId
-        Just p  -> return p
+        Just p  -> return (Entity pId p)
       return (e, project)
+
+hdHdwProjGetInt 
+  :: (MonadIO m, MonadThrow m) 
+  => Day 
+  -> TimeInDay 
+  -> SqlPersistT m (Entity HalfDay, Entity HalfDayWorked, Entity Project)
+hdHdwProjGetInt day tid = do
+  eHd@(Entity hdId _) <- hdGetInt day tid
+  (eHdw, eProj) <- hdwProjGetInt hdId
+  return (eHd, eHdw, eProj)
+
 
 -- Main request function
 hdHdwProjGet
@@ -122,10 +137,15 @@ hdHdwProjGet day tid = do
   (Entity hdId hd) <- hdGetInt day tid 
   eiHdwProj <- try $ hdwProjGetInt hdId
   let mbHdw = case eiHdwProj of 
-        Left (ModelException _)       -> Nothing
-        Right (Entity _ hdw, project) -> Just (hdw, project)
+        Left (ModelException _)                -> Nothing
+        Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
   -- Check for consistency
   case (hd, mbHdw) of
     (HalfDay _ _ Worked, Nothing) -> throwM $ ModelException errDbInconsistency
     (HalfDay _ _ Holiday, Just _) -> throwM $ ModelException errDbInconsistency
     (_, _)                        -> return (hd, mbHdw)
+
+hdwSetOffice :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> Office -> SqlPersistT m ()
+hdwSetOffice day tid office = do
+  (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
+  update hdwId [HalfDayWorkedOffice =. office]
