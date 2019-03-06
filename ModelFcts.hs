@@ -2,6 +2,7 @@
 
 module ModelFcts 
   ( ModelException(..)
+  , hdHdwProjGet
   , projAdd
   , projExists
   , projGet
@@ -31,7 +32,7 @@ import           Database.Persist.Sqlite
    , (==.)
    )
 
-import           Data.Maybe (isJust, isNothing)
+import           Data.Maybe (isJust)
 import           Data.Time.Calendar (Day)
 
 import           Model
@@ -65,8 +66,8 @@ projGet :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m (Key Project)
 projGet project@(Project name) = do
   mbProj <- getBy $ UniqueName name 
   case mbProj of
-    Nothing -> throwM $ ModelException $ errProjNotFound project
-    Just (Entity pId _)  -> return pId
+    Nothing             -> throwM $ ModelException $ errProjNotFound project
+    Just (Entity pId _) -> return pId
 
 projExists :: MonadIO m => Project -> SqlPersistT m Bool
 projExists (Project name) = isJust <$> getBy (UniqueName name)
@@ -90,40 +91,41 @@ projRm project = do
   delete pId
 
 -- Keep internal
-hdGet :: (MonadIO m, MonadThrow m) => Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
-hdGet day tid = do
+-- Get a half day if it exists or raise an exception
+hdGetInt :: (MonadIO m, MonadThrow m) => Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
+hdGetInt day tid = do
   mbHd <- getBy $ DayAndTimeInDay day tid
   case mbHd of
-    Nothing  -> throwM $ ModelException $ errHdNotFound day tid
-    Just e   -> return e
+    Nothing -> throwM $ ModelException $ errHdNotFound day tid
+    Just e  -> return e
 
 -- Keep internal
-hdwProjGet :: (MonadIO m, MonadThrow m) => (Entity HalfDay) -> SqlPersistT m (Entity HalfDayWorked, String)
-hdwProjGet (Entity hdId _) = do
+hdwProjGetInt :: (MonadIO m, MonadThrow m) => HalfDayId -> SqlPersistT m (Entity HalfDayWorked, Project)
+hdwProjGetInt hdId = do
   mbHdw <- getBy $ UniqueHalfDayId hdId
   case mbHdw of
     Nothing -> throwM $ ModelException $ errHdwIdNotFound hdId
     Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
       mbProj <- get pId
-      let name = case mbProj of 
-                  Nothing -> throwM $ ModelException $ errProjIdNotFound pId
-                  Just (Project name) -> name
-      return (e, name)
+      project <- case mbProj of 
+        Nothing -> throwM $ ModelException $ errProjIdNotFound pId
+        Just p  -> return p
+      return (e, project)
 
--- Main function
-hdHdwProjGet 
+-- Main request function
+hdHdwProjGet
   :: (MonadIO m, MonadCatch m) 
   => Day
   -> TimeInDay 
-  -> SqlPersistT m (Entity HalfDay, Maybe (Entity HalfDayWorked, String))
+  -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
 hdHdwProjGet day tid = do
-  eHd@(Entity _ hd) <- hdGet day tid 
-  eiHdwProj <- try $ hdwProjGet eHd
+  (Entity hdId hd) <- hdGetInt day tid 
+  eiHdwProj <- try $ hdwProjGetInt hdId
   let mbHdw = case eiHdwProj of 
-                Left (ModelException _) -> Nothing
-                Right e                 -> Just e
+        Left (ModelException _)       -> Nothing
+        Right (Entity _ hdw, project) -> Just (hdw, project)
   -- Check for consistency
   case (hd, mbHdw) of
     (HalfDay _ _ Worked, Nothing) -> throwM $ ModelException errDbInconsistency
     (HalfDay _ _ Holiday, Just _) -> throwM $ ModelException errDbInconsistency
-    (_, _) -> return (eHd, mbHdw)
+    (_, _)                        -> return (hd, mbHdw)

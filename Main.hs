@@ -36,6 +36,7 @@ import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
+   , hdHdwProjGet
    , projAdd
    , projGet
    , projList
@@ -133,26 +134,19 @@ run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> lift
 run (DiaryDisplay day time) = do
    -- Display input date
    liftIO . putStrLn $ show day ++ " " ++ show time
-   -- Get Half-Day
-   mbHdE <- getBy $ DayAndTimeInDay day time
-   -- Get Half-Day worked
-   mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
-   -- Get Project
-   mbP <- join <$> mapM (get . halfDayWorkedProjectId . entityVal ) mbHdwE
-   -- Get output lines
-   let hdStr = case (mbHdE, mbHdwE, mbP) of
-         (Nothing, _, _)                               -> [ noEntry ]
-         (Just (Entity _ (HalfDay _ _ Holiday)), _, _) -> [ show Holiday ]
-         (Just (Entity _ (HalfDay _ _ Worked)), 
-            Just (Entity _ (HalfDayWorked notes arrived left office _ _)), 
-            Just (Project name))                       -> 
-               [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
-               , "Project: " ++ name
-               , "Notes:   " ++ notes 
-               ]
-                  where showTime (TimeOfDay h m _) = 
-                           printf "%02d" h ++ ":" ++ printf "%02d" m
-         (_, _, _)                                     -> [ dbInconstistency ]
+   -- Get half-day
+   eiHdHdwProj <- try $ hdHdwProjGet day time
+   -- Analyse output to produce lines of text
+   let hdStr = case eiHdHdwProj of
+          Left (ModelException msg) -> [ msg ]
+          Right (_, Nothing)        -> [ show Holiday ]
+          Right (_, Just ((HalfDayWorked notes arrived left office _ _), (Project name))) -> 
+             [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
+             , "Project: " ++ name
+             , "Notes:   " ++ notes 
+             ]
+                where showTime (TimeOfDay h m _) = 
+                         printf "%02d" h ++ ":" ++ printf "%02d" m
    -- Print it
    liftIO $ mapM_ putStrLn hdStr
  
