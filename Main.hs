@@ -11,8 +11,6 @@ import           Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import           Database.Persist.Sqlite 
    ( Entity(..)
    , SqlPersistT
-   , delete
-   , deleteWhere
    , get
    , getBy
    , insertEntity
@@ -20,7 +18,6 @@ import           Database.Persist.Sqlite
    , runMigration
    , runSqlPool
    , withSqlitePool
-   , (==.)
    )
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
@@ -34,6 +31,7 @@ import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
    , hdHdwProjGet
+   , hdRm
    , hdSetHoliday
    , hdwSetNotes
    , hdwSetOffice
@@ -210,16 +208,7 @@ run (DiaryHoliday day time) = do
    run $ DiaryDisplay day time
 
 -- Delete an entry
-run (DiaryRm day time) = do
-   mbHDId <- getBy $ DayAndTimeInDay day time
-   case mbHDId of
-      -- Nothing to do
-      Nothing -> liftIO $ putStrLn noEntry
-      -- Found an entry to delete 
-      Just (Entity hdId _) -> do
-         -- Delete entry from HalfDayWorked if it exists
-         deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
-         delete hdId
+run (DiaryRm day time) = catch (hdRm day time) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Create an entry
 runCreateHdw :: (MonadIO m) =>

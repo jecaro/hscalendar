@@ -3,6 +3,7 @@
 module ModelFcts 
   ( ModelException(..)
   , hdHdwProjGet
+  , hdRm
   , hdSetHoliday
   , hdwSetNotes
   , hdwSetOffice
@@ -176,3 +177,11 @@ hdSetHoliday day tid = do
       deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
       -- Update entry
       update hdId [HalfDayType =. Holiday]
+
+hdRm :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
+hdRm day tid = do
+  (Entity hdId _) <- hdGetInt day tid
+  -- Delete entry from HalfDayWorked if it exists
+  deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
+  delete hdId
+ 
