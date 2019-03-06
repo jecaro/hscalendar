@@ -37,6 +37,7 @@ import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
    , hdHdwProjGet
+   , hdwSetNotes
    , hdwSetOffice
    , projAdd
    , projGet
@@ -297,12 +298,12 @@ editSimpleById
    => HalfDayWorkedId 
    -> WorkOption 
    -> SqlPersistT m()
-editSimpleById hdwId (SetNotes notes)   = update hdwId [HalfDayWorkedNotes   =. notes]
 editSimpleById hdwId (SetProj name) = do
    eiProject <- try $ projGet $ Project name
    case eiProject of 
       Left (ModelException msg) -> liftIO . putStrLn $ msg
       Right pId                 -> update hdwId [HalfDayWorkedProjectId =. pId]
+editSimpleById _ (SetNotes _)   = error "SetNote command not handled by this function"
 editSimpleById _ (SetOffice _)  = error "SetOffice command not handled by this function"
 editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
 editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
@@ -319,6 +320,7 @@ dispatchEdit eHd eHdw (SetArrived time) = editTime eHd eHdw $ setArrivedTime tim
 -- Set left time
 dispatchEdit eHd eHdw (SetLeft time) = editTime eHd eHdw $ setLeftTime time
 -- Simple actions handling
+dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetNotes notes)   = hdwSetNotes day tid notes
 dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetOffice office) = hdwSetOffice day tid office
 dispatchEdit _ (Entity hdwId _) action = editSimpleById hdwId action
 

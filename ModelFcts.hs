@@ -3,6 +3,7 @@
 module ModelFcts 
   ( ModelException(..)
   , hdHdwProjGet
+  , hdwSetNotes
   , hdwSetOffice
   , projAdd
   , projExists
@@ -149,3 +150,8 @@ hdwSetOffice :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> Office -> SqlPe
 hdwSetOffice day tid office = do
   (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
   update hdwId [HalfDayWorkedOffice =. office]
+
+hdwSetNotes :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> String -> SqlPersistT m ()
+hdwSetNotes day tid notes = do
+  (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
+  update hdwId [HalfDayWorkedNotes =. notes]
