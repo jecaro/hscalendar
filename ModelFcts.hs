@@ -5,6 +5,7 @@ module ModelFcts
   , hdHdwProjGet
   , hdwSetNotes
   , hdwSetOffice
+  , hdwSetProject
   , projAdd
   , projExists
   , projGet
@@ -155,3 +156,9 @@ hdwSetNotes :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> String -> SqlPer
 hdwSetNotes day tid notes = do
   (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
   update hdwId [HalfDayWorkedNotes =. notes]
+
+hdwSetProject :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> Project -> SqlPersistT m () 
+hdwSetProject day tid project = do
+  (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
+  pId <- projGet project
+  update hdwId [HalfDayWorkedProjectId =. pId]

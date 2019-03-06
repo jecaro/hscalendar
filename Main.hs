@@ -39,6 +39,7 @@ import           ModelFcts
    , hdHdwProjGet
    , hdwSetNotes
    , hdwSetOffice
+   , hdwSetProject
    , projAdd
    , projGet
    , projList
@@ -292,23 +293,7 @@ otherHdwFromHdw hdw = runMaybeT $ do
    otherHdId <- MaybeT $ otherHdFromHdw hdw
    MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
 
--- Simple edit action using only hdwid
-editSimpleById 
-   :: (MonadIO m, MonadCatch m)
-   => HalfDayWorkedId 
-   -> WorkOption 
-   -> SqlPersistT m()
-editSimpleById hdwId (SetProj name) = do
-   eiProject <- try $ projGet $ Project name
-   case eiProject of 
-      Left (ModelException msg) -> liftIO . putStrLn $ msg
-      Right pId                 -> update hdwId [HalfDayWorkedProjectId =. pId]
-editSimpleById _ (SetNotes _)   = error "SetNote command not handled by this function"
-editSimpleById _ (SetOffice _)  = error "SetOffice command not handled by this function"
-editSimpleById _ (SetArrived _) = error "SetArrived command not handled by this function"
-editSimpleById _ (SetLeft _)    = error "SetLeft command not handled by this function"
-
--- Dispatch edit
+-- Dispatch edit - TODO handle modelexception (no project)
 dispatchEdit 
    :: (MonadIO m, MonadCatch m) 
    => Entity HalfDay
@@ -322,7 +307,7 @@ dispatchEdit eHd eHdw (SetLeft time) = editTime eHd eHdw $ setLeftTime time
 -- Simple actions handling
 dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetNotes notes)   = hdwSetNotes day tid notes
 dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetOffice office) = hdwSetOffice day tid office
-dispatchEdit _ (Entity hdwId _) action = editSimpleById hdwId action
+dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetProj name)     = hdwSetProject day tid $ Project name
 
 -- Edit arrived time function
 setArrivedTime :: TimeOfDay -> HalfDayWorked -> HalfDayWorked
