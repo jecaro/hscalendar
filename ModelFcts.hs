@@ -3,6 +3,7 @@
 module ModelFcts 
   ( ModelException(..)
   , hdHdwProjGet
+  , hdSetHoliday
   , hdwSetNotes
   , hdwSetOffice
   , hdwSetProject
@@ -162,3 +163,16 @@ hdwSetProject day tid project = do
   (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
   pId <- projGet project
   update hdwId [HalfDayWorkedProjectId =. pId]
+
+hdSetHoliday :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
+hdSetHoliday day tid = do
+  eiHd <- try $ hdGetInt day tid
+  case eiHd of
+    -- Create a new entry
+    Left (ModelException _) -> void $ insert $ HalfDay day tid Holiday
+    -- Edit existing entry
+    Right (Entity hdId _)   -> do          
+      -- Delete entry from HalfDayWorked if it exists
+      deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
+      -- Update entry
+      update hdId [HalfDayType =. Holiday]

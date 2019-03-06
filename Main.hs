@@ -15,14 +15,11 @@ import           Database.Persist.Sqlite
    , deleteWhere
    , get
    , getBy
-   , insert
    , insertEntity
    , replace
    , runMigration
    , runSqlPool
-   , update
    , withSqlitePool
-   , (=.)
    , (==.)
    )
 import           Data.Time.LocalTime (TimeOfDay(..))
@@ -37,6 +34,7 @@ import           TimeInDay (TimeInDay(..), other)
 import           ModelFcts 
    ( ModelException(..)
    , hdHdwProjGet
+   , hdSetHoliday
    , hdwSetNotes
    , hdwSetOffice
    , hdwSetProject
@@ -82,6 +80,7 @@ import           ModelFcts
 -- - Use unliftio instead of safe-exceptions
 -- - Try to remove mtl
 -- - Use project type instead of string
+-- - Handle exception from optparse-applicative
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -206,17 +205,7 @@ run (DiaryWork day time wopts) = do
 
 -- Set a holiday entry
 run (DiaryHoliday day time) = do
-   mbHDId <- getBy $ DayAndTimeInDay day time
-   case mbHDId of
-      -- Edit an existing entry 
-      Just (Entity hdId _) -> do
-         -- Delete entry from HalfDayWorked if it exists
-         deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
-         -- Update entry
-         update hdId [HalfDayType =. Holiday]
-      -- Create a new entry 
-      Nothing -> void $ insert $ HalfDay day time Holiday
-
+   hdSetHoliday day time
    -- Display new Half-Day
    run $ DiaryDisplay day time
 
