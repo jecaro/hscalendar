@@ -7,11 +7,9 @@ import           Control.Exception.Safe (MonadCatch, try, catch)
 import           Control.Monad (void, join)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
-import           Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import           Database.Persist.Sqlite 
+import           Database.Persist.Sqlite
    ( Entity(..)
    , SqlPersistT
-   , get
    , getBy
    , insertEntity
    , replace
@@ -19,20 +17,23 @@ import           Database.Persist.Sqlite
    , runSqlPool
    , withSqlitePool
    )
+import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
-import           Text.Printf (printf) 
+import           Text.Printf (printf)
 
 import           CommandLine (WorkOption(..), Cmd(..), opts)
 import           HalfDayType (HalfDayType(..))
 import           Model
 import           Office (Office(..))
-import           TimeInDay (TimeInDay(..), other)
-import           ModelFcts 
+import           TimeInDay (TimeInDay(..))
+import           ModelFcts
    ( ModelException(..)
    , hdHdwProjGet
    , hdRm
    , hdSetHoliday
+   , hdwSetArrived
+   , hdwSetLeft
    , hdwSetNotes
    , hdwSetOffice
    , hdwSetProject
@@ -79,19 +80,14 @@ import           ModelFcts
 -- - Try to remove mtl
 -- - Use project type instead of string
 -- - Handle exception from optparse-applicative
+-- - Indentation 4
 
 -- Ideas
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
-noEntry :: String
-noEntry = "No entry"
-
 dbInconstistency :: String
 dbInconstistency = "Database inconsistency"
-
-timesAreWrong :: String
-timesAreWrong = "Times are wrong"
 
 projCmdIsMandatory :: String
 projCmdIsMandatory = "There should be one project command"
@@ -103,14 +99,14 @@ findProjCmd (SetProj x:xs) = (Just x, xs)
 findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
 findProjCmd [] = (Nothing, [])
- 
+
 -- Check if it is possible to create a new entry in HalfDayWorked.
 -- We need a SetProj command with a valid project name
 -- We try to find SetProj command
 checkCreateConditions :: (MonadIO m, MonadCatch m) =>
    [WorkOption]
    -> SqlPersistT m (Either String (ProjectId, [WorkOption]))
-checkCreateConditions wopts = case findProjCmd wopts of 
+checkCreateConditions wopts = case findProjCmd wopts of
    (Nothing, _) -> return $ Left projCmdIsMandatory
    (Just name, otherCmds) -> do
       eiProject <- try $ projGet $ Project name
@@ -123,7 +119,7 @@ run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
-run (ProjAdd name) = 
+run (ProjAdd name) =
    catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
@@ -140,30 +136,30 @@ run (DiaryDisplay day time) = do
    let hdStr = case eiHdHdwProj of
           Left (ModelException msg) -> [ msg ]
           Right (_, Nothing)        -> [ show Holiday ]
-          Right (_, Just ((HalfDayWorked notes arrived left office _ _), (Project name))) -> 
+          Right (_, Just (HalfDayWorked notes arrived left office _ _, Project name)) ->
              [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
              , "Project: " ++ name
-             , "Notes:   " ++ notes 
+             , "Notes:   " ++ notes
              ]
-                where showTime (TimeOfDay h m _) = 
+                where showTime (TimeOfDay h m _) =
                          printf "%02d" h ++ ":" ++ printf "%02d" m
    -- Print it
    liftIO $ mapM_ putStrLn hdStr
- 
--- Set a work entry
+
+-- Set a work entry TODO tid
 run (DiaryWork day time wopts) = do
 
    -- Get half-day 
    mbHdE <- getBy $ DayAndTimeInDay day time
    -- Get half-day type
-   let mbHdType = fmap (halfDayType . entityVal) mbHdE 
+   let mbHdType = fmap (halfDayType . entityVal) mbHdE
    -- Get half-day worked 
    -- mapM goes inside the maybe monad and getBy returns maybe. This results
    -- maybe maybe that must be joined
    mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
    -- Get conditions for creating new hdw  
-   eiConditions <- checkCreateConditions wopts  
-   
+   eiConditions <- checkCreateConditions wopts
+
    -- Get hd, hdw and options depending on the cases
    -- If we create hdw we need a set project option so it is removed from
    -- the list of commands
@@ -175,7 +171,7 @@ run (DiaryWork day time wopts) = do
       -- The two following cases need conditions, but no condition here so error
       (_, _, _, Left msg)            -> return $ Left msg
       -- Holiday and condition, carry on
-      (Just hdE@(Entity hdId hd), Just Holiday, _, Right (projId, otherOpts)) -> do 
+      (Just hdE@(Entity hdId hd), Just Holiday, _, Right (projId, otherOpts)) -> do
          -- Override HD
          let hd' = hd { halfDayType = Worked }
          replace hdId hd'
@@ -183,21 +179,23 @@ run (DiaryWork day time wopts) = do
          hdwE <- runCreateHdw time hdId projId
          return $ Right (hdE, hdwE, otherOpts)
       -- No hd, create everything
-      (Nothing, _, _, Right (projId, otherOpts)) -> do 
+      (Nothing, _, _, Right (projId, otherOpts)) -> do
          -- Create HD
          let hd = HalfDay day time Worked
          hdE@(Entity hdId _) <- insertEntity hd
          -- Create Hdw
-         hdwE <- runCreateHdw time hdId projId 
+         hdwE <- runCreateHdw time hdId projId
          return $ Right (hdE, hdwE, otherOpts)
       -- This should never happens
       _ -> undefined
-      
+
+   -- Need a special case for time
+
    -- Check output of last command and apply remaining commands
    case eiHdEHdwE of
       Left msg -> liftIO $ putStrLn msg
-      Right (hdE, hdwE, otherOpts) -> do
-         mapM_ (dispatchEdit hdE hdwE) otherOpts
+      Right (_, _, otherOpts) -> do
+         mapM_ (dispatchEdit day time) otherOpts
          -- Display new Half-Day
          run $ DiaryDisplay day time
 
@@ -226,93 +224,21 @@ runCreateHdw time hdId pId = do
    -- Create half-day
    insertEntity $ HalfDayWorked notes arrived left office pId hdId
 
--- Return the times in the day in a list
-timesOfDay :: HalfDayWorked -> [TimeOfDay]
-timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
-
--- Return true if the list is sorted
-isOrdered :: (Ord a) => [a] -> Bool
-isOrdered []       = True
-isOrdered [_]      = True
-isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
-
--- Return Nothing if the times in the list are ordered. Return an error message
--- otherwise
-timeAreOrdered :: [TimeOfDay] -> Maybe String
-timeAreOrdered times = if isOrdered times
-   then Nothing
-   else Just timesAreWrong
-
--- Check that the constraints on the times are valid between the two days
-timesAreOrderedInDay :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-timesAreOrderedInDay Morning hdw mbOtherHdw = timeAreOrdered $ timesOfDay hdw ++ otherTimes
-   where otherTimes = concatMap timesOfDay mbOtherHdw
--- We switch the arguments and call the same function
-timesAreOrderedInDay Afternoon hdw (Just otherHdw) = 
-   timesAreOrderedInDay Morning otherHdw (Just hdw)
--- Afternoon only, just need to check for half day
-timesAreOrderedInDay Afternoon hdw Nothing = timeAreOrdered $ timesOfDay hdw
-
--- From a half-day return the other half-day
-otherHdFromHd :: MonadIO m => HalfDay -> SqlPersistT m (Maybe (Entity HalfDay))
-otherHdFromHd hd = getBy $ DayAndTimeInDay day tid
-   where tid = other $ halfDayTimeInDay hd
-         day = halfDayDay hd
-
--- From a half-day worked return the other half-day
-otherHdFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDay))
-otherHdFromHdw hdw = runMaybeT $ do
-   hdId <- MaybeT $ get $ halfDayWorkedHalfDayId hdw
-   MaybeT $ otherHdFromHd hdId
-
--- From a worked half-day, return the other worked half-day
-otherHdwFromHdw :: MonadIO m => HalfDayWorked -> SqlPersistT m (Maybe (Entity HalfDayWorked))
-otherHdwFromHdw hdw = runMaybeT $ do
-   otherHdId <- MaybeT $ otherHdFromHdw hdw
-   MaybeT $ getBy $ UniqueHalfDayId $ entityKey otherHdId
-
 -- Dispatch edit - TODO handle modelexception (no project)
-dispatchEdit 
-   :: (MonadIO m, MonadCatch m) 
-   => Entity HalfDay
-   -> Entity HalfDayWorked
+dispatchEdit
+   :: (MonadIO m, MonadCatch m)
+   => Day
+   -> TimeInDay
    -> WorkOption
    -> SqlPersistT m()
 -- Set arrived time
-dispatchEdit eHd eHdw (SetArrived time) = editTime eHd eHdw $ setArrivedTime time
+dispatchEdit day tid (SetArrived time)  = hdwSetArrived day tid time
 -- Set left time
-dispatchEdit eHd eHdw (SetLeft time) = editTime eHd eHdw $ setLeftTime time
+dispatchEdit day tid (SetLeft time)     =  hdwSetLeft day tid time
 -- Simple actions handling
-dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetNotes notes)   = hdwSetNotes day tid notes
-dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetOffice office) = hdwSetOffice day tid office
-dispatchEdit (Entity _ (HalfDay day tid _)) _ (SetProj name)     = hdwSetProject day tid $ Project name
-
--- Edit arrived time function
-setArrivedTime :: TimeOfDay -> HalfDayWorked -> HalfDayWorked
-setArrivedTime time hdw = hdw { halfDayWorkedArrived = time }
-
--- Edit left time function
-setLeftTime :: TimeOfDay -> HalfDayWorked -> HalfDayWorked
-setLeftTime time hdw = hdw { halfDayWorkedLeft = time }
-
--- Set arrived/left time
-editTime :: MonadIO m =>
-   Entity HalfDay
-   -> Entity HalfDayWorked
-   -> (HalfDayWorked -> HalfDayWorked)
-   -> SqlPersistT m ()
-editTime (Entity _ hd) (Entity hdwId hdw) setTime = do
-   -- Getting time in day of current half day
-   let tid = halfDayTimeInDay hd
-   -- Apply time to arrived/left hdw
-       hdw' = setTime hdw
-   -- Getting other hdw
-   otherHdwE <- otherHdwFromHdw hdw
-   let otherHdw = fmap entityVal otherHdwE
-   -- Check if it works
-   case timesAreOrderedInDay tid hdw' otherHdw of
-      Just msg -> liftIO . putStrLn $ msg
-      Nothing  -> replace hdwId hdw'
+dispatchEdit day tid (SetNotes notes)   = hdwSetNotes day tid notes
+dispatchEdit day tid (SetOffice office) = hdwSetOffice day tid office
+dispatchEdit day tid (SetProj name)     = hdwSetProject day tid $ Project name
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT

@@ -5,6 +5,9 @@ module ModelFcts
   , hdHdwProjGet
   , hdRm
   , hdSetHoliday
+  , hdwSetArrived
+  , hdwSetArrivedAndLeft
+  , hdwSetLeft
   , hdwSetNotes
   , hdwSetOffice
   , hdwSetProject
@@ -33,6 +36,7 @@ import           Database.Persist.Sqlite
    , get
    , getBy
    , insert
+   , replace
    , selectList
    , update
    , (=.)
@@ -41,11 +45,12 @@ import           Database.Persist.Sqlite
 
 import           Data.Maybe (isJust)
 import           Data.Time.Calendar (Day)
+import           Data.Time.LocalTime (TimeOfDay)
 
 import           HalfDayType(HalfDayType(..))
 import           Model
 import           Office (Office(..))
-import           TimeInDay(TimeInDay)
+import           TimeInDay(TimeInDay(..), other)
 
 newtype ModelException = ModelException String deriving (Show)
 
@@ -69,6 +74,9 @@ errProjIdNotFound pId = "No project entry for " ++ show pId
 errDbInconsistency :: String
 errDbInconsistency = "Warning db inconsistency"
 
+errTimesAreWrong :: String
+errTimesAreWrong = "Times are wrong"
+
 -- TODO Should be internal only
 projGet :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m (Key Project)
 projGet project@(Project name) = do
@@ -85,10 +93,10 @@ projAdd project = do
   pExists <- projExists project
   if pExists
     then throwM $ ModelException $ errProjExists project
-    else void $ insert $ project
+    else void $ insert project
 
 projList :: MonadIO m => SqlPersistT m [Project]
-projList = map (entityVal) <$> selectList [] [Asc ProjectName] 
+projList = map entityVal <$> selectList [] [Asc ProjectName] 
 
 projRm :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
 projRm project = do
@@ -108,7 +116,10 @@ hdGetInt day tid = do
     Just e  -> return e
 
 -- Keep internal 
-hdwProjGetInt :: (MonadIO m, MonadThrow m) => HalfDayId -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
+hdwProjGetInt 
+  :: (MonadIO m, MonadThrow m) 
+  => HalfDayId 
+  -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
 hdwProjGetInt hdId = do
   mbHdw <- getBy $ UniqueHalfDayId hdId
   case mbHdw of
@@ -164,6 +175,87 @@ hdwSetProject day tid project = do
   (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
   pId <- projGet project
   update hdwId [HalfDayWorkedProjectId =. pId]
+
+-- Check that the constraints on the times are valid between the two days
+timesAreOrderedInDay :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
+timesAreOrderedInDay Morning hdw mbOtherHdw = timeAreOrdered $ timesOfDay hdw ++ otherTimes
+   where otherTimes = concatMap timesOfDay mbOtherHdw
+-- We switch the arguments and call the same function
+timesAreOrderedInDay Afternoon hdw (Just otherHdw) =
+   timesAreOrderedInDay Morning otherHdw (Just hdw)
+-- Afternoon only, just need to check for half day
+timesAreOrderedInDay Afternoon hdw Nothing = timeAreOrdered $ timesOfDay hdw
+
+-- Set arrived/left time
+editTime :: (MonadIO m, MonadCatch m)
+  => Entity HalfDay
+  -> Entity HalfDayWorked
+  -> (HalfDayWorked -> HalfDayWorked)
+  -> SqlPersistT m ()
+editTime (Entity _ (HalfDay day tid _)) (Entity hdwId hdw) setTime = do
+  eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
+  let mbOtherHdw = case eiHdHdwProj of
+        Left (ModelException _)     -> Nothing
+        Right (_, Entity _ oHdw, _) -> Just oHdw
+-- Apply time to arrived/left hdw
+  let hdw' = setTime hdw
+  -- Check if it works
+  case timesAreOrderedInDay tid hdw' mbOtherHdw of
+     Just msg -> throwM $ ModelException msg
+     Nothing  -> replace hdwId hdw'
+
+-- Return the times in the day in a list
+timesOfDay :: HalfDayWorked -> [TimeOfDay]
+timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
+
+-- Return true if the list is sorted
+isOrdered :: (Ord a) => [a] -> Bool
+isOrdered []       = True
+isOrdered [_]      = True
+isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
+
+-- Return Nothing if the times in the list are ordered. Return an error message
+-- otherwise
+timeAreOrdered :: [TimeOfDay] -> Maybe String
+timeAreOrdered times = if isOrdered times
+   then Nothing
+   else Just errTimesAreWrong
+
+hdwSetArrived 
+  :: (MonadIO m, MonadCatch m) 
+  => Day 
+  -> TimeInDay 
+  -> TimeOfDay 
+  -> SqlPersistT m () 
+hdwSetArrived day tid tod = do
+    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
+    editTime eHd eHdw $ setArrived tod
+  where setArrived tod' hdw = hdw { halfDayWorkedArrived = tod' }
+
+hdwSetLeft 
+  :: (MonadIO m, MonadCatch m) 
+  => Day 
+  -> TimeInDay 
+  -> TimeOfDay 
+  -> SqlPersistT m () 
+hdwSetLeft day tid tod = do
+    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
+    editTime eHd eHdw $ setLeft tod
+  where setLeft tod' hdw = hdw { halfDayWorkedLeft = tod' }
+
+hdwSetArrivedAndLeft 
+  :: (MonadIO m, MonadCatch m) 
+  => Day 
+  -> TimeInDay 
+  -> TimeOfDay 
+  -> TimeOfDay 
+  -> SqlPersistT m () 
+hdwSetArrivedAndLeft day tid arrived left = do
+    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
+    editTime eHd eHdw $ setArrivedAndLeft arrived left
+  where setArrivedAndLeft arrived' left' hdw = 
+            hdw { halfDayWorkedArrived = arrived'
+                , halfDayWorkedLeft    = left' }
 
 hdSetHoliday :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
 hdSetHoliday day tid = do
