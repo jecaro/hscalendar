@@ -80,11 +80,8 @@ import           ModelFcts
 -- - put default values for starting ending time in a config file
 -- - put db file in a config file as well
 
-dbInconstistency :: String
-dbInconstistency = "Database inconsistency"
-
-projCmdIsMandatory :: String
-projCmdIsMandatory = "There should be one project command"
+errProjCmdIsMandatory :: String
+errProjCmdIsMandatory = "There should be one project command"
 
 -- Find a project option in a list of options, gets its name and return 
 -- remaining options
@@ -142,9 +139,9 @@ run (DiaryWork day tid wopts) = do
                 Right _ -> return $ Right otherOpts
                 Left (ModelException msg) -> return $ Left msg
         -- Holiday but no project
-        (Right (_, Nothing), (Nothing, _)) -> return $ Left projCmdIsMandatory
+        (Right (_, Nothing), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
         -- No hd, but no project either
-        (Left (ModelException _), (Nothing, _)) -> return $ Left projCmdIsMandatory
+        (Left (ModelException _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
     
     -- Apply remaining options
     case eiOtherOpts of
@@ -174,7 +171,7 @@ dispatchEdit
 -- Set arrived time
 dispatchEdit day tid (SetArrived time)  = hdwSetArrived day tid time
 -- Set left time
-dispatchEdit day tid (SetLeft time)     =  hdwSetLeft day tid time
+dispatchEdit day tid (SetLeft time)     = hdwSetLeft day tid time
 -- Simple actions handling
 dispatchEdit day tid (SetNotes notes)   = hdwSetNotes day tid notes
 dispatchEdit day tid (SetOffice office) = hdwSetOffice day tid office
