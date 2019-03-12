@@ -8,9 +8,7 @@ import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
 import           Database.Persist.Sqlite
-   ( Entity(..)
-   , SqlPersistT
-   , insertEntity
+   ( SqlPersistT
    , runMigration
    , runSqlPool
    , withSqlitePool
@@ -23,7 +21,6 @@ import           Text.Printf (printf)
 import           CommandLine (WorkOption(..), Cmd(..), opts)
 import           HalfDayType (HalfDayType(..))
 import           Model
-import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 import           ModelFcts
    ( ModelException(..)
@@ -111,11 +108,11 @@ run (ProjAdd name) =
 run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Display an entry
-run (DiaryDisplay day time) = do
+run (DiaryDisplay day tid) = do
    -- Display input date
-   liftIO . putStrLn $ show day ++ " " ++ show time
+   liftIO . putStrLn $ show day ++ " " ++ show tid
    -- Get half-day
-   eiHdHdwProj <- try $ hdHdwProjGet day time
+   eiHdHdwProj <- try $ hdHdwProjGet day tid
    -- Analyse output to produce lines of text
    let hdStr = case eiHdHdwProj of
           Left (ModelException msg) -> [ msg ]
@@ -130,11 +127,11 @@ run (DiaryDisplay day time) = do
    -- Print it
    liftIO $ mapM_ putStrLn hdStr
 
--- Set a work entry TODO tid
-run (DiaryWork day time wopts) = do
+-- Set a work entry 
+run (DiaryWork day tid wopts) = do
 
    -- Get hdw
-   eiHdHdwProj <- try $ hdHdwProjGet day time
+   eiHdHdwProj <- try $ hdHdwProjGet day tid
 
    -- Create it with a project if needed
    eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
@@ -142,7 +139,7 @@ run (DiaryWork day time wopts) = do
       (Right (_, Just (_, _)), _) -> return $ Right wopts 
       -- Nothing or holiday
       (_, (Just proj, otherOpts)) -> do
-         eiAdded <- try $ hdSetWork day time $ Project proj
+         eiAdded <- try $ hdSetWork day tid $ Project proj
          case eiAdded of
             Right _ -> return $ Right otherOpts
             Left (ModelException msg) -> return $ Left msg
@@ -155,34 +152,18 @@ run (DiaryWork day time wopts) = do
    case eiOtherOpts of
       Left msg -> liftIO $ putStrLn msg
       Right otherOpts -> do
-         mapM_ (dispatchEdit day time) otherOpts -- TODO need to handle failure here
+         mapM_ (dispatchEdit day tid) otherOpts -- TODO need to handle failure here
          -- Display new Half-Day
-         run $ DiaryDisplay day time
+         run $ DiaryDisplay day tid
 
 -- Set a holiday entry
-run (DiaryHoliday day time) = do
-   hdSetHoliday day time
+run (DiaryHoliday day tid) = do
+   hdSetHoliday day tid
    -- Display new Half-Day
-   run $ DiaryDisplay day time
+   run $ DiaryDisplay day tid
 
 -- Delete an entry
-run (DiaryRm day time) = catch (hdRm day time) (\(ModelException msg) -> liftIO $ putStrLn msg)
-
--- Create an entry
-runCreateHdw :: (MonadIO m) =>
-   TimeInDay
-   -> HalfDayId
-   -> ProjectId
-   -> SqlPersistT m (Entity HalfDayWorked)
-runCreateHdw time hdId pId = do
-   -- Create half-day
-   let notes           = ""
-       (arrived, left) = if time == Morning
-          then (TimeOfDay 8 20 0, TimeOfDay 12 0 0)
-          else (TimeOfDay 13 0 0, TimeOfDay 17 0 0)
-       office = Rennes
-   -- Create half-day
-   insertEntity $ HalfDayWorked notes arrived left office pId hdId
+run (DiaryRm day tid) = catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Dispatch edit - TODO handle modelexception (no project)
 dispatchEdit
