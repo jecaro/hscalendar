@@ -74,7 +74,8 @@ import           ModelFcts
 -- - Use unliftio instead of safe-exceptions
 -- - Try to remove mtl
 -- - Handle exception from optparse-applicative
--- - Indentation 4
+-- - Add standard documentation
+-- - Add office la cambuzz
 
 -- Ideas
 -- - put default values for starting ending time in a config file
