@@ -73,7 +73,6 @@ import           ModelFcts
 -- - Add project rename
 -- - Use unliftio instead of safe-exceptions
 -- - Try to remove mtl
--- - Use project type instead of string
 -- - Handle exception from optparse-applicative
 -- - Indentation 4
 
@@ -152,9 +151,10 @@ run (DiaryWork day tid wopts) = do
    case eiOtherOpts of
       Left msg -> liftIO $ putStrLn msg
       Right otherOpts -> do
-         mapM_ (dispatchEdit day tid) otherOpts -- TODO need to handle failure here
+         mapM_ dispatchEditWithError otherOpts 
          -- Display new Half-Day
          run $ DiaryDisplay day tid
+            where dispatchEditWithError x = catch (dispatchEdit day tid x) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Set a holiday entry
 run (DiaryHoliday day tid) = do
