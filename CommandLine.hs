@@ -1,48 +1,48 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
 module CommandLine 
-   ( Cmd(..)
-   , WorkOption(..)
-   , cmd
-   , opts
-   ) where
+    ( Cmd(..)
+    , WorkOption(..)
+    , cmd
+    , opts
+    ) where
 
 import           Data.Attoparsec.Text as Atto
-   ( Parser
-   , string
-   , decimal
-   , char
-   , parseOnly
-   )
+    ( Parser
+    , string
+    , decimal
+    , char
+    , parseOnly
+    )
 import           Data.Functor (($>))
 import           Data.Text (pack)
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative as Opt
-   ( Parser
-   , ParserInfo
-   , ReadM
-   , argument
-   , auto
-   , command
-   , eitherReader 
-   , help 
-   , helper
-   , hsubparser 
-   , idm
-   , info
-   , long
-   , metavar
-   , option
-   , progDesc 
-   , short
-   , some
-   , str
-   , strOption
-   , subparser 
-   , (<**>)
-   , (<|>)
-   )
+    ( Parser
+    , ParserInfo
+    , ReadM
+    , argument
+    , auto
+    , command
+    , eitherReader 
+    , help 
+    , helper
+    , hsubparser 
+    , idm
+    , info
+    , long
+    , metavar
+    , option
+    , progDesc 
+    , short
+    , some
+    , str
+    , strOption
+    , subparser 
+    , (<**>)
+    , (<|>)
+    )
 
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
@@ -54,31 +54,31 @@ data Cmd = ProjList                             |
            DiaryRm Day TimeInDay                |
            DiaryHoliday Day TimeInDay           |
            DiaryWork Day TimeInDay [WorkOption]
-  deriving (Eq, Show)
+    deriving (Eq, Show)
 
 data WorkOption = SetProj String       |
                   SetNotes String      |
                   SetArrived TimeOfDay |
                   SetLeft TimeOfDay    |
                   SetOffice Office
-   deriving (Eq, Show)
+    deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
 attoReadM p = eitherReader (parseOnly p . pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
-   where parser = string "rennes" $> Rennes
-              <|> string "home"   $> Home
+  where parser = string "rennes" $> Rennes
+             <|> string "home"   $> Home
 
 parseTimeInDay :: ReadM TimeInDay
 parseTimeInDay = attoReadM parser
-   where parser = string "morning"   $> Morning
-              <|> string "afternoon" $> Afternoon
+  where parser = string "morning"   $> Morning
+             <|> string "afternoon" $> Afternoon
 
 parseTimeOfDay :: ReadM TimeOfDay
 parseTimeOfDay = attoReadM parser
-   where parser = do
+  where parser = do
             h <- decimal
             _ <- char ':'
             m <- decimal
@@ -93,39 +93,39 @@ projAdd = ProjAdd <$> argument str (metavar "PROJECT...")
 
 projCmd :: Opt.Parser Cmd
 projCmd = subparser
-   (  command "list" (info (pure ProjList) (progDesc "List current projects"))
-   <> command "add"  (info projAdd         (progDesc "Add project"))
-   <> command "rm"   (info projRm          (progDesc "Remove project"))
-   )
+    (  command "list" (info (pure ProjList) (progDesc "List current projects"))
+    <> command "add"  (info projAdd         (progDesc "Add project"))
+    <> command "rm"   (info projRm          (progDesc "Remove project"))
+    )
 
 diaryDisplay :: Opt.Parser Cmd
 diaryDisplay = DiaryDisplay <$>
-   argument auto (metavar "DAY") <*>
-   argument parseTimeInDay (metavar "TIMEINDAY")
+    argument auto (metavar "DAY") <*>
+    argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm <$>
-   argument auto (metavar "DAY") <*>
-   argument parseTimeInDay (metavar "TIMEINDAY")
+    argument auto (metavar "DAY") <*>
+    argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday <$>
-   argument auto (metavar "DAY") <*>
-   argument parseTimeInDay (metavar "TIMEINDAY")
+    argument auto (metavar "DAY") <*>
+    argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork <$>
-   argument auto (metavar "DAY") <*>
-   argument parseTimeInDay (metavar "TIMEINDAY") <*>
-   some workOption
+    argument auto (metavar "DAY") <*>
+    argument parseTimeInDay (metavar "TIMEINDAY") <*>
+    some workOption
 
 diaryCmd :: Opt.Parser Cmd
 diaryCmd = hsubparser
-   (  command "display" (info diaryDisplay (progDesc "Display entry"))
-   <> command "work"    (info diaryWork    (progDesc "Set work entry"))
-   <> command "holiday" (info diaryHoliday (progDesc "Set holiday entry"))
-   <> command "rm"      (info diaryRm      (progDesc "Remove entry"))
-   )
+    (  command "display" (info diaryDisplay (progDesc "Display entry"))
+    <> command "work"    (info diaryWork    (progDesc "Set work entry"))
+    <> command "holiday" (info diaryHoliday (progDesc "Set holiday entry"))
+    <> command "rm"      (info diaryRm      (progDesc "Remove entry"))
+    )
 
 workOption :: Opt.Parser WorkOption
 workOption = workOptionSetProj    <|>
@@ -136,44 +136,44 @@ workOption = workOptionSetProj    <|>
 
 workOptionSetProj :: Opt.Parser WorkOption
 workOptionSetProj = SetProj <$> strOption
-   (  long "project"
-   <> short 'p'
-   <> metavar "PROJECT"
-   <> help "Set the project" )
+    (  long "project"
+    <> short 'p'
+    <> metavar "PROJECT"
+    <> help "Set the project" )
 
 workOptionSetNotes :: Opt.Parser WorkOption
 workOptionSetNotes = SetNotes <$> strOption
-   (  long "notes"
-   <> short 'n'
-   <> metavar "NOTES"
-   <> help "Set the notes" )
+    (  long "notes"
+    <> short 'n'
+    <> metavar "NOTES"
+    <> help "Set the notes" )
 
 workOptionSetArrived :: Opt.Parser WorkOption
 workOptionSetArrived = SetArrived <$> option parseTimeOfDay
-   (  long "arrived"
-   <> short 'a'
-   <> metavar "TIME"
-   <> help "Time of arrival" )
+    (  long "arrived"
+    <> short 'a'
+    <> metavar "TIME"
+    <> help "Time of arrival" )
 
 workOptionSetLeft :: Opt.Parser WorkOption
 workOptionSetLeft = SetLeft <$> option parseTimeOfDay
-   (  long "left"
-   <> short 'l'
-   <> metavar "TIME"
-   <> help "Time of leaving" )
+    (  long "left"
+    <> short 'l'
+    <> metavar "TIME"
+    <> help "Time of leaving" )
 
 workOptionSetOffice :: Opt.Parser WorkOption
 workOptionSetOffice = SetOffice <$> option parseOffice
-   (  long "office"
-   <> short 'o'
-   <> metavar "OFFICE"
-   <> help "Office" )
+    (  long "office"
+    <> short 'o'
+    <> metavar "OFFICE"
+    <> help "Office" )
 
 cmd :: Opt.Parser Cmd
 cmd = hsubparser
-   (  command "project" (info projCmd  (progDesc "Project"))
-   <> command "diary"   (info diaryCmd (progDesc "Diary"))
-   )
+    (  command "project" (info projCmd  (progDesc "Project"))
+    <> command "diary"   (info diaryCmd (progDesc "Diary"))
+    )
 
 opts :: ParserInfo Cmd
 opts = info (cmd <**> helper) idm

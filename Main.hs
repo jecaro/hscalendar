@@ -8,11 +8,11 @@ import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
 import           Database.Persist.Sqlite
-   ( SqlPersistT
-   , runMigration
-   , runSqlPool
-   , withSqlitePool
-   )
+    ( SqlPersistT
+    , runMigration
+    , runSqlPool
+    , withSqlitePool
+    )
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
@@ -23,20 +23,20 @@ import           HalfDayType (HalfDayType(..))
 import           Model
 import           TimeInDay (TimeInDay(..))
 import           ModelFcts
-   ( ModelException(..)
-   , hdHdwProjGet
-   , hdRm
-   , hdSetHoliday
-   , hdSetWork
-   , hdwSetArrived
-   , hdwSetLeft
-   , hdwSetNotes
-   , hdwSetOffice
-   , hdwSetProject
-   , projAdd
-   , projList
-   , projRm
-   )
+    ( ModelException(..)
+    , hdHdwProjGet
+    , hdRm
+    , hdSetHoliday
+    , hdSetWork
+    , hdwSetArrived
+    , hdwSetLeft
+    , hdwSetNotes
+    , hdwSetOffice
+    , hdwSetProject
+    , projAdd
+    , projList
+    , projRm
+    )
 
 -- Synopsis
 -- hsmaster diary work date Morning|Afternoon [commands]
@@ -100,7 +100,7 @@ run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd name) =
-   catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+    catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
@@ -108,70 +108,69 @@ run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> lift
 
 -- Display an entry
 run (DiaryDisplay day tid) = do
-   -- Display input date
-   liftIO . putStrLn $ show day ++ " " ++ show tid
-   -- Get half-day
-   eiHdHdwProj <- try $ hdHdwProjGet day tid
-   -- Analyse output to produce lines of text
-   let hdStr = case eiHdHdwProj of
-          Left (ModelException msg) -> [ msg ]
-          Right (_, Nothing)        -> [ show Holiday ]
-          Right (_, Just (HalfDayWorked notes arrived left office _ _, Project name)) ->
-             [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
-             , "Project: " ++ name
-             , "Notes:   " ++ notes
-             ]
-                where showTime (TimeOfDay h m _) =
-                         printf "%02d" h ++ ":" ++ printf "%02d" m
-   -- Print it
-   liftIO $ mapM_ putStrLn hdStr
+    -- Display input date
+    liftIO . putStrLn $ show day ++ " " ++ show tid
+    -- Get half-day
+    eiHdHdwProj <- try $ hdHdwProjGet day tid
+    -- Analyse output to produce lines of text
+    let hdStr = case eiHdHdwProj of
+           Left (ModelException msg) -> [ msg ]
+           Right (_, Nothing)        -> [ show Holiday ]
+           Right (_, Just (HalfDayWorked notes arrived left office _ _, Project name)) ->
+               [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
+               , "Project: " ++ name
+               , "Notes:   " ++ notes
+               ]
+    -- Print it
+    liftIO $ mapM_ putStrLn hdStr
+  where showTime (TimeOfDay h m _) = printf "%02d" h ++ ":" ++ printf "%02d" m
 
 -- Set a work entry 
 run (DiaryWork day tid wopts) = do
 
-   -- Get hdw
-   eiHdHdwProj <- try $ hdHdwProjGet day tid
-
-   -- Create it with a project if needed
-   eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
-      -- Everything is there
-      (Right (_, Just (_, _)), _) -> return $ Right wopts 
-      -- Nothing or holiday
-      (_, (Just proj, otherOpts)) -> do
-         eiAdded <- try $ hdSetWork day tid $ Project proj
-         case eiAdded of
-            Right _ -> return $ Right otherOpts
-            Left (ModelException msg) -> return $ Left msg
-      -- Holiday but no project
-      (Right (_, Nothing), (Nothing, _)) -> return $ Left projCmdIsMandatory
-      -- No hd, but no project either
-      (Left (ModelException _), (Nothing, _)) -> return $ Left projCmdIsMandatory
-   
-   -- Apply remaining options
-   case eiOtherOpts of
-      Left msg -> liftIO $ putStrLn msg
-      Right otherOpts -> do
-         mapM_ dispatchEditWithError otherOpts 
-         -- Display new Half-Day
-         run $ DiaryDisplay day tid
-            where dispatchEditWithError x = catch (dispatchEdit day tid x) (\(ModelException msg) -> liftIO $ putStrLn msg)
+    -- Get hdw
+    eiHdHdwProj <- try $ hdHdwProjGet day tid
+ 
+    -- Create it with a project if needed
+    eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
+        -- Everything is there
+        (Right (_, Just (_, _)), _) -> return $ Right wopts 
+        -- Nothing or holiday
+        (_, (Just proj, otherOpts)) -> do
+            eiAdded <- try $ hdSetWork day tid $ Project proj
+            case eiAdded of
+                Right _ -> return $ Right otherOpts
+                Left (ModelException msg) -> return $ Left msg
+        -- Holiday but no project
+        (Right (_, Nothing), (Nothing, _)) -> return $ Left projCmdIsMandatory
+        -- No hd, but no project either
+        (Left (ModelException _), (Nothing, _)) -> return $ Left projCmdIsMandatory
+    
+    -- Apply remaining options
+    case eiOtherOpts of
+        Left msg -> liftIO $ putStrLn msg
+        Right otherOpts -> do
+            mapM_ dispatchEditWithError otherOpts 
+            -- Display new Half-Day
+            run $ DiaryDisplay day tid
+  where dispatchEditWithError x = catch (dispatchEdit day tid x) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Set a holiday entry
 run (DiaryHoliday day tid) = do
-   hdSetHoliday day tid
-   -- Display new Half-Day
-   run $ DiaryDisplay day tid
+    hdSetHoliday day tid
+    -- Display new Half-Day
+    run $ DiaryDisplay day tid
 
 -- Delete an entry
 run (DiaryRm day tid) = catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Dispatch edit - TODO handle modelexception (no project)
 dispatchEdit
-   :: (MonadIO m, MonadCatch m)
-   => Day
-   -> TimeInDay
-   -> WorkOption
-   -> SqlPersistT m()
+    :: (MonadIO m, MonadCatch m)
+    => Day
+    -> TimeInDay
+    -> WorkOption
+    -> SqlPersistT m()
 -- Set arrived time
 dispatchEdit day tid (SetArrived time)  = hdwSetArrived day tid time
 -- Set left time
@@ -184,6 +183,6 @@ dispatchEdit day tid (SetProj name)     = hdwSetProject day tid $ Project name
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
 main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do
-   runMigration migrateAll
-   liftIO (execParser opts) >>= run
+    runMigration migrateAll
+    liftIO (execParser opts) >>= run
 

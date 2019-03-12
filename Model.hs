@@ -27,30 +27,30 @@ import           Office (Office)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Project
-   -- Fields
-   name       String
-   -- Constraint
-   UniqueName name 
-   deriving Show
+    -- Fields
+    name       String
+    -- Constraint
+    UniqueName name 
+    deriving Show
 HalfDay
-   -- Fields
-   day             Day        
-   timeInDay       TimeInDay   -- morning/afternoon
-   type            HalfDayType -- worked/holiday
-   -- Constraint
-   DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
-   deriving Show
+    -- Fields
+    day             Day        
+    timeInDay       TimeInDay   -- morning/afternoon
+    type            HalfDayType -- worked/holiday
+    -- Constraint
+    DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
+    deriving Show
 HalfDayWorked -- Only for WorkedOpenDay
-   -- Fields
-	notes     String -- default empty string
-	arrived   TimeOfDay 
-	left      TimeOfDay --Constraint Left > Arrived
-   office    Office
-   -- Foreign keys
-   projectId ProjectId 
-   halfDayId HalfDayId
-   -- Constraints
-   UniqueHalfDayId halfDayId
-   deriving Show
+    -- Fields
+    notes     String -- default empty string
+    arrived   TimeOfDay 
+    left      TimeOfDay --Constraint Left > Arrived
+    office    Office
+    -- Foreign keys
+    projectId ProjectId 
+    halfDayId HalfDayId
+    -- Constraints
+    UniqueHalfDayId halfDayId
+    deriving Show
 |]
 
