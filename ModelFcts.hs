@@ -5,6 +5,7 @@ module ModelFcts
   , hdHdwProjGet
   , hdRm
   , hdSetHoliday
+  , hdSetWork
   , hdwSetArrived
   , hdwSetArrivedAndLeft
   , hdwSetLeft
@@ -45,7 +46,7 @@ import           Database.Persist.Sqlite
 
 import           Data.Maybe (isJust)
 import           Data.Time.Calendar (Day)
-import           Data.Time.LocalTime (TimeOfDay)
+import           Data.Time.LocalTime (TimeOfDay(..))
 
 import           HalfDayType(HalfDayType(..))
 import           Model
@@ -270,6 +271,28 @@ hdSetHoliday day tid = do
       -- Update entry
       update hdId [HalfDayType =. Holiday]
 
+hdSetWork 
+  :: (MonadIO m, MonadCatch m) 
+  => Day 
+  -> TimeInDay 
+  -> Project 
+  -> SqlPersistT m () 
+hdSetWork day tid project = do 
+    projId <- projGet project
+    eiHd <- try $ hdGetInt day tid
+    hdId <- case eiHd of
+        -- Create a new entry
+        Left (ModelException _) -> insert $ HalfDay day tid Worked 
+        -- Edit existing entry
+        Right (Entity hdId _)   -> do
+          -- Update entry
+          update hdId [HalfDayType =. Worked]
+          return hdId
+    void $ insert $ HalfDayWorked "" arrived left Rennes projId hdId
+  where 
+    arrived = if tid == Morning then TimeOfDay 9 0 0 else TimeOfDay 13 30 0 
+    left = if tid == Morning then TimeOfDay 12 0 0 else TimeOfDay 17 30 0 
+   
 hdRm :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
 hdRm day tid = do
   (Entity hdId _) <- hdGetInt day tid

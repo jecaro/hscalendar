@@ -4,15 +4,13 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
 import           Control.Exception.Safe (MonadCatch, try, catch)
-import           Control.Monad (void, join)
+import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
 import           Database.Persist.Sqlite
    ( Entity(..)
    , SqlPersistT
-   , getBy
    , insertEntity
-   , replace
    , runMigration
    , runSqlPool
    , withSqlitePool
@@ -32,13 +30,13 @@ import           ModelFcts
    , hdHdwProjGet
    , hdRm
    , hdSetHoliday
+   , hdSetWork
    , hdwSetArrived
    , hdwSetLeft
    , hdwSetNotes
    , hdwSetOffice
    , hdwSetProject
    , projAdd
-   , projGet
    , projList
    , projRm
    )
@@ -100,20 +98,6 @@ findProjCmd (x:xs) = (prjName, x:options)
    where (prjName, options) = findProjCmd xs
 findProjCmd [] = (Nothing, [])
 
--- Check if it is possible to create a new entry in HalfDayWorked.
--- We need a SetProj command with a valid project name
--- We try to find SetProj command
-checkCreateConditions :: (MonadIO m, MonadCatch m) =>
-   [WorkOption]
-   -> SqlPersistT m (Either String (ProjectId, [WorkOption]))
-checkCreateConditions wopts = case findProjCmd wopts of
-   (Nothing, _) -> return $ Left projCmdIsMandatory
-   (Just name, otherCmds) -> do
-      eiProject <- try $ projGet $ Project name
-      case eiProject of
-         Left  (ModelException msg) -> return $ Left msg
-         Right pId                  -> return $ Right (pId, otherCmds)
-
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
@@ -149,53 +133,29 @@ run (DiaryDisplay day time) = do
 -- Set a work entry TODO tid
 run (DiaryWork day time wopts) = do
 
-   -- Get half-day 
-   mbHdE <- getBy $ DayAndTimeInDay day time
-   -- Get half-day type
-   let mbHdType = fmap (halfDayType . entityVal) mbHdE
-   -- Get half-day worked 
-   -- mapM goes inside the maybe monad and getBy returns maybe. This results
-   -- maybe maybe that must be joined
-   mbHdwE <- join <$> mapM (getBy . UniqueHalfDayId . entityKey) mbHdE
-   -- Get conditions for creating new hdw  
-   eiConditions <- checkCreateConditions wopts
+   -- Get hdw
+   eiHdHdwProj <- try $ hdHdwProjGet day time
 
-   -- Get hd, hdw and options depending on the cases
-   -- If we create hdw we need a set project option so it is removed from
-   -- the list of commands
-   eiHdEHdwE <- case (mbHdE, mbHdType, mbHdwE, eiConditions) of
-      -- First case, hdw exists return it
-      (Just hdE, Just Worked, Just hdwE, _) -> return $ Right (hdE, hdwE, wopts)
-      -- Worked day but no hdw, error
-      (Just _, Just Worked, Nothing, _)   -> return $ Left dbInconstistency
-      -- The two following cases need conditions, but no condition here so error
-      (_, _, _, Left msg)            -> return $ Left msg
-      -- Holiday and condition, carry on
-      (Just hdE@(Entity hdId hd), Just Holiday, _, Right (projId, otherOpts)) -> do
-         -- Override HD
-         let hd' = hd { halfDayType = Worked }
-         replace hdId hd'
-         -- Create Hdw
-         hdwE <- runCreateHdw time hdId projId
-         return $ Right (hdE, hdwE, otherOpts)
-      -- No hd, create everything
-      (Nothing, _, _, Right (projId, otherOpts)) -> do
-         -- Create HD
-         let hd = HalfDay day time Worked
-         hdE@(Entity hdId _) <- insertEntity hd
-         -- Create Hdw
-         hdwE <- runCreateHdw time hdId projId
-         return $ Right (hdE, hdwE, otherOpts)
-      -- This should never happens
-      _ -> undefined
-
-   -- Need a special case for time
-
-   -- Check output of last command and apply remaining commands
-   case eiHdEHdwE of
+   -- Create it with a project if needed
+   eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
+      -- Everything is there
+      (Right (_, Just (_, _)), _) -> return $ Right wopts 
+      -- Nothing or holiday
+      (_, (Just proj, otherOpts)) -> do
+         eiAdded <- try $ hdSetWork day time $ Project proj
+         case eiAdded of
+            Right _ -> return $ Right otherOpts
+            Left (ModelException msg) -> return $ Left msg
+      -- Holiday but no project
+      (Right (_, Nothing), (Nothing, _)) -> return $ Left projCmdIsMandatory
+      -- No hd, but no project either
+      (Left (ModelException _), (Nothing, _)) -> return $ Left projCmdIsMandatory
+   
+   -- Apply remaining options
+   case eiOtherOpts of
       Left msg -> liftIO $ putStrLn msg
-      Right (_, _, otherOpts) -> do
-         mapM_ (dispatchEdit day time) otherOpts
+      Right otherOpts -> do
+         mapM_ (dispatchEdit day time) otherOpts -- TODO need to handle failure here
          -- Display new Half-Day
          run $ DiaryDisplay day time
 
