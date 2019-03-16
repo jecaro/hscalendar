@@ -1,6 +1,3 @@
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE DataKinds                  #-}
-
 module CommandLine 
     ( Cmd(..)
     , WorkOption(..)

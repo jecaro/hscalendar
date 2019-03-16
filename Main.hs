@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-
 import           Control.Exception.Safe (MonadCatch, try, catch)
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)

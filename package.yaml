@@ -38,4 +38,6 @@ executables:
     - -Wincomplete-record-updates
     - -Wincomplete-uni-patterns
     - -Wredundant-constraints
+default-extensions:
+  - OverloadedStrings
  
