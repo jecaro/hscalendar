@@ -38,6 +38,7 @@ import           ModelFcts
     , hdSetHoliday
     , hdSetWork
     , hdwSetArrived
+    , hdwSetArrivedAndLeft
     , hdwSetLeft
     , hdwSetNotes
     , hdwSetOffice
@@ -100,7 +101,7 @@ partitionFirst _ [] = (Nothing, [])
 partitionFirst p (x:xs) =
     case p x of
         r@(Just _) -> (r, xs)
-        Nothing    -> (r', xs')
+        Nothing    -> (r', x:xs')
           where (r', xs') = partitionFirst p xs
 
 -- Find a SetProj command
@@ -122,13 +123,15 @@ findLeftCmd = partitionFirst getLeft
         getLeft _ = Nothing
 
 -- Find both arrived and left command
-findArrivedAndLeftCmd :: [WorkOption] -> (Maybe (SetArrived, SetLeft), [WorkOption])
+findArrivedAndLeftCmd 
+    :: [WorkOption] 
+    -> (Maybe (SetArrived, SetLeft), [WorkOption])
 findArrivedAndLeftCmd options = 
     let (mbArrived, options')  = findArrivedCmd options
         (mbLeft,    options'') = findLeftCmd options'
     in case (mbArrived, mbLeft) of
         (Just arrived, Just left) -> (Just (arrived, left), options'')
-        _                         -> (Nothing, options'')
+        _                         -> (Nothing, options)
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
@@ -186,10 +189,20 @@ run (DiaryWork day tid wopts) = do
     case eiOtherOpts of
         Left msg -> liftIO $ putStrLn msg
         Right otherOpts -> do
-            mapM_ dispatchEditWithError otherOpts 
+            -- Apply set arrived set left when we have to two options
+            let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
+            case mbAL of
+                Just (SetArrived a, SetLeft l) -> 
+                    catch (hdwSetArrivedAndLeft day tid a l) 
+                        (\(ModelException msg) -> liftIO $ putStrLn msg)
+                Nothing -> return ()
+            -- Then apply remaining commands
+            mapM_ dispatchEditWithError otherOpts' 
             -- Display new Half-Day
             run $ DiaryDisplay day tid
-  where dispatchEditWithError x = catch (dispatchEdit day tid x) (\(ModelException msg) -> liftIO $ putStrLn msg)
+  where dispatchEditWithError x = 
+            catch (dispatchEdit day tid x) 
+                  (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Set a holiday entry
 run (DiaryHoliday day tid) = do
