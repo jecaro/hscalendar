@@ -18,7 +18,16 @@ import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
 import           Text.Printf (printf)
 
-import           CommandLine (WorkOption(..), Cmd(..), opts)
+import           CommandLine 
+    ( Cmd(..)
+    , SetArrived(..)
+    , SetLeft(..)
+    , SetNotes(..)
+    , SetOffice(..)
+    , SetProj(..)
+    , WorkOption(..)
+    , opts
+    )
 import           HalfDayType (HalfDayType(..))
 import           Model
 import           TimeInDay (TimeInDay(..))
@@ -67,7 +76,6 @@ import           ModelFcts
 -- - Add unit testing
 -- - Remove public holiday
 -- - Put -p as positional parameter
--- - Display entry after edit/new
 -- - Use Lens instead of records
 -- - Cascade delete
 -- - Add project rename
@@ -76,6 +84,8 @@ import           ModelFcts
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Add office la cambuzz
+-- - Change String for Text
+-- - Add extension case lambda
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -84,20 +94,48 @@ import           ModelFcts
 errProjCmdIsMandatory :: String
 errProjCmdIsMandatory = "There should be one project command"
 
--- Find a project option in a list of options, gets its name and return 
--- remaining options
-findProjCmd :: [WorkOption] -> (Maybe String, [WorkOption])
-findProjCmd (SetProj x:xs) = (Just x, xs)
-findProjCmd (x:xs) = (prjName, x:options)
-   where (prjName, options) = findProjCmd xs
-findProjCmd [] = (Nothing, [])
+-- Get out the first element of a list which return Just 
+partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
+partitionFirst _ [] = (Nothing, [])
+partitionFirst p (x:xs) =
+    case p x of
+        r@(Just _) -> (r, xs)
+        Nothing    -> (r', xs')
+          where (r', xs') = partitionFirst p xs
+
+-- Find a SetProj command
+findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
+findProjCmd = partitionFirst getProj 
+  where getProj (OptSetProj s@(SetProj _)) = Just s
+        getProj _ = Nothing
+
+-- Find a SetArrived command
+findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
+findArrivedCmd = partitionFirst getArrived 
+  where getArrived (OptSetArrived s@(SetArrived _)) = Just s
+        getArrived _ = Nothing
+
+-- Find a SetLeft command
+findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
+findLeftCmd = partitionFirst getLeft 
+  where getLeft (OptSetLeft s@(SetLeft _)) = Just s
+        getLeft _ = Nothing
+
+-- Find both arrived and left command
+findArrivedAndLeftCmd :: [WorkOption] -> (Maybe (SetArrived, SetLeft), [WorkOption])
+findArrivedAndLeftCmd options = 
+    let (mbArrived, options')  = findArrivedCmd options
+        (mbLeft,    options'') = findLeftCmd options'
+    in case (mbArrived, mbLeft) of
+        (Just arrived, Just left) -> (Just (arrived, left), options'')
+        _                         -> (Nothing, options'')
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
-run (ProjAdd name) =
+run (ProjAdd name) = 
     catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
@@ -134,7 +172,7 @@ run (DiaryWork day tid wopts) = do
         -- Everything is there
         (Right (_, Just (_, _)), _) -> return $ Right wopts 
         -- Nothing or holiday
-        (_, (Just proj, otherOpts)) -> do
+        (_, (Just (SetProj proj), otherOpts)) -> do
             eiAdded <- try $ hdSetWork day tid $ Project proj
             case eiAdded of
                 Right _ -> return $ Right otherOpts
@@ -162,7 +200,7 @@ run (DiaryHoliday day tid) = do
 -- Delete an entry
 run (DiaryRm day tid) = catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
--- Dispatch edit - TODO handle modelexception (no project)
+-- Dispatch edit
 dispatchEdit
     :: (MonadIO m, MonadCatch m)
     => Day
@@ -170,13 +208,13 @@ dispatchEdit
     -> WorkOption
     -> SqlPersistT m()
 -- Set arrived time
-dispatchEdit day tid (SetArrived time)  = hdwSetArrived day tid time
+dispatchEdit day tid (OptSetArrived (SetArrived time)) = hdwSetArrived day tid time
 -- Set left time
-dispatchEdit day tid (SetLeft time)     = hdwSetLeft day tid time
+dispatchEdit day tid (OptSetLeft (SetLeft time))       = hdwSetLeft day tid time
 -- Simple actions handling
-dispatchEdit day tid (SetNotes notes)   = hdwSetNotes day tid notes
-dispatchEdit day tid (SetOffice office) = hdwSetOffice day tid office
-dispatchEdit day tid (SetProj name)     = hdwSetProject day tid $ Project name
+dispatchEdit day tid (OptSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
+dispatchEdit day tid (OptSetOffice (SetOffice office)) = hdwSetOffice day tid office
+dispatchEdit day tid (OptSetProj (SetProj name))       = hdwSetProject day tid $ Project name
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT

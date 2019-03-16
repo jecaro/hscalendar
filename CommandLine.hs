@@ -1,8 +1,14 @@
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE DataKinds                  #-}
 
 module CommandLine 
     ( Cmd(..)
     , WorkOption(..)
+    , SetArrived(..)
+    , SetLeft(..)
+    , SetNotes(..)
+    , SetOffice(..)
+    , SetProj(..)
     , cmd
     , opts
     ) where
@@ -56,11 +62,26 @@ data Cmd = ProjList                             |
            DiaryWork Day TimeInDay [WorkOption]
     deriving (Eq, Show)
 
-data WorkOption = SetProj String       |
-                  SetNotes String      |
-                  SetArrived TimeOfDay |
-                  SetLeft TimeOfDay    |
-                  SetOffice Office
+newtype SetProj = SetProj String
+    deriving (Eq, Show)
+
+newtype SetNotes = SetNotes String
+    deriving (Eq, Show)
+
+newtype SetArrived = SetArrived TimeOfDay
+    deriving (Eq, Show)
+
+newtype SetLeft = SetLeft TimeOfDay
+    deriving (Eq, Show)
+
+newtype SetOffice = SetOffice Office
+    deriving (Eq, Show)
+
+data WorkOption = OptSetProj SetProj       |
+                  OptSetNotes SetNotes     |
+                  OptSetArrived SetArrived |
+                  OptSetLeft SetLeft       |
+                  OptSetOffice SetOffice
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
@@ -135,35 +156,35 @@ workOption = workOptionSetProj    <|>
              workOptionSetOffice
 
 workOptionSetProj :: Opt.Parser WorkOption
-workOptionSetProj = SetProj <$> strOption
+workOptionSetProj = OptSetProj . SetProj <$> strOption
     (  long "project"
     <> short 'p'
     <> metavar "PROJECT"
     <> help "Set the project" )
 
 workOptionSetNotes :: Opt.Parser WorkOption
-workOptionSetNotes = SetNotes <$> strOption
+workOptionSetNotes = OptSetNotes . SetNotes <$> strOption
     (  long "notes"
     <> short 'n'
     <> metavar "NOTES"
     <> help "Set the notes" )
 
 workOptionSetArrived :: Opt.Parser WorkOption
-workOptionSetArrived = SetArrived <$> option parseTimeOfDay
+workOptionSetArrived = OptSetArrived . SetArrived <$> option parseTimeOfDay
     (  long "arrived"
     <> short 'a'
     <> metavar "TIME"
     <> help "Time of arrival" )
 
 workOptionSetLeft :: Opt.Parser WorkOption
-workOptionSetLeft = SetLeft <$> option parseTimeOfDay
+workOptionSetLeft = OptSetLeft . SetLeft <$> option parseTimeOfDay
     (  long "left"
     <> short 'l'
     <> metavar "TIME"
     <> help "Time of leaving" )
 
 workOptionSetOffice :: Opt.Parser WorkOption
-workOptionSetOffice = SetOffice <$> option parseOffice
+workOptionSetOffice = OptSetOffice . SetOffice <$> option parseOffice
     (  long "office"
     <> short 'o'
     <> metavar "OFFICE"
