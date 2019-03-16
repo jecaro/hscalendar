@@ -81,11 +81,9 @@ import           ModelFcts
 -- - Cascade delete
 -- - Add project rename
 -- - Use unliftio instead of safe-exceptions
--- - Try to remove mtl
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Add office la cambuzz
--- - Change String for Text
 -- - Add extension case lambda
 
 -- Ideas
