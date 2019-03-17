@@ -83,11 +83,10 @@ projExists :: MonadIO m => Project -> SqlPersistT m Bool
 projExists (Project name) = isJust <$> getBy (UniqueName name)
 
 projAdd :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
-projAdd project = do
-    pExists <- projExists project
-    if pExists
-        then throwM $ ModelException $ errProjExists project
-        else void $ insert project
+projAdd project = projExists project >>= 
+    \case
+        True  -> throwM $ ModelException $ errProjExists project
+        False -> void $ insert project
 
 projList :: MonadIO m => SqlPersistT m [Project]
 projList = map entityVal <$> selectList [] [Asc ProjectName] 
@@ -103,9 +102,8 @@ projRm project = do
 -- Internal project functions
 
 projGetInt :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m (Key Project)
-projGetInt project@(Project name) = do
-    mbProj <- getBy $ UniqueName name 
-    case mbProj of
+projGetInt project@(Project name) = getBy (UniqueName name) >>= 
+    \case
         Nothing             -> throwM $ ModelException $ errProjNotFound project
         Just (Entity pId _) -> return pId
 
@@ -120,7 +118,7 @@ hdHdwProjGet
 hdHdwProjGet day tid = do
     (Entity hdId hd) <- hdGetInt day tid 
     eiHdwProj <- try $ hdwProjGetInt hdId
-    let mbHdw = case eiHdwProj of 
+    let mbHdw = case eiHdwProj of       
           Left (ModelException _)                -> Nothing
           Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
     -- Check for consistency
@@ -182,9 +180,8 @@ hdwSetArrivedAndLeft day tid arrived left = do
                 , halfDayWorkedLeft    = left' }
 
 hdSetHoliday :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
-hdSetHoliday day tid = do
-    eiHd <- try $ hdGetInt day tid
-    case eiHd of
+hdSetHoliday day tid = try (hdGetInt day tid) >>=
+    \case 
         -- Create a new entry
         Left (ModelException _) -> void $ insert $ HalfDay day tid Holiday
         -- Edit existing entry
@@ -227,9 +224,8 @@ hdRm day tid = do
 
 -- Get a half day if it exists or raise an exception
 hdGetInt :: (MonadIO m, MonadThrow m) => Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
-hdGetInt day tid = do
-    mbHd <- getBy $ DayAndTimeInDay day tid
-    case mbHd of
+hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
+    \case 
         Nothing -> throwM $ ModelException $ errHdNotFound day tid
         Just e  -> return e
 
@@ -237,9 +233,8 @@ hdwProjGetInt
     :: (MonadIO m, MonadThrow m) 
     => HalfDayId 
     -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
-hdwProjGetInt hdId = do
-    mbHdw <- getBy $ UniqueHalfDayId hdId
-    case mbHdw of
+hdwProjGetInt hdId = getBy (UniqueHalfDayId hdId) >>=
+    \case
         Nothing -> throwM $ ModelException $ errHdwIdNotFound hdId
         Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
             mbProj <- get pId
@@ -261,8 +256,13 @@ hdHdwProjGetInt day tid = do
 -- hd private functions
 
 -- Check that the constraints on the times are valid between the two days
-timesAreOrderedInDay :: TimeInDay -> HalfDayWorked -> Maybe HalfDayWorked -> Maybe String
-timesAreOrderedInDay Morning hdw mbOtherHdw = timeAreOrdered $ timesOfDay hdw ++ otherTimes
+timesAreOrderedInDay 
+    :: TimeInDay 
+    -> HalfDayWorked 
+    -> Maybe HalfDayWorked 
+    -> Maybe String
+timesAreOrderedInDay Morning hdw mbOtherHdw = 
+    timeAreOrdered $ timesOfDay hdw ++ otherTimes
   where otherTimes = concatMap timesOfDay mbOtherHdw
 -- We switch the arguments and call the same function
 timesAreOrderedInDay Afternoon hdw (Just otherHdw) =

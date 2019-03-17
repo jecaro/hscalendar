@@ -39,5 +39,6 @@ executables:
     - -Wincomplete-uni-patterns
     - -Wredundant-constraints
 default-extensions:
+  - LambdaCase
   - OverloadedStrings
  

@@ -79,7 +79,6 @@ import           ModelFcts
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Add office la cambuzz
--- - Add extension case lambda
 
 -- Ideas
 -- - put default values for starting ending time in a config file
