@@ -100,19 +100,19 @@ partitionFirst p (x:xs) =
 -- Find a SetProj command
 findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
 findProjCmd = partitionFirst getProj 
-  where getProj (OptSetProj s@(SetProj _)) = Just s
+  where getProj (MkSetProj s@(SetProj _)) = Just s
         getProj _ = Nothing
 
 -- Find a SetArrived command
 findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
 findArrivedCmd = partitionFirst getArrived 
-  where getArrived (OptSetArrived s@(SetArrived _)) = Just s
+  where getArrived (MkSetArrived s@(SetArrived _)) = Just s
         getArrived _ = Nothing
 
 -- Find a SetLeft command
 findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
 findLeftCmd = partitionFirst getLeft 
-  where getLeft (OptSetLeft s@(SetLeft _)) = Just s
+  where getLeft (MkSetLeft s@(SetLeft _)) = Just s
         getLeft _ = Nothing
 
 -- Find both arrived and left command
@@ -214,13 +214,13 @@ dispatchEdit
     -> WorkOption
     -> SqlPersistT m()
 -- Set arrived time
-dispatchEdit day tid (OptSetArrived (SetArrived time)) = hdwSetArrived day tid time
+dispatchEdit day tid (MkSetArrived (SetArrived time)) = hdwSetArrived day tid time
 -- Set left time
-dispatchEdit day tid (OptSetLeft (SetLeft time))       = hdwSetLeft day tid time
+dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdwSetLeft day tid time
 -- Simple actions handling
-dispatchEdit day tid (OptSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
-dispatchEdit day tid (OptSetOffice (SetOffice office)) = hdwSetOffice day tid office
-dispatchEdit day tid (OptSetProj (SetProj name))       = hdwSetProject day tid $ Project name
+dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
+dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
+dispatchEdit day tid (MkSetProj (SetProj name))       = hdwSetProject day tid $ Project name
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT

@@ -74,11 +74,11 @@ newtype SetLeft = SetLeft TimeOfDay
 newtype SetOffice = SetOffice Office
     deriving (Eq, Show)
 
-data WorkOption = OptSetProj SetProj       |
-                  OptSetNotes SetNotes     |
-                  OptSetArrived SetArrived |
-                  OptSetLeft SetLeft       |
-                  OptSetOffice SetOffice
+data WorkOption = MkSetProj SetProj       |
+                  MkSetNotes SetNotes     |
+                  MkSetArrived SetArrived |
+                  MkSetLeft SetLeft       |
+                  MkSetOffice SetOffice
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
@@ -153,35 +153,35 @@ workOption = workOptionSetProj    <|>
              workOptionSetOffice
 
 workOptionSetProj :: Opt.Parser WorkOption
-workOptionSetProj = OptSetProj . SetProj <$> strOption
+workOptionSetProj = MkSetProj . SetProj <$> strOption
     (  long "project"
     <> short 'p'
     <> metavar "PROJECT"
     <> help "Set the project" )
 
 workOptionSetNotes :: Opt.Parser WorkOption
-workOptionSetNotes = OptSetNotes . SetNotes <$> strOption
+workOptionSetNotes = MkSetNotes . SetNotes <$> strOption
     (  long "notes"
     <> short 'n'
     <> metavar "NOTES"
     <> help "Set the notes" )
 
 workOptionSetArrived :: Opt.Parser WorkOption
-workOptionSetArrived = OptSetArrived . SetArrived <$> option parseTimeOfDay
+workOptionSetArrived = MkSetArrived . SetArrived <$> option parseTimeOfDay
     (  long "arrived"
     <> short 'a'
     <> metavar "TIME"
     <> help "Time of arrival" )
 
 workOptionSetLeft :: Opt.Parser WorkOption
-workOptionSetLeft = OptSetLeft . SetLeft <$> option parseTimeOfDay
+workOptionSetLeft = MkSetLeft . SetLeft <$> option parseTimeOfDay
     (  long "left"
     <> short 'l'
     <> metavar "TIME"
     <> help "Time of leaving" )
 
 workOptionSetOffice :: Opt.Parser WorkOption
-workOptionSetOffice = OptSetOffice . SetOffice <$> option parseOffice
+workOptionSetOffice = MkSetOffice . SetOffice <$> option parseOffice
     (  long "office"
     <> short 'o'
     <> metavar "OFFICE"
