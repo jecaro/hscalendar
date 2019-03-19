@@ -23,6 +23,7 @@ import           CommandLine
     , WorkOption(..)
     , opts
     )
+import           CustomDay(toDay)
 import           HalfDayType (HalfDayType(..))
 import           Model
 import           TimeInDay (TimeInDay(..))
@@ -58,13 +59,9 @@ import           ModelFcts
 
 -- TODO:
 -- - Error handling in parser -> show message
--- - Bug need to apply times in the same time
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
--- - Add keywords today, yesterday, tomorrow, change date 
---   for 22/03/1979, or 22/03 for current year, or 22 for 
---   current month
 -- - Make diary date/TimeInDay optional default today
 -- - Append note
 -- - Launch editor
@@ -78,7 +75,8 @@ import           ModelFcts
 -- - Use unliftio instead of safe-exceptions
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
--- - Add office la cambuzz
+-- - Sort functions in CommandLine module
+-- - Show day in dd-mm-yyyy
 
 -- Ideas
 -- - put default values for starting ending time in a config file
@@ -138,7 +136,9 @@ run (ProjAdd name) =
 run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Display an entry
-run (DiaryDisplay day tid) = do
+run (DiaryDisplay cd tid) = do
+    -- Get actual day
+    day <- toDay cd
     -- Display input date
     liftIO . putStrLn $ show day ++ " " ++ show tid
     -- Get half-day
@@ -157,7 +157,10 @@ run (DiaryDisplay day tid) = do
   where showTime (TimeOfDay h m _) = printf "%02d" h ++ ":" ++ printf "%02d" m
 
 -- Set a work entry 
-run (DiaryWork day tid wopts) = do
+run (DiaryWork cd tid wopts) = do
+
+    -- Get actual day
+    day <- toDay cd
 
     -- Get hdw
     eiHdHdwProj <- try $ hdHdwProjGet day tid
@@ -191,19 +194,22 @@ run (DiaryWork day tid wopts) = do
             -- Then apply remaining commands
             mapM_ dispatchEditWithError otherOpts' 
             -- Display new Half-Day
-            run $ DiaryDisplay day tid
-  where dispatchEditWithError x = 
-            catch (dispatchEdit day tid x) 
-                  (\(ModelException msg) -> liftIO $ putStrLn msg)
+            run $ DiaryDisplay cd tid
+          where dispatchEditWithError x = 
+                    catch (dispatchEdit day tid x) 
+                          (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Set a holiday entry
-run (DiaryHoliday day tid) = do
+run (DiaryHoliday cd tid) = do
+    day <- toDay cd
     hdSetHoliday day tid
     -- Display new Half-Day
-    run $ DiaryDisplay day tid
+    run $ DiaryDisplay cd tid
 
 -- Delete an entry
-run (DiaryRm day tid) = catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
+run (DiaryRm cs tid) = do
+    day <- toDay cs
+    catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
 
 -- Dispatch edit
 dispatchEdit

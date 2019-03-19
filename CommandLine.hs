@@ -1,11 +1,11 @@
 module CommandLine 
     ( Cmd(..)
-    , WorkOption(..)
     , SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
     , SetOffice(..)
     , SetProj(..)
+    , WorkOption(..)
     , cmd
     , opts
     ) where
@@ -19,14 +19,13 @@ import           Data.Attoparsec.Text as Atto
     )
 import           Data.Functor (($>))
 import           Data.Text (pack)
-import           Data.Time.Calendar (Day)
+import           Data.Time.Calendar (fromGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative as Opt
     ( Parser
     , ParserInfo
     , ReadM
     , argument
-    , auto
     , command
     , eitherReader 
     , help 
@@ -47,16 +46,17 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 
+import           CustomDay (CustomDay(..))
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 
-data Cmd = ProjList                             |
-           ProjRm String                        |
-           ProjAdd String                       |
-           DiaryDisplay Day TimeInDay           |
-           DiaryRm Day TimeInDay                |
-           DiaryHoliday Day TimeInDay           |
-           DiaryWork Day TimeInDay [WorkOption]
+data Cmd = ProjList                         |
+           ProjRm String                    |
+           ProjAdd String                   |
+           DiaryDisplay CustomDay TimeInDay |
+           DiaryRm CustomDay TimeInDay      |
+           DiaryHoliday CustomDay TimeInDay |
+           DiaryWork CustomDay TimeInDay [WorkOption]
     deriving (Eq, Show)
 
 newtype SetProj = SetProj String
@@ -88,6 +88,7 @@ parseOffice :: ReadM Office
 parseOffice = attoReadM parser
   where parser = string "rennes" $> Rennes
              <|> string "home"   $> Home
+             <|> string "poool"  $> Poool
 
 parseTimeInDay :: ReadM TimeInDay
 parseTimeInDay = attoReadM parser
@@ -102,6 +103,26 @@ parseTimeOfDay = attoReadM parser
             m <- decimal
             return $ TimeOfDay h m 0
 
+parseCustomDay :: ReadM CustomDay
+parseCustomDay = attoReadM parser
+    where parser = string "today"     $> Today
+               <|> string "yesterday" $> Yesterday
+               <|> string "tomorrow"  $> Tomorrow
+               <|> do
+                    d <- decimal
+                    _ <- char '-'
+                    m <- decimal
+                    _ <- char '-'
+                    y <- decimal
+                    return $ MkDay $ fromGregorian y m d 
+               <|> do
+                    d <- decimal
+                    _ <- char '-'
+                    m <- decimal
+                    return $ MkDayMonthNum d m 
+               <|> do
+                    d <- decimal
+                    return $ MkDayNum d
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
@@ -118,22 +139,22 @@ projCmd = subparser
 
 diaryDisplay :: Opt.Parser Cmd
 diaryDisplay = DiaryDisplay <$>
-    argument auto (metavar "DAY") <*>
+    argument parseCustomDay (metavar "DAY") <*>
     argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm <$>
-    argument auto (metavar "DAY") <*>
+    argument parseCustomDay (metavar "DAY") <*>
     argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday <$>
-    argument auto (metavar "DAY") <*>
+    argument parseCustomDay (metavar "DAY") <*>
     argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork <$>
-    argument auto (metavar "DAY") <*>
+    argument parseCustomDay (metavar "DAY") <*>
     argument parseTimeInDay (metavar "TIMEINDAY") <*>
     some workOption
 
