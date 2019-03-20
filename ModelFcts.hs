@@ -15,6 +15,7 @@ module ModelFcts
     , projList
     , projRename
     , projRm
+    , showDay
     ) where
 
 import           Control.Exception.Safe 
@@ -43,8 +44,9 @@ import           Database.Persist.Sqlite
     )
 
 import           Data.Maybe (isJust)
-import           Data.Time.Calendar (Day)
+import           Data.Time.Calendar (Day, toGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
+import           Text.Printf (printf)
 
 import           HalfDayType(HalfDayType(..))
 import           Model
@@ -64,7 +66,7 @@ errProjExists :: Project -> String
 errProjExists (Project name) = "The project " ++ name ++ " exists in the database"
 
 errHdNotFound :: Day -> TimeInDay -> String
-errHdNotFound day tid = "Nothing for " ++ show day ++ " " ++ show tid
+errHdNotFound day tid = "Nothing for " ++ showDay day ++ " " ++ show tid
 
 errHdwIdNotFound :: HalfDayId -> String
 errHdwIdNotFound hdwId = "No half-day worked entry for " ++ show hdwId
@@ -77,6 +79,12 @@ errDbInconsistency = "Warning db inconsistency"
 
 errTimesAreWrong :: String
 errTimesAreWrong = "Times are wrong"
+
+-- Misc 
+
+showDay :: Day -> String
+showDay day = printf "%02d" d ++ "-" ++ printf "%02d" m ++ "-" ++ show y
+  where (y, m, d) = toGregorian day
 
 -- Exported project functions 
 

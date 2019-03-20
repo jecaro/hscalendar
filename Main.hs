@@ -43,6 +43,7 @@ import           ModelFcts
     , projList
     , projRename
     , projRm
+    , showDay
     )
 
 -- Synopsis
@@ -54,6 +55,7 @@ import           ModelFcts
 --     -l 00:00     set left time
 -- hsmaster diary holiday date morning|afternoon
 -- hsmaster diary rm date morning|afternoon
+-- hsmaster diary display date morning|afternoon
 -- hsmaster project list
 -- hsmaster project rm project
 -- hsmaster project add project
@@ -77,10 +79,10 @@ import           ModelFcts
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Sort functions in CommandLine module
--- - Show day in dd-mm-yyyy
+-- - Show day of the week
 
 -- Ideas
--- - put default values for starting ending time in a config file
+-- - put default values in a config file as well as open days
 -- - put db file in a config file as well
 
 errProjCmdIsMandatory :: String
@@ -147,7 +149,7 @@ run (DiaryDisplay cd tid) = do
     -- Get actual day
     day <- toDay cd
     -- Display input date
-    liftIO . putStrLn $ show day ++ " " ++ show tid
+    liftIO . putStrLn $ showDay day ++ " " ++ show tid
     -- Get half-day
     eiHdHdwProj <- try $ hdHdwProjGet day tid
     -- Analyse output to produce lines of text
@@ -161,6 +163,7 @@ run (DiaryDisplay cd tid) = do
                ]
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
+  -- TODO factorise this
   where showTime (TimeOfDay h m _) = printf "%02d" h ++ ":" ++ printf "%02d" m
 
 -- Set a work entry 
