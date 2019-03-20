@@ -8,6 +8,7 @@ import           Database.Persist.Sqlite
     , runSqlPool
     , withSqlitePool
     )
+import           Data.List (intersperse)
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
@@ -80,6 +81,7 @@ import           ModelFcts
 -- - Add standard documentation
 -- - Sort functions in CommandLine module
 -- - Show day of the week
+-- - Add colors/bold
 
 -- Ideas
 -- - put default values in a config file as well as open days
@@ -163,8 +165,8 @@ run (DiaryDisplay cd tid) = do
                ]
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
-  -- TODO factorise this
-  where showTime (TimeOfDay h m _) = printf "%02d" h ++ ":" ++ printf "%02d" m
+  where showTime (TimeOfDay h m _) = 
+            concat . intersperse ":" $ fmap (printf "%02d") [h, m]
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
