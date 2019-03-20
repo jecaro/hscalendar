@@ -87,14 +87,14 @@ attoReadM p = eitherReader (parseOnly p . pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
-  where parser = string "rennes" $> Rennes
-             <|> string "home"   $> Home
-             <|> string "poool"  $> Poool
+  where parser =   string "rennes" $> Rennes
+               <|> string "home"   $> Home
+               <|> string "poool"  $> Poool
 
 parseTimeInDay :: ReadM TimeInDay
 parseTimeInDay = attoReadM parser
-  where parser = string "morning"   $> Morning
-             <|> string "afternoon" $> Afternoon
+  where parser =   string "morning"   $> Morning
+               <|> string "afternoon" $> Afternoon
 
 parseTimeOfDay :: ReadM TimeOfDay
 parseTimeOfDay = attoReadM parser
@@ -106,7 +106,7 @@ parseTimeOfDay = attoReadM parser
 
 parseCustomDay :: ReadM CustomDay
 parseCustomDay = attoReadM parser
-    where parser = string "today"     $> Today
+  where parser =   string "today"     $> Today
                <|> string "yesterday" $> Yesterday
                <|> string "tomorrow"  $> Tomorrow
                <|> do
@@ -145,25 +145,25 @@ projCmd = subparser
     )
 
 diaryDisplay :: Opt.Parser Cmd
-diaryDisplay = DiaryDisplay <$>
-    argument parseCustomDay (metavar "DAY") <*>
-    argument parseTimeInDay (metavar "TIMEINDAY")
+diaryDisplay = DiaryDisplay 
+    <$> argument parseCustomDay (metavar "DAY") 
+    <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryRm :: Opt.Parser Cmd
-diaryRm = DiaryRm <$>
-    argument parseCustomDay (metavar "DAY") <*>
-    argument parseTimeInDay (metavar "TIMEINDAY")
+diaryRm = DiaryRm 
+    <$> argument parseCustomDay (metavar "DAY") 
+    <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Opt.Parser Cmd
-diaryHoliday = DiaryHoliday <$>
-    argument parseCustomDay (metavar "DAY") <*>
-    argument parseTimeInDay (metavar "TIMEINDAY")
+diaryHoliday = DiaryHoliday 
+    <$> argument parseCustomDay (metavar "DAY") 
+    <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Opt.Parser Cmd
-diaryWork = DiaryWork <$>
-    argument parseCustomDay (metavar "DAY") <*>
-    argument parseTimeInDay (metavar "TIMEINDAY") <*>
-    some workOption
+diaryWork = DiaryWork 
+    <$> argument parseCustomDay (metavar "DAY") 
+    <*> argument parseTimeInDay (metavar "TIMEINDAY") 
+    <*> some workOption
 
 diaryCmd :: Opt.Parser Cmd
 diaryCmd = hsubparser
