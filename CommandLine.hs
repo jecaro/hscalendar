@@ -50,13 +50,14 @@ import           CustomDay (CustomDay(..))
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 
-data Cmd = ProjList                         |
-           ProjRm String                    |
-           ProjAdd String                   |
-           DiaryDisplay CustomDay TimeInDay |
-           DiaryRm CustomDay TimeInDay      |
-           DiaryHoliday CustomDay TimeInDay |
-           DiaryWork CustomDay TimeInDay [WorkOption]
+data Cmd = DiaryDisplay CustomDay TimeInDay           |
+           DiaryHoliday CustomDay TimeInDay           |
+           DiaryRm CustomDay TimeInDay                |
+           DiaryWork CustomDay TimeInDay [WorkOption] |
+           ProjAdd String                             |
+           ProjList                                   |
+           ProjRename String String                   |
+           ProjRm String
     deriving (Eq, Show)
 
 newtype SetProj = SetProj String
@@ -74,11 +75,11 @@ newtype SetLeft = SetLeft TimeOfDay
 newtype SetOffice = SetOffice Office
     deriving (Eq, Show)
 
-data WorkOption = MkSetProj SetProj       |
-                  MkSetNotes SetNotes     |
-                  MkSetArrived SetArrived |
+data WorkOption = MkSetArrived SetArrived |
                   MkSetLeft SetLeft       |
-                  MkSetOffice SetOffice
+                  MkSetNotes SetNotes     |
+                  MkSetOffice SetOffice   |
+                  MkSetProj SetProj
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
@@ -127,14 +128,20 @@ parseCustomDay = attoReadM parser
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
 
+projRename :: Opt.Parser Cmd
+projRename = ProjRename 
+    <$> argument str (metavar "PROJECT...") 
+    <*> argument str (metavar "PROJECT...")
+
 projAdd :: Opt.Parser Cmd
 projAdd = ProjAdd <$> argument str (metavar "PROJECT...")
 
 projCmd :: Opt.Parser Cmd
 projCmd = subparser
-    (  command "list" (info (pure ProjList) (progDesc "List current projects"))
-    <> command "add"  (info projAdd         (progDesc "Add project"))
-    <> command "rm"   (info projRm          (progDesc "Remove project"))
+    (  command "list"   (info (pure ProjList) (progDesc "List current projects"))
+    <> command "add"    (info projAdd         (progDesc "Add project"))
+    <> command "rm"     (info projRm          (progDesc "Remove project"))
+    <> command "rename" (info projRename      (progDesc "Rename project"))
     )
 
 diaryDisplay :: Opt.Parser Cmd

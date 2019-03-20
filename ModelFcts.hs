@@ -13,6 +13,7 @@ module ModelFcts
     , projAdd
     , projExists
     , projList
+    , projRename
     , projRm
     ) where
 
@@ -23,7 +24,7 @@ import           Control.Exception.Safe
     , throwM
     , try
     )
-import           Control.Monad (void)
+import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
 import           Database.Persist.Sqlite 
     ( Entity(..)
@@ -83,10 +84,9 @@ projExists :: MonadIO m => Project -> SqlPersistT m Bool
 projExists (Project name) = isJust <$> getBy (UniqueName name)
 
 projAdd :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
-projAdd project = projExists project >>= 
-    \case
-        True  -> throwM $ ModelException $ errProjExists project
-        False -> void $ insert project
+projAdd project = do
+    guardProjNotExistsInt project
+    void $ insert project
 
 projList :: MonadIO m => SqlPersistT m [Project]
 projList = map entityVal <$> selectList [] [Asc ProjectName] 
@@ -99,6 +99,12 @@ projRm project = do
     deleteWhere [HalfDayWorkedProjectId ==. pId]
     delete pId
 
+projRename :: (MonadIO m, MonadThrow m) => Project -> Project -> SqlPersistT m ()
+projRename p1 p2 = do
+    pId <- projGetInt p1
+    guardProjNotExistsInt p2
+    replace pId p2
+
 -- Internal project functions
 
 projGetInt :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m (Key Project)
@@ -106,6 +112,11 @@ projGetInt project@(Project name) = getBy (UniqueName name) >>=
     \case
         Nothing             -> throwM $ ModelException $ errProjNotFound project
         Just (Entity pId _) -> return pId
+
+guardProjNotExistsInt :: (MonadIO m, MonadThrow m) => Project -> SqlPersistT m ()
+guardProjNotExistsInt project = do
+    exists <- projExists project
+    when exists (throwM $ ModelException $ errProjExists project)
 
 -- Exported hd functions
 

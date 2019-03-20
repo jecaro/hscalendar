@@ -41,11 +41,12 @@ import           ModelFcts
     , hdwSetProject
     , projAdd
     , projList
+    , projRename
     , projRm
     )
 
 -- Synopsis
--- hsmaster diary work date Morning|Afternoon [commands]
+-- hsmaster diary work date morning|afternoon [commands]
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
@@ -54,8 +55,9 @@ import           ModelFcts
 -- hsmaster diary holiday date morning|afternoon
 -- hsmaster diary rm date morning|afternoon
 -- hsmaster project list
--- hsmaster project remove project
+-- hsmaster project rm project
 -- hsmaster project add project
+-- hsmaster project rename project1 project2 
 
 -- TODO:
 -- - Error handling in parser -> show message
@@ -71,7 +73,6 @@ import           ModelFcts
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
 -- - Cascade delete
--- - Add project rename
 -- - Use unliftio instead of safe-exceptions
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
@@ -128,12 +129,18 @@ run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
-run (ProjAdd name) = 
-    catch (void $ projAdd $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+run (ProjAdd name) = catch (void $ projAdd $ Project name) 
+                           (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
-run (ProjRm name) = catch (projRm $ Project name) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+run (ProjRm name) = catch (projRm $ Project name) 
+                          (\(ModelException msg) -> liftIO . putStrLn $ msg)
+
+run (ProjRename name1 name2) = catch 
+    (projRename p1 p2) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+  where p1 = Project name1
+        p2 = Project name2
 
 -- Display an entry
 run (DiaryDisplay cd tid) = do
