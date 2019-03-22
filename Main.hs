@@ -8,7 +8,7 @@ import           Database.Persist.Sqlite
     , runSqlPool
     , withSqlitePool
     )
-import           Data.List (intersperse)
+import           Data.List (intercalate)
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
@@ -48,7 +48,7 @@ import           ModelFcts
     )
 
 -- Synopsis
--- hsmaster diary work date morning|afternoon [commands]
+-- hsmaster diary work -d date -m|-a [commands]
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
@@ -166,7 +166,7 @@ run (DiaryDisplay cd tid) = do
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
   where showTime (TimeOfDay h m _) = 
-            concat . intersperse ":" $ fmap (printf "%02d") [h, m]
+            intercalate ":" $ fmap (printf "%02d") [h, m]
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do

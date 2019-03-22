@@ -1,4 +1,4 @@
-module CommandLine 
+module CommandLine
     ( Cmd(..)
     , SetArrived(..)
     , SetLeft(..)
@@ -27,21 +27,23 @@ import           Options.Applicative as Opt
     , ReadM
     , argument
     , command
-    , eitherReader 
-    , help 
+    , eitherReader
+    , help
     , helper
-    , hsubparser 
+    , hsubparser
     , idm
     , info
     , long
+    , liftA2
+    , liftA3
     , metavar
     , option
-    , progDesc 
+    , progDesc
     , short
     , some
     , str
     , strOption
-    , subparser 
+    , subparser
     , (<**>)
     , (<|>)
     )
@@ -98,39 +100,24 @@ parseTimeInDay = attoReadM parser
 
 parseTimeOfDay :: ReadM TimeOfDay
 parseTimeOfDay = attoReadM parser
-  where parser = do
-            h <- decimal
-            _ <- char ':'
-            m <- decimal
-            return $ TimeOfDay h m 0
+  where parser = liftA2 (\h m -> TimeOfDay h m 0) decimal (char ':' *> decimal)
 
 parseCustomDay :: ReadM CustomDay
 parseCustomDay = attoReadM parser
   where parser =   string "today"     $> Today
                <|> string "yesterday" $> Yesterday
                <|> string "tomorrow"  $> Tomorrow
-               <|> do
-                    d <- decimal
-                    _ <- char '-'
-                    m <- decimal
-                    _ <- char '-'
-                    y <- decimal
-                    return $ MkDay $ fromGregorian y m d 
-               <|> do
-                    d <- decimal
-                    _ <- char '-'
-                    m <- decimal
-                    return $ MkDayMonthNum d m 
-               <|> do
-                    d <- decimal
-                    return $ MkDayNum d
+               <|> liftA3 mkDayFromGregorian decimal (char '-' *> decimal) (char '-' *> decimal)
+               <|> liftA2 MkDayMonthNum decimal (char '-' *> decimal)
+               <|> MkDayNum <$> decimal
+        mkDayFromGregorian d m y = MkDay $ fromGregorian y m d
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")
 
 projRename :: Opt.Parser Cmd
-projRename = ProjRename 
-    <$> argument str (metavar "PROJECT...") 
+projRename = ProjRename
+    <$> argument str (metavar "PROJECT...")
     <*> argument str (metavar "PROJECT...")
 
 projAdd :: Opt.Parser Cmd
@@ -145,24 +132,24 @@ projCmd = subparser
     )
 
 diaryDisplay :: Opt.Parser Cmd
-diaryDisplay = DiaryDisplay 
-    <$> argument parseCustomDay (metavar "DAY") 
+diaryDisplay = DiaryDisplay
+    <$> argument parseCustomDay (metavar "DAY")
     <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryRm :: Opt.Parser Cmd
-diaryRm = DiaryRm 
-    <$> argument parseCustomDay (metavar "DAY") 
+diaryRm = DiaryRm
+    <$> argument parseCustomDay (metavar "DAY")
     <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryHoliday :: Opt.Parser Cmd
-diaryHoliday = DiaryHoliday 
-    <$> argument parseCustomDay (metavar "DAY") 
+diaryHoliday = DiaryHoliday
+    <$> argument parseCustomDay (metavar "DAY")
     <*> argument parseTimeInDay (metavar "TIMEINDAY")
 
 diaryWork :: Opt.Parser Cmd
-diaryWork = DiaryWork 
-    <$> argument parseCustomDay (metavar "DAY") 
-    <*> argument parseTimeInDay (metavar "TIMEINDAY") 
+diaryWork = DiaryWork
+    <$> argument parseCustomDay (metavar "DAY")
+    <*> argument parseTimeInDay (metavar "TIMEINDAY")
     <*> some workOption
 
 diaryCmd :: Opt.Parser Cmd
