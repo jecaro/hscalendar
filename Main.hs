@@ -82,6 +82,7 @@ import           ModelFcts
 -- - Sort functions in CommandLine module
 -- - Show day of the week
 -- - Add colors/bold
+-- - Fix parser bugs, match starts of pattern works
 
 -- Ideas
 -- - put default values in a config file as well as open days

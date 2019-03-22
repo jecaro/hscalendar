@@ -34,8 +34,6 @@ import           Options.Applicative as Opt
     , idm
     , info
     , long
-    , liftA2
-    , liftA3
     , metavar
     , option
     , progDesc
@@ -100,15 +98,17 @@ parseTimeInDay = attoReadM parser
 
 parseTimeOfDay :: ReadM TimeOfDay
 parseTimeOfDay = attoReadM parser
-  where parser = liftA2 (\h m -> TimeOfDay h m 0) decimal (char ':' *> decimal)
+  where parser = (\h m -> TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 parseCustomDay :: ReadM CustomDay
 parseCustomDay = attoReadM parser
   where parser =   string "today"     $> Today
                <|> string "yesterday" $> Yesterday
                <|> string "tomorrow"  $> Tomorrow
-               <|> liftA3 mkDayFromGregorian decimal (char '-' *> decimal) (char '-' *> decimal)
-               <|> liftA2 MkDayMonthNum decimal (char '-' *> decimal)
+               <|> mkDayFromGregorian <$> decimal 
+                                      <*> (char '-' *> decimal) 
+                                      <*> (char '-' *> decimal)
+               <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
                <|> MkDayNum <$> decimal
         mkDayFromGregorian d m y = MkDay $ fromGregorian y m d
 
