@@ -14,6 +14,7 @@ import           Data.Attoparsec.Text as Atto
     ( Parser
     , string
     , decimal
+    , endOfInput
     , char
     , parseOnly
     )
@@ -83,7 +84,7 @@ data WorkOption = MkSetArrived SetArrived |
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
-attoReadM p = eitherReader (parseOnly p . pack)
+attoReadM p = eitherReader (parseOnly (p <* endOfInput) . pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
@@ -101,7 +102,7 @@ parseTimeOfDay = attoReadM parser
   where parser = (\h m -> TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 parseCustomDay :: ReadM CustomDay
-parseCustomDay = attoReadM parser
+parseCustomDay = attoReadM parser 
   where parser =   string "today"     $> Today
                <|> string "yesterday" $> Yesterday
                <|> string "tomorrow"  $> Tomorrow

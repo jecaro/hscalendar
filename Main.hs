@@ -82,7 +82,9 @@ import           ModelFcts
 -- - Sort functions in CommandLine module
 -- - Show day of the week
 -- - Add colors/bold
--- - Fix parser bugs, match starts of pattern works
+-- - Use esqueleto for join (project, hdw)
+-- - Use RIO
+-- - Use Text instead of String
 
 -- Ideas
 -- - put default values in a config file as well as open days
