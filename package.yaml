@@ -6,6 +6,7 @@ dependencies:
 - base >= 4.7 && < 5
 - brick
 - esqueleto
+- formatting
 - microlens-platform
 - monad-loops
 - monad-logger

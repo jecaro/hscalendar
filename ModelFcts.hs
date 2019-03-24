@@ -47,7 +47,7 @@ import           Data.Maybe (isJust)
 import           Data.Text (Text, intercalate, pack)
 import           Data.Time.Calendar (Day, toGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
-import           Text.Printf (printf)
+import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
 import           Model
@@ -87,7 +87,7 @@ showDay :: Day -> Text
 showDay day = intercalate "-" $ fmap printNum [d, m, intY]
   where (y, m, d) = toGregorian day
         intY = fromIntegral y
-        printNum = pack . printf "%02d"
+        printNum = sformat (left 2 '0' %. int) 
 
 -- Exported project functions 
 
@@ -194,9 +194,9 @@ hdwSetArrivedAndLeft
     -> TimeOfDay 
     -> TimeOfDay 
     -> SqlPersistT m () 
-hdwSetArrivedAndLeft day tid arrived left = do
+hdwSetArrivedAndLeft day tid tArrived tLeft = do
     (eHd, eHdw, _) <- hdHdwProjGetInt day tid
-    editTime eHd eHdw $ setArrivedAndLeft arrived left
+    editTime eHd eHdw $ setArrivedAndLeft tArrived tLeft
   where setArrivedAndLeft arrived' left' hdw = 
             hdw { halfDayWorkedArrived = arrived'
                 , halfDayWorkedLeft    = left' }
@@ -230,10 +230,10 @@ hdSetWork day tid project = do
           -- Update entry
           update hdId [HalfDayType =. Worked]
           return hdId
-    void $ insert $ HalfDayWorked "" arrived left Rennes projId hdId
+    void $ insert $ HalfDayWorked "" tArrived tLeft Rennes projId hdId
   where 
-    arrived = if tid == Morning then TimeOfDay 9 0 0 else TimeOfDay 13 30 0 
-    left = if tid == Morning then TimeOfDay 12 0 0 else TimeOfDay 17 30 0 
+    tArrived = if tid == Morning then TimeOfDay 9 0 0 else TimeOfDay 13 30 0 
+    tLeft = if tid == Morning then TimeOfDay 12 0 0 else TimeOfDay 17 30 0 
    
 hdRm :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> SqlPersistT m () 
 hdRm day tid = do

@@ -12,8 +12,8 @@ import           Data.Text (Text, intercalate, pack)
 import qualified Data.Text.IO as T (putStrLn) 
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
+import           Formatting (int, left, sformat, (%.))
 import           Options.Applicative (execParser)
-import           Text.Printf (printf)
 
 import           CommandLine 
     ( Cmd(..)
@@ -85,7 +85,6 @@ import           ModelFcts
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
 -- - Use RIO
--- - Use package formatting
 
 -- Ideas
 -- - put default values in a config file as well as open days
@@ -129,7 +128,7 @@ findArrivedAndLeftCmd options =
     let (mbArrived, options')  = findArrivedCmd options
         (mbLeft,    options'') = findLeftCmd options'
     in case (mbArrived, mbLeft) of
-        (Just arrived, Just left) -> (Just (arrived, left), options'')
+        (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                         -> (Nothing, options)
 
 -- List projects
@@ -162,15 +161,15 @@ run (DiaryDisplay cd tid) = do
     let hdStr = case eiHdHdwProj of
            Left (ModelException msg) -> [ msg ]
            Right (_, Nothing)        -> [ (pack . show) Holiday ]
-           Right (_, Just (HalfDayWorked notes arrived left office _ _, Project name)) ->
-               [ (pack . show) office <> ":  " <> showTime arrived <> " - " <> showTime left
+           Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, Project name)) ->
+               [ (pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> name
                , "Notes:   " <> notes
                ]
     -- Print it
     liftIO $ mapM_ T.putStrLn hdStr
   where showTime (TimeOfDay h m _) = 
-            intercalate ":" $ fmap (pack . printf "%02d") [h, m]
+            intercalate ":" $ fmap (sformat (left 2 '0' %. int)) [h, m]
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
