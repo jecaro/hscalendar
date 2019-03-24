@@ -15,12 +15,9 @@ dependencies:
 - persistent-sqlite
 - persistent-template
 - rio
-- safe
-- safe-exceptions
 - transformers
-- time
-- text
 - text-zipper
+- text
 - vty
 name: hscalendar
 version: 0.1.0.0
