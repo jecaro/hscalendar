@@ -20,6 +20,7 @@ module ModelFcts
 
 import           RIO
 import qualified RIO.Text as Text (intercalate, pack)
+import qualified RIO.Time as Time (Day, TimeOfDay(..), toGregorian)
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
@@ -40,8 +41,6 @@ import           Database.Persist.Sqlite
     )
 
 import           Data.Maybe (isJust)
-import           Data.Time.Calendar (Day, toGregorian)
-import           Data.Time.LocalTime (TimeOfDay(..))
 import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
@@ -61,7 +60,7 @@ errProjNotFound (Project name) = "The project " <> name <> " is not in the datab
 errProjExists :: Project -> Text
 errProjExists (Project name) = "The project " <> name <> " exists in the database"
 
-errHdNotFound :: Day -> TimeInDay -> Text
+errHdNotFound :: Time.Day -> TimeInDay -> Text
 errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (Text.pack . show) tid
 
 errHdwIdNotFound :: HalfDayId -> Text
@@ -78,9 +77,9 @@ errTimesAreWrong = "Times are wrong"
 
 -- Misc 
 
-showDay :: Day -> Text
+showDay :: Time.Day -> Text
 showDay day = Text.intercalate "-" $ fmap printNum [d, m, intY]
-  where (y, m, d) = toGregorian day
+  where (y, m, d) = Time.toGregorian day
         intY = fromIntegral y
         printNum = sformat (left 2 '0' %. int) 
 
@@ -129,7 +128,7 @@ guardProjNotExistsInt project = do
 -- Main request function
 hdHdwProjGet
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day
+    => Time.Day
     -> TimeInDay 
     -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
 hdHdwProjGet day tid = do
@@ -144,17 +143,17 @@ hdHdwProjGet day tid = do
         (HalfDay _ _ Holiday, Just _) -> throwIO $ ModelException errDbInconsistency
         (_, _)                        -> return (hd, mbHdw)
 
-hdwSetOffice :: (MonadIO m) => Day -> TimeInDay -> Office -> SqlPersistT m ()
+hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
 hdwSetOffice day tid office = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [HalfDayWorkedOffice =. office]
 
-hdwSetNotes :: (MonadIO m) => Day -> TimeInDay -> Text -> SqlPersistT m ()
+hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Text -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [HalfDayWorkedNotes =. notes]
 
-hdwSetProject :: (MonadIO m) => Day -> TimeInDay -> Project -> SqlPersistT m () 
+hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m () 
 hdwSetProject day tid project = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     pId <- projGetInt project
@@ -162,9 +161,9 @@ hdwSetProject day tid project = do
 
 hdwSetArrived 
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay 
-    -> TimeOfDay 
+    -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrived day tid tod = do
     (eHd, eHdw, _) <- hdHdwProjGetInt day tid
@@ -173,9 +172,9 @@ hdwSetArrived day tid tod = do
 
 hdwSetLeft 
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay 
-    -> TimeOfDay 
+    -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetLeft day tid tod = do
     (eHd, eHdw, _) <- hdHdwProjGetInt day tid
@@ -184,10 +183,10 @@ hdwSetLeft day tid tod = do
 
 hdwSetArrivedAndLeft 
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay 
-    -> TimeOfDay 
-    -> TimeOfDay 
+    -> Time.TimeOfDay 
+    -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrivedAndLeft day tid tArrived tLeft = do
     (eHd, eHdw, _) <- hdHdwProjGetInt day tid
@@ -198,7 +197,7 @@ hdwSetArrivedAndLeft day tid tArrived tLeft = do
 
 hdSetHoliday 
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay -> SqlPersistT m () 
 hdSetHoliday day tid = try (hdGetInt day tid) >>=
     \case 
@@ -213,7 +212,7 @@ hdSetHoliday day tid = try (hdGetInt day tid) >>=
 
 hdSetWork 
     :: (MonadIO m, MonadUnliftIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay 
     -> Project 
     -> SqlPersistT m () 
@@ -230,10 +229,14 @@ hdSetWork day tid project = do
           return hdId
     void $ insert $ HalfDayWorked "" tArrived tLeft Rennes projId hdId
   where 
-    tArrived = if tid == Morning then TimeOfDay 9 0 0 else TimeOfDay 13 30 0 
-    tLeft = if tid == Morning then TimeOfDay 12 0 0 else TimeOfDay 17 30 0 
+    tArrived = if tid == Morning 
+                   then Time.TimeOfDay 9 0 0 
+                   else Time.TimeOfDay 13 30 0 
+    tLeft = if tid == Morning 
+                then Time.TimeOfDay 12 0 0
+                 else Time.TimeOfDay 17 30 0 
    
-hdRm :: (MonadIO m) => Day -> TimeInDay -> SqlPersistT m () 
+hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
 hdRm day tid = do
     (Entity hdId _) <- hdGetInt day tid
     -- Delete entry from HalfDayWorked if it exists
@@ -243,7 +246,7 @@ hdRm day tid = do
 -- Internal project functions
 
 -- Get a half day if it exists or raise an exception
-hdGetInt :: (MonadIO m) => Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
+hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
 hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
     \case 
         Nothing -> throwIO $ ModelException $ errHdNotFound day tid
@@ -265,7 +268,7 @@ hdwProjGetInt hdId = getBy (UniqueHalfDayId hdId) >>=
 
 hdHdwProjGetInt 
     :: (MonadIO m) 
-    => Day 
+    => Time.Day 
     -> TimeInDay 
     -> SqlPersistT m (Entity HalfDay, Entity HalfDayWorked, Entity Project)
 hdHdwProjGetInt day tid = do
@@ -309,7 +312,7 @@ editTime (Entity _ (HalfDay day tid _)) (Entity hdwId hdw) setTime = do
         Nothing  -> replace hdwId hdw'
 
 -- Return the times in the day in a list
-timesOfDay :: HalfDayWorked -> [TimeOfDay]
+timesOfDay :: HalfDayWorked -> [Time.TimeOfDay]
 timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
 
 -- Return true if the list is sorted
@@ -320,7 +323,7 @@ isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
 
 -- Return Nothing if the times in the list are ordered. Return an error message
 -- otherwise
-timeAreOrdered :: [TimeOfDay] -> Maybe Text
+timeAreOrdered :: [Time.TimeOfDay] -> Maybe Text
 timeAreOrdered times = if isOrdered times
     then Nothing
     else Just errTimesAreWrong

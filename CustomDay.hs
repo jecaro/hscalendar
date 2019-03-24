@@ -4,17 +4,19 @@ module CustomDay
     ) where
 
 import           RIO
-
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-
-import           Data.Time.Calendar (Day, addDays, fromGregorian, toGregorian)
-import           Data.Time.LocalTime 
-    ( getZonedTime
+import qualified RIO.Time as Time 
+    ( Day
+    , addDays
+    , fromGregorian
+    , toGregorian
+    , getZonedTime
     , localDay
     , zonedTimeToLocalTime
     )
 
-data CustomDay = MkDay Day             |
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+
+data CustomDay = MkDay Time.Day        |
                  MkDayNum Int          |
                  MkDayMonthNum Int Int |
                  Today                 |
@@ -23,18 +25,18 @@ data CustomDay = MkDay Day             |
     deriving (Eq, Show)
 
 -- Get today
-today :: (MonadIO m) => m Day
-today = liftIO $ localDay . zonedTimeToLocalTime <$> getZonedTime
+today :: (MonadIO m) => m Time.Day
+today = liftIO $ Time.localDay . Time.zonedTimeToLocalTime <$> Time.getZonedTime
 
 -- Convert CustomDay to Day
-toDay :: (MonadIO m) => CustomDay -> m Day 
+toDay :: (MonadIO m) => CustomDay -> m Time.Day 
 toDay Today        = today
-toDay Yesterday    = addDays (-1) <$> today
-toDay Tomorrow     = addDays 1 <$> today
+toDay Yesterday    = Time.addDays (-1) <$> today
+toDay Tomorrow     = Time.addDays 1 <$> today
 toDay (MkDay x)    = return x
 toDay (MkDayNum d) = do
-    (y, m, _) <- toGregorian <$> today
-    return $ fromGregorian y m d
+    (y, m, _) <- Time.toGregorian <$> today
+    return $ Time.fromGregorian y m d
 toDay (MkDayMonthNum d m) = do
-    (y, _, _) <- toGregorian <$> today
-    return $ fromGregorian y m d
+    (y, _, _) <- Time.toGregorian <$> today
+    return $ Time.fromGregorian y m d

@@ -8,10 +8,8 @@
 module Model where
 
 import           RIO
-
-import           Data.Text (Text)
-import           Data.Time.Calendar (Day)
-import           Data.Time.LocalTime (TimeOfDay)
+import qualified RIO.Text() 
+import qualified RIO.Time as Time (Day, TimeOfDay)
 
 import           Database.Persist.TH 
    ( mkMigrate
@@ -34,7 +32,7 @@ Project
     deriving Show
 HalfDay
     -- Fields
-    day             Day        
+    day             Time.Day        
     timeInDay       TimeInDay   -- morning/afternoon
     type            HalfDayType -- worked/holiday
     -- Constraint
@@ -43,8 +41,8 @@ HalfDay
 HalfDayWorked -- Only for WorkedOpenDay
     -- Fields
     notes     Text -- default empty string
-    arrived   TimeOfDay 
-    left      TimeOfDay --Constraint Left > Arrived
+    arrived   Time.TimeOfDay 
+    left      Time.TimeOfDay --Constraint Left > Arrived
     office    Office
     -- Foreign keys
     projectId ProjectId 

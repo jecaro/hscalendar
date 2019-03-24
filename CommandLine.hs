@@ -12,6 +12,7 @@ module CommandLine
 
 import           RIO
 import qualified RIO.Text as Text (pack)
+import qualified RIO.Time as Time (TimeOfDay(..), fromGregorian)
 
 import           Data.Attoparsec.Text as Atto
     ( Parser
@@ -22,8 +23,6 @@ import           Data.Attoparsec.Text as Atto
     , parseOnly
     )
 import           Data.Functor (($>))
-import           Data.Time.Calendar (fromGregorian)
-import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative as Opt
     ( Parser
     , ParserInfo
@@ -69,10 +68,10 @@ newtype SetProj = SetProj Text
 newtype SetNotes = SetNotes Text
     deriving (Eq, Show)
 
-newtype SetArrived = SetArrived TimeOfDay
+newtype SetArrived = SetArrived Time.TimeOfDay
     deriving (Eq, Show)
 
-newtype SetLeft = SetLeft TimeOfDay
+newtype SetLeft = SetLeft Time.TimeOfDay
     deriving (Eq, Show)
 
 newtype SetOffice = SetOffice Office
@@ -99,9 +98,9 @@ parseTimeInDay = attoReadM parser
   where parser =   string "morning"   $> Morning
                <|> string "afternoon" $> Afternoon
 
-parseTimeOfDay :: ReadM TimeOfDay
+parseTimeOfDay :: ReadM Time.TimeOfDay
 parseTimeOfDay = attoReadM parser
-  where parser = (\h m -> TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
+  where parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 parseCustomDay :: ReadM CustomDay
 parseCustomDay = attoReadM parser 
@@ -113,7 +112,7 @@ parseCustomDay = attoReadM parser
                                       <*> (char '-' *> decimal)
                <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
                <|> MkDayNum <$> decimal
-        mkDayFromGregorian d m y = MkDay $ fromGregorian y m d
+        mkDayFromGregorian d m y = MkDay $ Time.fromGregorian y m d
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument str (metavar "PROJECT...")

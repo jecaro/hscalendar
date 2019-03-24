@@ -1,6 +1,6 @@
 import           RIO
 import qualified RIO.Text as Text (intercalate, pack)
-
+import qualified RIO.Time as Time (Day, TimeOfDay(..))
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
@@ -12,8 +12,6 @@ import           Database.Persist.Sqlite
     , withSqlitePool
     )
 import           Data.Text.IO (putStrLn) 
-import           Data.Time.Calendar (Day)
-import           Data.Time.LocalTime (TimeOfDay(..))
 import           Formatting (int, left, sformat, (%.))
 import           Options.Applicative (execParser)
 
@@ -85,7 +83,6 @@ import           ModelFcts
 -- - Show day of the week
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
--- - Replace modules by RIOs one
 
 -- Ideas
 -- - put default values in a config file as well as open days
@@ -169,7 +166,7 @@ run (DiaryDisplay cd tid) = do
                ]
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
-  where showTime (TimeOfDay h m _) = 
+  where showTime (Time.TimeOfDay h m _) = 
             Text.intercalate ":" $ fmap (sformat (left 2 '0' %. int)) [h, m]
 
 -- Set a work entry 
@@ -230,7 +227,7 @@ run (DiaryRm cs tid) = do
 -- Dispatch edit
 dispatchEdit
     :: (MonadUnliftIO m)
-    => Day
+    => Time.Day
     -> TimeInDay
     -> WorkOption
     -> SqlPersistT m()
