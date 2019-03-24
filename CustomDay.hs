@@ -3,8 +3,11 @@ module CustomDay
     , toDay
     ) where
 
+import           RIO
+
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Data.Time.Calendar (Day, fromGregorian, toGregorian)
+
+import           Data.Time.Calendar (Day, addDays, fromGregorian, toGregorian)
 import           Data.Time.LocalTime 
     ( getZonedTime
     , localDay
@@ -26,8 +29,8 @@ today = liftIO $ localDay . zonedTimeToLocalTime <$> getZonedTime
 -- Convert CustomDay to Day
 toDay :: (MonadIO m) => CustomDay -> m Day 
 toDay Today        = today
-toDay Yesterday    = pred <$> today
-toDay Tomorrow     = succ <$> today
+toDay Yesterday    = addDays (-1) <$> today
+toDay Tomorrow     = addDays 1 <$> today
 toDay (MkDay x)    = return x
 toDay (MkDayNum d) = do
     (y, m, _) <- toGregorian <$> today

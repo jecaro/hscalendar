@@ -7,6 +7,8 @@
 
 module Model where
 
+import           RIO
+
 import           Data.Text (Text)
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay)

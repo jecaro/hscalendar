@@ -10,6 +10,8 @@ module CommandLine
     , opts
     ) where
 
+import           RIO
+
 import           Data.Attoparsec.Text as Atto
     ( Parser
     , string

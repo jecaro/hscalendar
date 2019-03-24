@@ -1,4 +1,5 @@
-import           Control.Exception.Safe (MonadCatch, try, catch)
+import           RIO
+
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Logger (runNoLoggingT)
@@ -77,14 +78,13 @@ import           ModelFcts
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
 -- - Cascade delete
--- - Use unliftio instead of safe-exceptions
 -- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Sort functions in CommandLine module
 -- - Show day of the week
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
--- - Use RIO
+-- - Replace modules by RIOs one
 
 -- Ideas
 -- - put default values in a config file as well as open days
@@ -132,7 +132,7 @@ findArrivedAndLeftCmd options =
         _                         -> (Nothing, options)
 
 -- List projects
-run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
+run :: (MonadIO m, MonadUnliftIO m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (T.putStrLn . projectName)
 
 -- Add a project
@@ -228,7 +228,7 @@ run (DiaryRm cs tid) = do
 
 -- Dispatch edit
 dispatchEdit
-    :: (MonadIO m, MonadCatch m)
+    :: (MonadUnliftIO m)
     => Day
     -> TimeInDay
     -> WorkOption
