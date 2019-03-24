@@ -85,7 +85,6 @@ import           ModelFcts
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
 -- - Use RIO
--- - switch from RIO
 -- - Use package formatting
 
 -- Ideas
