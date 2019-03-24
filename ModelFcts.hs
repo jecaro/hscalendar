@@ -19,6 +19,7 @@ module ModelFcts
     ) where
 
 import           RIO
+import qualified RIO.Text as Text (intercalate, pack)
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
@@ -39,7 +40,6 @@ import           Database.Persist.Sqlite
     )
 
 import           Data.Maybe (isJust)
-import           Data.Text (Text, intercalate, pack)
 import           Data.Time.Calendar (Day, toGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Formatting (int, left, sformat, (%.))
@@ -62,13 +62,13 @@ errProjExists :: Project -> Text
 errProjExists (Project name) = "The project " <> name <> " exists in the database"
 
 errHdNotFound :: Day -> TimeInDay -> Text
-errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (pack . show) tid
+errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (Text.pack . show) tid
 
 errHdwIdNotFound :: HalfDayId -> Text
-errHdwIdNotFound hdwId = "No half-day worked entry for " <> (pack . show) hdwId
+errHdwIdNotFound hdwId = "No half-day worked entry for " <> (Text.pack . show) hdwId
 
 errProjIdNotFound :: ProjectId -> Text
-errProjIdNotFound pId = "No project entry for " <> (pack . show) pId
+errProjIdNotFound pId = "No project entry for " <> (Text.pack . show) pId
 
 errDbInconsistency :: Text
 errDbInconsistency = "Warning db inconsistency"
@@ -79,7 +79,7 @@ errTimesAreWrong = "Times are wrong"
 -- Misc 
 
 showDay :: Day -> Text
-showDay day = intercalate "-" $ fmap printNum [d, m, intY]
+showDay day = Text.intercalate "-" $ fmap printNum [d, m, intY]
   where (y, m, d) = toGregorian day
         intY = fromIntegral y
         printNum = sformat (left 2 '0' %. int) 

@@ -11,6 +11,7 @@ module CommandLine
     ) where
 
 import           RIO
+import qualified RIO.Text as Text (pack)
 
 import           Data.Attoparsec.Text as Atto
     ( Parser
@@ -21,7 +22,6 @@ import           Data.Attoparsec.Text as Atto
     , parseOnly
     )
 import           Data.Functor (($>))
-import           Data.Text (Text, pack)
 import           Data.Time.Calendar (fromGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative as Opt
@@ -86,7 +86,7 @@ data WorkOption = MkSetArrived SetArrived |
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
-attoReadM p = eitherReader (parseOnly (p <* endOfInput) . pack)
+attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
