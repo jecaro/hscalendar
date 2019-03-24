@@ -7,6 +7,7 @@
 
 module Model where
 
+import           Data.Text (Text)
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay)
 
@@ -25,7 +26,7 @@ import           Office (Office)
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Project
     -- Fields
-    name       String
+    name       Text
     -- Constraint
     UniqueName name 
     deriving Show
@@ -39,7 +40,7 @@ HalfDay
     deriving Show
 HalfDayWorked -- Only for WorkedOpenDay
     -- Fields
-    notes     String -- default empty string
+    notes     Text -- default empty string
     arrived   TimeOfDay 
     left      TimeOfDay --Constraint Left > Arrived
     office    Office

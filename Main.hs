@@ -8,7 +8,8 @@ import           Database.Persist.Sqlite
     , runSqlPool
     , withSqlitePool
     )
-import           Data.List (intercalate)
+import           Data.Text (Text, intercalate, pack)
+import qualified Data.Text.IO as T (putStrLn) 
 import           Data.Time.Calendar (Day)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative (execParser)
@@ -84,13 +85,14 @@ import           ModelFcts
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
 -- - Use RIO
--- - Use Text instead of String
+-- - switch from RIO
+-- - Use package formatting
 
 -- Ideas
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
 
-errProjCmdIsMandatory :: String
+errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
 
 -- Get out the first element of a list which return Just 
@@ -133,19 +135,19 @@ findArrivedAndLeftCmd options =
 
 -- List projects
 run :: (MonadIO m, MonadCatch m) => Cmd -> SqlPersistT m ()
-run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
+run ProjList = projList >>= liftIO . mapM_ (T.putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd name) = catch (void $ projAdd $ Project name) 
-                           (\(ModelException msg) -> liftIO . putStrLn $ msg)
+                           (\(ModelException msg) -> liftIO . T.putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
 run (ProjRm name) = catch (projRm $ Project name) 
-                          (\(ModelException msg) -> liftIO . putStrLn $ msg)
+                          (\(ModelException msg) -> liftIO . T.putStrLn $ msg)
 
 run (ProjRename name1 name2) = catch 
-    (projRename p1 p2) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+    (projRename p1 p2) (\(ModelException msg) -> liftIO . T.putStrLn $ msg)
   where p1 = Project name1
         p2 = Project name2
 
@@ -154,22 +156,22 @@ run (DiaryDisplay cd tid) = do
     -- Get actual day
     day <- toDay cd
     -- Display input date
-    liftIO . putStrLn $ showDay day ++ " " ++ show tid
+    liftIO . T.putStrLn $ showDay day <> " " <> (pack . show) tid
     -- Get half-day
     eiHdHdwProj <- try $ hdHdwProjGet day tid
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
            Left (ModelException msg) -> [ msg ]
-           Right (_, Nothing)        -> [ show Holiday ]
+           Right (_, Nothing)        -> [ (pack . show) Holiday ]
            Right (_, Just (HalfDayWorked notes arrived left office _ _, Project name)) ->
-               [ show office ++ ":  " ++ showTime arrived ++ " - " ++ showTime left
-               , "Project: " ++ name
-               , "Notes:   " ++ notes
+               [ (pack . show) office <> ":  " <> showTime arrived <> " - " <> showTime left
+               , "Project: " <> name
+               , "Notes:   " <> notes
                ]
     -- Print it
-    liftIO $ mapM_ putStrLn hdStr
+    liftIO $ mapM_ T.putStrLn hdStr
   where showTime (TimeOfDay h m _) = 
-            intercalate ":" $ fmap (printf "%02d") [h, m]
+            intercalate ":" $ fmap (pack . printf "%02d") [h, m]
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
@@ -197,14 +199,14 @@ run (DiaryWork cd tid wopts) = do
     
     -- Apply remaining options
     case eiOtherOpts of
-        Left msg -> liftIO $ putStrLn msg
+        Left msg -> liftIO $ T.putStrLn msg
         Right otherOpts -> do
             -- Apply set arrived set left when we have to two options
             let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
                     catch (hdwSetArrivedAndLeft day tid a l) 
-                        (\(ModelException msg) -> liftIO $ putStrLn msg)
+                        (\(ModelException msg) -> liftIO $ T.putStrLn msg)
                 Nothing -> return ()
             -- Then apply remaining commands
             mapM_ dispatchEditWithError otherOpts' 
@@ -212,7 +214,7 @@ run (DiaryWork cd tid wopts) = do
             run $ DiaryDisplay cd tid
           where dispatchEditWithError x = 
                     catch (dispatchEdit day tid x) 
-                          (\(ModelException msg) -> liftIO $ putStrLn msg)
+                          (\(ModelException msg) -> liftIO $ T.putStrLn msg)
 
 -- Set a holiday entry
 run (DiaryHoliday cd tid) = do
@@ -224,7 +226,7 @@ run (DiaryHoliday cd tid) = do
 -- Delete an entry
 run (DiaryRm cs tid) = do
     day <- toDay cs
-    catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
+    catch (hdRm day tid) (\(ModelException msg) -> liftIO $ T.putStrLn msg)
 
 -- Dispatch edit
 dispatchEdit

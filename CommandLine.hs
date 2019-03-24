@@ -19,7 +19,7 @@ import           Data.Attoparsec.Text as Atto
     , parseOnly
     )
 import           Data.Functor (($>))
-import           Data.Text (pack)
+import           Data.Text (Text, pack)
 import           Data.Time.Calendar (fromGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Options.Applicative as Opt
@@ -55,16 +55,16 @@ data Cmd = DiaryDisplay CustomDay TimeInDay           |
            DiaryHoliday CustomDay TimeInDay           |
            DiaryRm CustomDay TimeInDay                |
            DiaryWork CustomDay TimeInDay [WorkOption] |
-           ProjAdd String                             |
+           ProjAdd Text                               |
            ProjList                                   |
-           ProjRename String String                   |
-           ProjRm String
+           ProjRename Text Text                       |
+           ProjRm Text
     deriving (Eq, Show)
 
-newtype SetProj = SetProj String
+newtype SetProj = SetProj Text
     deriving (Eq, Show)
 
-newtype SetNotes = SetNotes String
+newtype SetNotes = SetNotes Text
     deriving (Eq, Show)
 
 newtype SetArrived = SetArrived TimeOfDay

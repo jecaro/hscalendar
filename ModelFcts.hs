@@ -44,6 +44,7 @@ import           Database.Persist.Sqlite
     )
 
 import           Data.Maybe (isJust)
+import           Data.Text (Text, intercalate, pack)
 import           Data.Time.Calendar (Day, toGregorian)
 import           Data.Time.LocalTime (TimeOfDay(..))
 import           Text.Printf (printf)
@@ -53,38 +54,40 @@ import           Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
-newtype ModelException = ModelException String deriving (Show)
+newtype ModelException = ModelException Text deriving (Show)
 
 instance Exception ModelException
 
 -- Error strings
 
-errProjNotFound :: Project -> String
-errProjNotFound (Project name) = "The project " ++ name ++ " is not in the database"
+errProjNotFound :: Project -> Text
+errProjNotFound (Project name) = "The project " <> name <> " is not in the database"
 
-errProjExists :: Project -> String
-errProjExists (Project name) = "The project " ++ name ++ " exists in the database"
+errProjExists :: Project -> Text
+errProjExists (Project name) = "The project " <> name <> " exists in the database"
 
-errHdNotFound :: Day -> TimeInDay -> String
-errHdNotFound day tid = "Nothing for " ++ showDay day ++ " " ++ show tid
+errHdNotFound :: Day -> TimeInDay -> Text
+errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (pack . show) tid
 
-errHdwIdNotFound :: HalfDayId -> String
-errHdwIdNotFound hdwId = "No half-day worked entry for " ++ show hdwId
+errHdwIdNotFound :: HalfDayId -> Text
+errHdwIdNotFound hdwId = "No half-day worked entry for " <> (pack . show) hdwId
 
-errProjIdNotFound :: ProjectId -> String
-errProjIdNotFound pId = "No project entry for " ++ show pId
+errProjIdNotFound :: ProjectId -> Text
+errProjIdNotFound pId = "No project entry for " <> (pack . show) pId
 
-errDbInconsistency :: String
+errDbInconsistency :: Text
 errDbInconsistency = "Warning db inconsistency"
 
-errTimesAreWrong :: String
+errTimesAreWrong :: Text
 errTimesAreWrong = "Times are wrong"
 
 -- Misc 
 
-showDay :: Day -> String
-showDay day = printf "%02d" d ++ "-" ++ printf "%02d" m ++ "-" ++ show y
+showDay :: Day -> Text
+showDay day = intercalate "-" $ fmap printNum [d, m, intY]
   where (y, m, d) = toGregorian day
+        intY = fromIntegral y
+        printNum = pack . printf "%02d"
 
 -- Exported project functions 
 
@@ -151,7 +154,7 @@ hdwSetOffice day tid office = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [HalfDayWorkedOffice =. office]
 
-hdwSetNotes :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> String -> SqlPersistT m ()
+hdwSetNotes :: (MonadIO m, MonadCatch m) => Day -> TimeInDay -> Text -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [HalfDayWorkedNotes =. notes]
@@ -279,7 +282,7 @@ timesAreOrderedInDay
     :: TimeInDay 
     -> HalfDayWorked 
     -> Maybe HalfDayWorked 
-    -> Maybe String
+    -> Maybe Text
 timesAreOrderedInDay Morning hdw mbOtherHdw = 
     timeAreOrdered $ timesOfDay hdw ++ otherTimes
   where otherTimes = concatMap timesOfDay mbOtherHdw
@@ -319,7 +322,7 @@ isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
 
 -- Return Nothing if the times in the list are ordered. Return an error message
 -- otherwise
-timeAreOrdered :: [TimeOfDay] -> Maybe String
+timeAreOrdered :: [TimeOfDay] -> Maybe Text
 timeAreOrdered times = if isOrdered times
     then Nothing
     else Just errTimesAreWrong
