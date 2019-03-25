@@ -49,22 +49,21 @@ import           ModelFcts
     )
 
 -- Synopsis
--- hsmaster diary work -d date -m|-a [commands]
+-- hsmaster diary work date -m|-a [commands]
 --   commands: 
 --     -p project   set the project name 
 --     -n note      set note
 --     -a 00:00     set arrived time
 --     -l 00:00     set left time
--- hsmaster diary holiday date morning|afternoon
--- hsmaster diary rm date morning|afternoon
--- hsmaster diary display date morning|afternoon
+-- hsmaster diary holiday date -m|-a
+-- hsmaster diary rm date -m|-a
+-- hsmaster diary display date -m|-a
 -- hsmaster project list
 -- hsmaster project rm project
 -- hsmaster project add project
 -- hsmaster project rename project1 project2 
 
 -- TODO:
--- - Error handling in parser -> show message
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
@@ -77,7 +76,6 @@ import           ModelFcts
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
 -- - Cascade delete
--- - Handle exception from optparse-applicative
 -- - Add standard documentation
 -- - Sort functions in CommandLine module
 -- - Show day of the week

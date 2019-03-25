@@ -150,7 +150,6 @@ diaryWork = DiaryWork
     <*> tidOption
     <*> some workOption
 
--- this should be a switch
 tidOption :: Opt.Parser TimeInDay
 tidOption =   flag' Morning (long "morning" <> short 'm')
           <|> flag' Afternoon (long "afternoon" <> short 'a')
