@@ -7,6 +7,7 @@ dependencies:
 - brick
 - esqueleto
 - formatting
+- hspec
 - microlens-platform
 - monad-loops
 - monad-logger
@@ -19,6 +20,7 @@ dependencies:
 - text-zipper
 - text
 - vty
+- QuickCheck
 name: hscalendar
 version: 0.1.0.0
 author: Jean-Charles Quillet
