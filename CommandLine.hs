@@ -30,6 +30,7 @@ import           Options.Applicative as Opt
     , argument
     , command
     , eitherReader
+    , flag'
     , help
     , helper
     , hsubparser
@@ -93,22 +94,17 @@ parseOffice = attoReadM parser
                <|> string "home"   $> Home
                <|> string "poool"  $> Poool
 
-parseTimeInDay :: ReadM TimeInDay
-parseTimeInDay = attoReadM parser
-  where parser =   string "morning"   $> Morning
-               <|> string "afternoon" $> Afternoon
-
 parseTimeOfDay :: ReadM Time.TimeOfDay
 parseTimeOfDay = attoReadM parser
   where parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 parseCustomDay :: ReadM CustomDay
-parseCustomDay = attoReadM parser 
+parseCustomDay = attoReadM parser
   where parser =   string "today"     $> Today
                <|> string "yesterday" $> Yesterday
                <|> string "tomorrow"  $> Tomorrow
-               <|> mkDayFromGregorian <$> decimal 
-                                      <*> (char '-' *> decimal) 
+               <|> mkDayFromGregorian <$> decimal
+                                      <*> (char '-' *> decimal)
                                       <*> (char '-' *> decimal)
                <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
                <|> MkDayNum <$> decimal
@@ -134,25 +130,30 @@ projCmd = subparser
     )
 
 diaryDisplay :: Opt.Parser Cmd
-diaryDisplay = DiaryDisplay
+diaryDisplay = DiaryDisplay 
     <$> argument parseCustomDay (metavar "DAY")
-    <*> argument parseTimeInDay (metavar "TIMEINDAY")
+    <*> tidOption 
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm
     <$> argument parseCustomDay (metavar "DAY")
-    <*> argument parseTimeInDay (metavar "TIMEINDAY")
+    <*> tidOption
 
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday
     <$> argument parseCustomDay (metavar "DAY")
-    <*> argument parseTimeInDay (metavar "TIMEINDAY")
+    <*> tidOption
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork
     <$> argument parseCustomDay (metavar "DAY")
-    <*> argument parseTimeInDay (metavar "TIMEINDAY")
+    <*> tidOption
     <*> some workOption
+
+-- this should be a switch
+tidOption :: Opt.Parser TimeInDay
+tidOption =   flag' Morning (long "morning" <> short 'm')
+          <|> flag' Afternoon (long "afternoon" <> short 'a')
 
 diaryCmd :: Opt.Parser Cmd
 diaryCmd = hsubparser
@@ -206,8 +207,8 @@ workOptionSetOffice = MkSetOffice . SetOffice <$> option parseOffice
 
 cmd :: Opt.Parser Cmd
 cmd = hsubparser
-    (  command "project" (info projCmd  (progDesc "Project"))
-    <> command "diary"   (info diaryCmd (progDesc "Diary"))
+    (  command "project" (info projCmd  (progDesc "Project commands"))
+    <> command "diary"   (info diaryCmd (progDesc "Diary commands"))
     )
 
 opts :: ParserInfo Cmd
