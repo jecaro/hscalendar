@@ -24,9 +24,13 @@ version: 0.1.0.0
 author: Jean-Charles Quillet
 github: jecaro/haskell/hscalendar
 license: BSD3
+
+library:
+  source-dirs: src
+
 executables:
-  hscalendar:
-    source-dirs: ./
+  hscalendar-exe:
+    source-dirs: app
     main: Main.hs
     ghc-options:
     - -threaded
@@ -39,6 +43,27 @@ executables:
     - -Wincomplete-uni-patterns
     - -Wpartial-fields
     - -Wredundant-constraints
+    dependencies:
+    - hscalendar
+
+tests:
+  hscalendar-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -Wcompat
+    - -Widentities
+    - -Wincomplete-record-updates
+    - -Wincomplete-uni-patterns
+    - -Wpartial-fields
+    - -Wredundant-constraints
+    dependencies:
+    - hscalendar
+
 default-extensions:
   - LambdaCase
   - NoImplicitPrelude
