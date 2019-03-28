@@ -67,6 +67,7 @@ tests:
     - hscalendar
 
 default-extensions:
+  - GADTs
   - LambdaCase
   - NoImplicitPrelude
   - OverloadedStrings
