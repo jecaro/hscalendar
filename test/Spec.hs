@@ -1,14 +1,12 @@
 import           RIO
-import qualified RIO.List.Partial as L (head)
 
 import           Database.Persist.Sqlite
     ( runMigration
     , runSqlConn
     , withSqliteConn
-    , IsSqlBackend
+    , SqlBackend
     )
-import           Control.Monad.Logger (runNoLoggingT)
-
+import           Control.Monad.Logger
 import           Test.Hspec
 
 import           Model
@@ -17,27 +15,26 @@ import           ModelFcts
     , projExists
     , )
 
-runDB 
-    :: (MonadUnliftIO m, IsSqlBackend backend) 
-    => backend 
-    -> ReaderT backend m a -> m a
+runDB :: MonadUnliftIO m => SqlBackend -> ReaderT SqlBackend m a -> m a
 runDB conn x = runSqlConn x conn
 
-shouldBeIO :: (MonadIO m, Show a, Eq a) => a -> a -> m ()
-shouldBeIO x y = liftIO $ x `shouldBe` y
+testProject :: SpecWith SqlBackend
+testProject =
+    describe "Test the project API" $ do
+        it "creates a new project" $ \conn ->
+            runDB conn (projAdd project) `shouldReturn` ()
+        -- it "creates a new project" $ \conn ->
+        --     runDB conn (projAdd project) `shouldReturn` ()
+        it "test something" $ \_ ->
+            True `shouldBe` True
+        it "tests if its exists" $ \conn -> do
+            exists <- runDB conn (projExists project)
+            exists `shouldBe` True
+  where project = Project "TestProject"
 
 main :: IO ()
-main = runNoLoggingT $ withSqliteConn ":memory:" $ \connection ->
-    liftIO $ do
-        runSqlConn (runMigration migrateAll) connection
-        hspec $ do
-          describe "RIO.List.Partial.head" $
-            it "returns the first element of a list" $
-            L.head [23 ..] `shouldBe` (23 :: Int)
-          describe "Project" $
-            it "adds a project to the database" $ asIO $ runDB connection $ do
-            let project = Project "Test"
-            projAdd project
-            exists <- projExists project
-            exists `shouldBeIO` True
-
+main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> do
+    runSqlConn (runMigration migrateAll) conn
+    liftIO $ hspec $ beforeAll (runSqlConn (runMigration migrateAll) conn) $ before (return conn) $ do
+        testProject
+        testProject
