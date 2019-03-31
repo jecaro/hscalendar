@@ -30,6 +30,7 @@ Project
     -- Constraint
     UniqueName name 
     deriving Show
+    deriving Eq
 HalfDay
     -- Fields
     day             Time.Day        

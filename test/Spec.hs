@@ -31,6 +31,7 @@ import           ModelFcts
     ( ModelException()
     , projAdd
     , projExists
+    , projList
     , projRename
     , projRm
     )
@@ -57,16 +58,17 @@ testProjAPI =
     describe "Test the project API" $ do
         context "When the DB is empty" $ do
             it "tests the uniqueness of the name" $ \conn -> 
-                runDB conn (do
-                    projAdd project1 
-                    projAdd project1)
+                runDB conn (projAdd project1 >> projAdd project1)
                   `shouldThrow` modelException
             it "tests if a project does not exists" $ \conn -> 
                 runDB conn (projExists project1) `shouldReturn` False
             it "tests if we can remove a project" $ \conn ->
                 runDB conn (projRm project1) `shouldThrow` modelException
             it "tests if we can rename a project not present in the db" $ \conn ->
-                runDB conn (projRename project1 project2) `shouldThrow` modelException
+                runDB conn (projRename project1 project2) 
+                    `shouldThrow` modelException
+            it "tests the list of projects" $ \conn ->
+                runDB conn projList `shouldReturn` []
         context "One project in DB" 
             $ beforeWith (addProject project1)
             $ after cleanProjects 
@@ -84,6 +86,8 @@ testProjAPI =
                 proj1Exists `shouldBe` False
                 proj2Exists <- runDB conn (projExists project2)
                 proj2Exists `shouldBe` True
+            it "tests the list of projects" $ \conn ->
+                runDB conn projList `shouldReturn` [project1]
   where project1 = Project "TestProject1"
         project2 = Project "TestProject2"
 
