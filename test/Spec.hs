@@ -11,9 +11,8 @@ import           Database.Persist.Sqlite
     )
 import           Control.Monad.Logger (runNoLoggingT)
 import           Test.Hspec 
-    ( after
-    , before
-    , beforeWith
+    ( after_
+    , before_
     , beforeAll
     , context
     , describe
@@ -23,7 +22,7 @@ import           Test.Hspec
     , shouldBe
     , shouldReturn
     , shouldThrow
-    , SpecWith
+    , Spec
     )
 
 import           Model
@@ -45,54 +44,49 @@ migrate conn = runDB conn $ runMigration migrateAll
 cleanProjects :: MonadUnliftIO m => SqlBackend -> m ()
 cleanProjects conn = runDB conn $ deleteWhere ([] :: [Filter Project])
 
-addProject :: MonadUnliftIO m => Project -> SqlBackend -> m SqlBackend
-addProject project conn = do
-    runDB conn (projAdd project)
-    return conn
-
 modelException :: Selector ModelException
 modelException = const True
 
-testProjAPI :: SpecWith SqlBackend
-testProjAPI = 
+testProjAPI :: SqlBackend -> Spec
+testProjAPI conn = 
     describe "Test the project API" $ do
         context "When the DB is empty" $ do
-            it "tests the uniqueness of the name" $ \conn -> 
+            it "tests the uniqueness of the name" $ 
                 runDB conn (projAdd project1 >> projAdd project1)
                   `shouldThrow` modelException
-            it "tests if a project does not exists" $ \conn -> 
+            it "tests if a project does not exists" $ 
                 runDB conn (projExists project1) `shouldReturn` False
-            it "tests if we can remove a project" $ \conn ->
+            it "tests if we can remove a project" $ 
                 runDB conn (projRm project1) `shouldThrow` modelException
-            it "tests if we can rename a project not present in the db" $ \conn ->
+            it "tests if we can rename a project not present in the db" $ 
                 runDB conn (projRename project1 project2) 
                     `shouldThrow` modelException
-            it "tests the list of projects" $ \conn ->
+            it "tests the list of projects" $ 
                 runDB conn projList `shouldReturn` []
         context "One project in DB" 
-            $ beforeWith (addProject project1)
-            $ after cleanProjects 
+            $ before_ (runDB conn (projAdd project1))
+            $ after_ (cleanProjects conn)
             $ do
-            it "tests if the project exists" $ \conn -> 
+            it "tests if the project exists" $ 
                 runDB conn (projExists project1) `shouldReturn` True
-            it "tests if we can remove the project" $ \conn -> do
+            it "tests if we can remove the project" $  do
                 exists <- runDB conn $ do
                     projRm project1 
                     projExists project1
                 exists `shouldBe` False
-            it "tests if we can rename it" $ \conn -> do
+            it "tests if we can rename it" $ do
                 runDB conn $ projRename project1 project2
                 proj1Exists <- runDB conn (projExists project1)
                 proj1Exists `shouldBe` False
                 proj2Exists <- runDB conn (projExists project2)
                 proj2Exists `shouldBe` True
-            it "tests the list of projects" $ \conn ->
+            it "tests the list of projects" $ 
                 runDB conn projList `shouldReturn` [project1]
   where project1 = Project "TestProject1"
         project2 = Project "TestProject2"
 
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> 
-    liftIO $ hspec $ beforeAll (migrate conn) $ before (return conn) $ 
-        testProjAPI
+    liftIO $ hspec $ beforeAll (migrate conn) $ 
+        testProjAPI conn
         
