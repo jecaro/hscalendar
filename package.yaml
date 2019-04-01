@@ -7,6 +7,7 @@ dependencies:
 - brick
 - esqueleto
 - formatting
+- generic-random
 - hspec
 - microlens-platform
 - monad-loops
@@ -21,6 +22,7 @@ dependencies:
 - text
 - vty
 - QuickCheck
+- quickcheck-instances
 name: hscalendar
 version: 0.1.0.0
 author: Jean-Charles Quillet
@@ -69,6 +71,7 @@ tests:
     - hscalendar
 
 default-extensions:
+  - DeriveGeneric
   - GADTs
   - LambdaCase
   - NoImplicitPrelude

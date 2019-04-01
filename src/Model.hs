@@ -11,6 +11,10 @@ import           RIO
 import qualified RIO.Text() 
 import qualified RIO.Time as Time (Day, TimeOfDay)
 
+import           Generic.Random (genericArbitraryU)
+import           Test.QuickCheck (Arbitrary, arbitrary)
+import           Test.QuickCheck.Instances.Text()
+
 import           Database.Persist.TH 
    ( mkMigrate
    , mkPersist
@@ -31,6 +35,7 @@ Project
     UniqueName name 
     deriving Show
     deriving Eq
+    deriving Generic
 HalfDay
     -- Fields
     day             Time.Day        
@@ -53,3 +58,5 @@ HalfDayWorked -- Only for WorkedOpenDay
     deriving Show
 |]
 
+instance Arbitrary Project where
+    arbitrary = genericArbitraryU

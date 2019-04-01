@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 import           RIO
 
 import           Database.Persist.Sqlite
@@ -24,6 +23,12 @@ import           Test.Hspec
     , shouldThrow
     , Spec
     )
+import           Test.QuickCheck 
+    ( property
+    , Property
+    )
+import qualified Test.QuickCheck.Monadic as Q (assert, monadicIO, run)
+import           Test.QuickCheck.Instances.Text()
 
 import           Model
 import           ModelFcts
@@ -46,6 +51,13 @@ cleanProjects conn = runDB conn $ deleteWhere ([] :: [Filter Project])
 
 modelException :: Selector ModelException
 modelException = const True
+
+projAddprojExists :: SqlBackend -> Project -> Property
+projAddprojExists conn project = Q.monadicIO $ do 
+    exists <- Q.run $ runDB conn (projAdd project >> projExists project)
+    Q.assert exists
+    noExists <- Q.run $ runDB conn (projRm project >> projExists project)
+    Q.assert (not noExists)
 
 testProjAPI :: SqlBackend -> Spec
 testProjAPI conn = 
@@ -82,6 +94,9 @@ testProjAPI conn =
                 proj2Exists `shouldBe` True
             it "tests the list of projects" $ 
                 runDB conn projList `shouldReturn` [project1]
+        context "Test properties" $ 
+            it "projAdd projExists" $
+                property (projAddprojExists conn)
   where project1 = Project "TestProject1"
         project2 = Project "TestProject2"
 
