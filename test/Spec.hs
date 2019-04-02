@@ -6,7 +6,6 @@ import           Database.Persist.Sqlite
     , runMigration
     , runSqlPersistM
     , SqlBackend
-    , SqlPersistT
     , withSqliteConn
     , runSqlPersistM
     , SqlPersistM
@@ -26,13 +25,8 @@ import           Test.Hspec
     , shouldThrow
     , Spec
     )
-import           Test.QuickCheck
-    ( property
-    , Property
-    , arbitrary
-    , ioProperty
-    )
-import qualified Test.QuickCheck.Monadic as Q (assert, pick, monadic, monadicIO, run, PropertyM(..))
+import           Test.QuickCheck (property, Property, ioProperty)
+import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
 import           Model
@@ -58,27 +52,18 @@ modelException :: Selector ModelException
 modelException = const True
 
 projAddProjExists :: SqlBackend -> Project -> Property
-projAddProjExists conn project = Q.monadicIO $ do
-    exists <- Q.run $ runDB conn (projAdd project >> projExists project)
+projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
+    exists <- Q.run $ (projAdd project >> projExists project)
     Q.assert exists
-    noExists <- Q.run $ runDB conn (projRm project >> projExists project)
+    noExists <- Q.run $ (projRm project >> projExists project)
     Q.assert (not noExists)
 
 projAddProjAdd :: SqlBackend -> Project -> Property
-projAddProjAdd conn project = Q.monadicIO $ do
-    exceptionRaised <- Q.run $ runDB conn $ do
+projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
+    exceptionRaised <- Q.run $ do
         projAdd project
         catch (projAdd project >> return False) (\(ModelException _) -> return True)
     Q.assert exceptionRaised
-    Q.run $ runDB conn $ projRm project
-
-prop_projAdd :: (MonadIO m) => Q.PropertyM (SqlPersistT m) ()
-prop_projAdd = do
-    projName <- Q.pick arbitrary
-    let project = Project projName
-    Q.run $ projAdd project
-    exists <- Q.run $ projExists project
-    Q.assert exists
     Q.run $ projRm project
 
 testProjAPI :: SqlBackend -> Spec
@@ -121,8 +106,6 @@ testProjAPI conn =
                 property (projAddProjExists conn)
             it "projAdd projAdd" $
                 property (projAddProjAdd conn)
-            it "other prop" $
-                property (Q.monadic (ioProperty . runDB conn) prop_projAdd)
   where project1 = Project "TestProject1"
         project2 = Project "TestProject2"
 
