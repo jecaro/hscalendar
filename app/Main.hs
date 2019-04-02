@@ -72,6 +72,7 @@ import           ModelFcts
 -- - Launch editor
 -- - Project empty string
 -- - Add unit testing
+-- - Add CI
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Use Lens instead of records

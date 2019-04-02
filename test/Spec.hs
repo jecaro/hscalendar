@@ -9,6 +9,7 @@ import           Database.Persist.Sqlite
     , withSqliteConn
     , runSqlPersistM
     , SqlPersistM
+    , SqlPersistT
     )
 import           Control.Monad.Logger (runNoLoggingT)
 import           Test.Hspec
@@ -40,31 +41,36 @@ import           ModelFcts
     )
 
 runDB :: SqlBackend -> SqlPersistM a -> IO a
-runDB =  flip runSqlPersistM 
+runDB conn actions = runSqlPersistM actions conn
 
-migrate :: SqlBackend -> IO ()
-migrate conn = runDB conn $ runMigration migrateAll
-
-cleanProjects :: SqlBackend -> IO ()
-cleanProjects conn = runDB conn $ deleteWhere ([] :: [Filter Project])
+cleanProjects :: (MonadIO m) => SqlPersistT m ()
+cleanProjects = deleteWhere ([] :: [Filter Project])
 
 modelException :: Selector ModelException
 modelException = const True
 
-projAddProjExists :: SqlBackend -> Project -> Property
-projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
+prop_projAddProjExists :: SqlBackend -> Project -> Property
+prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
     exists <- Q.run $ (projAdd project >> projExists project)
     Q.assert exists
     noExists <- Q.run $ (projRm project >> projExists project)
     Q.assert (not noExists)
 
-projAddProjAdd :: SqlBackend -> Project -> Property
-projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
+prop_projAddProjAdd :: SqlBackend -> Project -> Property
+prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
         catch (projAdd project >> return False) (\(ModelException _) -> return True)
     Q.assert exceptionRaised
     Q.run $ projRm project
+
+prop_projList :: SqlBackend -> [Project] -> Property
+prop_projList conn projects = Q.monadic (ioProperty . runDB conn) $ do
+    projects' <- Q.run $ do
+        mapM_ projAdd projects
+        projList
+    Q.assert $ projects' == projects
+    Q.run $ cleanProjects
 
 testProjAPI :: SqlBackend -> Spec
 testProjAPI conn =
@@ -84,7 +90,7 @@ testProjAPI conn =
                 runDB conn projList `shouldReturn` []
         context "One project in DB"
             $ before_ (runDB conn (projAdd project1))
-            $ after_ (cleanProjects conn)
+            $ after_ (runDB conn (cleanProjects))
             $ do
             it "tests if the project exists" $
                 runDB conn (projExists project1) `shouldReturn` True
@@ -103,14 +109,16 @@ testProjAPI conn =
                 runDB conn projList `shouldReturn` [project1]
         context "Test properties" $ do
             it "projAdd projExists" $
-                property (projAddProjExists conn)
+                property (prop_projAddProjExists conn)
             it "projAdd projAdd" $
-                property (projAddProjAdd conn)
+                property (prop_projAddProjAdd conn)
+            it "projList" $
+                property (prop_projList conn)
   where project1 = Project "TestProject1"
         project2 = Project "TestProject2"
 
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
-    liftIO $ hspec $ beforeAll (migrate conn) $ 
+    liftIO $ hspec $ beforeAll (runDB conn $ runMigration migrateAll) $ do
         testProjAPI conn
 
