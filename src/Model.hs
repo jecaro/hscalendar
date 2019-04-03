@@ -34,6 +34,7 @@ Project
     -- Constraint
     UniqueName name 
     deriving Show
+    deriving Ord
     deriving Eq
     deriving Generic
 HalfDay

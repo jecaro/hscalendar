@@ -1,4 +1,5 @@
 import           RIO
+import           RIO.List as L (sort)
 
 import           Database.Persist.Sqlite
     ( deleteWhere
@@ -52,7 +53,7 @@ modelException = const True
 prop_projAddProjExists :: SqlBackend -> Project -> Property
 prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
     exists <- Q.run $ (projAdd project >> projExists project)
-    Q.assert exists
+    Q.assert exists -- need clean up if it crashes
     noExists <- Q.run $ (projRm project >> projExists project)
     Q.assert (not noExists)
 
@@ -60,17 +61,24 @@ prop_projAddProjAdd :: SqlBackend -> Project -> Property
 prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
-        catch (projAdd project >> return False) (\(ModelException _) -> return True)
-    Q.assert exceptionRaised
-    Q.run $ projRm project
+        res <- catch (projAdd project >> return False) (\(ModelException _) -> return True)
+        cleanProjects
+        return res
 
+    Q.assert exceptionRaised
+
+-- TODO add smart constructor alphanum, how to make quicksort generate 
+-- unique values
 prop_projList :: SqlBackend -> [Project] -> Property
 prop_projList conn projects = Q.monadic (ioProperty . runDB conn) $ do
-    projects' <- Q.run $ do
-        mapM_ projAdd projects
-        projList
-    Q.assert $ projects' == projects
-    Q.run $ cleanProjects
+    let uniqueProjects = nubOrd projects
+    dbProjects <- Q.run $ do
+        mapM_ projAdd uniqueProjects
+        res <- projList
+        cleanProjects
+        return res
+
+    Q.assert $ sort(dbProjects) == sort(uniqueProjects)
 
 testProjAPI :: SqlBackend -> Spec
 testProjAPI conn =
