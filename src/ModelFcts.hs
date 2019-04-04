@@ -28,6 +28,7 @@ import           Database.Persist.Sqlite
     ( Entity(..)
     , SelectOpt(Asc)
     , SqlPersistT
+    , Key
     , delete
     , deleteWhere
     , get
@@ -44,7 +45,7 @@ import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
-import           Model
+import           ModelExports
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
@@ -55,10 +56,10 @@ instance Exception ModelException
 -- Error strings
 
 errProjNotFound :: Project -> Text
-errProjNotFound (Project name) = "The project " <> name <> " is not in the database"
+errProjNotFound project = "The project " <> projectName project <> " is not in the database"
 
 errProjExists :: Project -> Text
-errProjExists (Project name) = "The project " <> name <> " exists in the database"
+errProjExists project = "The project " <> projectName project <> " exists in the database"
 
 errHdNotFound :: Time.Day -> TimeInDay -> Text
 errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (Text.pack . show) tid
@@ -86,7 +87,7 @@ showDay day = Text.intercalate "-" $ fmap printNum [d, m, intY]
 -- Exported project functions 
 
 projExists :: MonadIO m => Project -> SqlPersistT m Bool
-projExists (Project name) = isJust <$> getBy (UniqueName name)
+projExists project = isJust <$> getBy (UniqueName $ projectName project)
 
 projAdd :: (MonadIO m) => Project -> SqlPersistT m ()
 projAdd project = do
@@ -113,7 +114,7 @@ projRename p1 p2 = do
 -- Internal project functions
 
 projGetInt :: (MonadIO m) => Project -> SqlPersistT m (Key Project)
-projGetInt project@(Project name) = getBy (UniqueName name) >>= 
+projGetInt project = getBy (UniqueName $ projectName project) >>= 
     \case
         Nothing             -> throwIO $ ModelException $ errProjNotFound project
         Just (Entity pId _) -> return pId

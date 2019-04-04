@@ -5,11 +5,16 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Model where
+module Model 
+where
 
 import           RIO
 import qualified RIO.Text() 
+import qualified RIO.Text as Text (all, Text)
 import qualified RIO.Time as Time (Day, TimeOfDay)
+import qualified RIO.Char as C (isAlphaNum)
+
+import           Data.Maybe (Maybe(..))
 
 import           Generic.Random (genericArbitraryU)
 import           Test.QuickCheck (Arbitrary, arbitrary)
@@ -61,3 +66,8 @@ HalfDayWorked -- Only for WorkedOpenDay
 
 instance Arbitrary Project where
     arbitrary = genericArbitraryU
+
+mkProject :: Text.Text -> Maybe Project
+mkProject text = if Text.all C.isAlphaNum text 
+    then Just $ Project text
+    else Nothing

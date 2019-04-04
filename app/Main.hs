@@ -27,7 +27,7 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 import           HalfDayType (HalfDayType(..))
-import           Model
+import           ModelExports
 import           TimeInDay (TimeInDay(..))
 import           ModelFcts
     ( ModelException(..)
@@ -133,18 +133,16 @@ run :: (MonadIO m, MonadUnliftIO m) => Cmd -> SqlPersistT m ()
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
-run (ProjAdd name) = catch (void $ projAdd $ Project name) 
+run (ProjAdd project) = catch (void $ projAdd project) 
                            (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
 -- TODO ask for confirmation when erasing hdw
-run (ProjRm name) = catch (projRm $ Project name) 
+run (ProjRm project) = catch (projRm project) 
                           (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
-run (ProjRename name1 name2) = catch 
+run (ProjRename p1 p2) = catch 
     (projRename p1 p2) (\(ModelException msg) -> liftIO . putStrLn $ msg)
-  where p1 = Project name1
-        p2 = Project name2
 
 -- Display an entry
 run (DiaryDisplay cd tid) = do
@@ -158,9 +156,9 @@ run (DiaryDisplay cd tid) = do
     let hdStr = case eiHdHdwProj of
            Left (ModelException msg) -> [ msg ]
            Right (_, Nothing)        -> [ (Text.pack . show) Holiday ]
-           Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, Project name)) ->
+           Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
-               , "Project: " <> name
+               , "Project: " <> projectName project
                , "Notes:   " <> notes
                ]
     -- Print it
@@ -183,7 +181,7 @@ run (DiaryWork cd tid wopts) = do
         (Right (_, Just (_, _)), _) -> return $ Right wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
-            eiAdded <- try $ hdSetWork day tid $ Project proj
+            eiAdded <- try $ hdSetWork day tid proj
             case eiAdded of
                 Right _ -> return $ Right otherOpts
                 Left (ModelException msg) -> return $ Left msg
@@ -237,7 +235,7 @@ dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdwSetLeft day tid time
 -- Simple actions handling
 dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
-dispatchEdit day tid (MkSetProj (SetProj name))       = hdwSetProject day tid $ Project name
+dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT

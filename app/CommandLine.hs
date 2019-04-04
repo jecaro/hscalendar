@@ -40,9 +40,9 @@ import           Options.Applicative as Opt
     , metavar
     , option
     , progDesc
+    , maybeReader
     , short
     , some
-    , str
     , strOption
     , subparser
     , (<**>)
@@ -50,6 +50,7 @@ import           Options.Applicative as Opt
     )
 
 import           CustomDay (CustomDay(..))
+import           ModelExports (Project, mkProject)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 
@@ -57,13 +58,13 @@ data Cmd = DiaryDisplay CustomDay TimeInDay           |
            DiaryHoliday CustomDay TimeInDay           |
            DiaryRm CustomDay TimeInDay                |
            DiaryWork CustomDay TimeInDay [WorkOption] |
-           ProjAdd Text                               |
+           ProjAdd Project                            |
            ProjList                                   |
-           ProjRename Text Text                       |
-           ProjRm Text
+           ProjRename Project Project                 |
+           ProjRm Project
     deriving (Eq, Show)
 
-newtype SetProj = SetProj Text
+newtype SetProj = SetProj Project
     deriving (Eq, Show)
 
 newtype SetNotes = SetNotes Text
@@ -110,16 +111,19 @@ parseCustomDay = attoReadM parser
                <|> MkDayNum <$> decimal
         mkDayFromGregorian d m y = MkDay $ Time.fromGregorian y m d
 
+parseProject :: ReadM Project
+parseProject = maybeReader $ mkProject . Text.pack
+
 projRm :: Opt.Parser Cmd
-projRm = ProjRm <$> argument str (metavar "PROJECT...")
+projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
 
 projRename :: Opt.Parser Cmd
 projRename = ProjRename
-    <$> argument str (metavar "PROJECT...")
-    <*> argument str (metavar "PROJECT...")
+    <$> argument parseProject (metavar "PROJECT...")
+    <*> argument parseProject (metavar "PROJECT...")
 
 projAdd :: Opt.Parser Cmd
-projAdd = ProjAdd <$> argument str (metavar "PROJECT...")
+projAdd = ProjAdd <$> argument parseProject (metavar "PROJECT...")
 
 projCmd :: Opt.Parser Cmd
 projCmd = subparser
@@ -170,7 +174,7 @@ workOption = workOptionSetProj    <|>
              workOptionSetOffice
 
 workOptionSetProj :: Opt.Parser WorkOption
-workOptionSetProj = MkSetProj . SetProj <$> strOption
+workOptionSetProj = MkSetProj . SetProj <$> option parseProject
     (  long "project"
     <> short 'p'
     <> metavar "PROJECT"
