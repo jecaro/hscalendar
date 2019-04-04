@@ -52,9 +52,9 @@ modelException = const True
 
 prop_projAddProjExists :: SqlBackend -> Project -> Property
 prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
-    exists <- Q.run $ (projAdd project >> projExists project)
+    exists <- Q.run (projAdd project >> projExists project)
     Q.assert exists -- need clean up if it crashes
-    noExists <- Q.run $ (projRm project >> projExists project)
+    noExists <- Q.run (projRm project >> projExists project)
     Q.assert (not noExists)
 
 prop_projAddProjAdd :: SqlBackend -> Project -> Property
@@ -67,8 +67,6 @@ prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
 
     Q.assert exceptionRaised
 
--- TODO add smart constructor alphanum, how to make quicksort generate 
--- unique values
 prop_projList :: SqlBackend -> [Project] -> Property
 prop_projList conn projects = Q.monadic (ioProperty . runDB conn) $ do
     let uniqueProjects = nubOrd projects
@@ -78,7 +76,7 @@ prop_projList conn projects = Q.monadic (ioProperty . runDB conn) $ do
         cleanProjects
         return res
 
-    Q.assert $ sort(dbProjects) == sort(uniqueProjects)
+    Q.assert $ dbProjects == sort uniqueProjects
 
 testProjAPI :: SqlBackend -> Spec
 testProjAPI conn =
@@ -98,7 +96,7 @@ testProjAPI conn =
                 runDB conn projList `shouldReturn` []
         context "One project in DB"
             $ before_ (runDB conn (projAdd project1))
-            $ after_ (runDB conn (cleanProjects))
+            $ after_ (runDB conn cleanProjects)
             $ do
             it "tests if the project exists" $
                 runDB conn (projExists project1) `shouldReturn` True
@@ -126,7 +124,7 @@ testProjAPI conn =
         project2 = Project "TestProject2"
 
 main :: IO ()
-main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
-    liftIO $ hspec $ beforeAll (runDB conn $ runMigration migrateAll) $ do
+main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ 
+    liftIO $ hspec $ beforeAll (runDB conn $ runMigration migrateAll) $ 
         testProjAPI conn
 
