@@ -5,6 +5,7 @@ dependencies:
 - attoparsec
 - base >= 4.7 && < 5
 - brick
+- either
 - esqueleto
 - formatting
 - generic-random
@@ -16,10 +17,12 @@ dependencies:
 - persistent
 - persistent-sqlite
 - persistent-template
+- refined
 - rio
-- transformers
+- template-haskell
 - text-zipper
 - text
+- transformers
 - vty
 - QuickCheck
 - quickcheck-instances

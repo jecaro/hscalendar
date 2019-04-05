@@ -1,22 +1,32 @@
-{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeSynonymInstances               #-}
 
 module Model 
 where
 
 import           RIO
-import qualified RIO.Text() 
-import qualified RIO.Text as Text (all, Text)
+import qualified RIO.Text ()
+import qualified RIO.Text as Text (all)
 import qualified RIO.Time as Time (Day, TimeOfDay)
 import qualified RIO.Char as C (isAlphaNum)
 
+import           Data.Either.Combinators (rightToMaybe)
 import           Data.Maybe (Maybe(..))
+import           Data.Typeable (typeOf)
 
 import           Generic.Random (genericArbitraryU)
+import           Refined 
+    ( Predicate
+    , Refined
+    , refine
+    , throwRefineOtherException
+    , unrefine
+    , validate
+    )
 import           Test.QuickCheck (Arbitrary, arbitrary)
 import           Test.QuickCheck.Instances.Text()
 
@@ -64,10 +74,24 @@ HalfDayWorked -- Only for WorkedOpenDay
     deriving Show
 |]
 
+-- Arbitrary instance for QuickCheck
 instance Arbitrary Project where
     arbitrary = genericArbitraryU
 
-mkProject :: Text.Text -> Maybe Project
-mkProject text = if Text.all C.isAlphaNum text 
-    then Just $ Project text
-    else Nothing
+-- We use the refined library to validate the project name
+data AlphaNum
+
+instance Predicate AlphaNum Text where
+    validate p value = unless (Text.all C.isAlphaNum value) $ 
+            throwRefineOtherException (typeOf p) "Not alpha num text"
+
+type AlphaNumText = Refined AlphaNum Text
+
+-- Smart constructor which cannot fail
+mkProjectLit :: AlphaNumText -> Project
+mkProjectLit = Project . unrefine 
+
+-- Smart constructor which can fail
+mkProject :: Text -> Maybe Project 
+mkProject name = Project . (unrefine :: AlphaNumText -> Text) <$> 
+    rightToMaybe (refine name)
