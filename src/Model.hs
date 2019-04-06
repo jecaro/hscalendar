@@ -3,7 +3,6 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeSynonymInstances               #-}
 
 module Model
 where

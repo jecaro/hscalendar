@@ -74,8 +74,10 @@ tests:
 
 default-extensions:
   - DeriveGeneric
+  - FlexibleInstances
   - GADTs
   - LambdaCase
   - NoImplicitPrelude
   - OverloadedStrings
+  - TypeSynonymInstances
  

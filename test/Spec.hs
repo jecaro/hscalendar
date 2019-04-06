@@ -1,6 +1,8 @@
-{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 import           RIO
 import           RIO.List as L (sort)
+import qualified RIO.Set as Set (fromList)
 
 import           Database.Persist.Sqlite
     ( deleteWhere
@@ -29,7 +31,13 @@ import           Test.Hspec
     , shouldThrow
     , Spec
     )
-import           Test.QuickCheck (property, Property, ioProperty)
+import           Test.QuickCheck 
+    ( Arbitrary(..)
+    , Property
+    , property
+    , listOf
+    , ioProperty
+    , suchThat)
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
@@ -69,16 +77,24 @@ prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
 
     Q.assert exceptionRaised
 
-prop_projList :: SqlBackend -> [Project] -> Property
-prop_projList conn projects = Q.monadic (ioProperty . runDB conn) $ do
-    let uniqueProjects = nubOrd projects
+-- New type for a unique list of projects to add in the DB
+newtype ProjectUniqueList = ProjectUniqueList [Project]
+    deriving Show
+
+-- Its arbitrary instance, make sure there is no duplicate
+instance Arbitrary ProjectUniqueList where
+    arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
+      where hasNoDups x = length x == length (Set.fromList x) 
+
+prop_projList :: SqlBackend -> ProjectUniqueList -> Property
+prop_projList conn (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB conn) $ do
     dbProjects <- Q.run $ do
-        mapM_ projAdd uniqueProjects
+        mapM_ projAdd projects
         res <- projList
         cleanProjects
         return res
 
-    Q.assert $ dbProjects == sort uniqueProjects
+    Q.assert $ dbProjects == sort projects
 
 testProjAPI :: SqlBackend -> Spec
 testProjAPI conn =
