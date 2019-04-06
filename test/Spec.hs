@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell            #-}
 import           RIO
 import           RIO.List as L (sort)
 
@@ -13,6 +14,7 @@ import           Database.Persist.Sqlite
     , SqlPersistT
     )
 import           Control.Monad.Logger (runNoLoggingT)
+import           Refined (refineTH)
 import           Test.Hspec
     ( after_
     , before_
@@ -31,7 +33,7 @@ import           Test.QuickCheck (property, Property, ioProperty)
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
-import           Model
+import           ModelExports
 import           ModelFcts
     ( ModelException(..)
     , projAdd
@@ -120,8 +122,8 @@ testProjAPI conn =
                 property (prop_projAddProjAdd conn)
             it "projList" $
                 property (prop_projList conn)
-  where project1 = Project "TestProject1"
-        project2 = Project "TestProject2"
+  where project1 = mkProjectLit $$(refineTH "TestProject1") 
+        project2 = mkProjectLit $$(refineTH "TestProject2") 
 
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ 

@@ -10,7 +10,7 @@ where
 
 import           RIO
 import qualified RIO.Text ()
-import qualified RIO.Text as Text (all)
+import qualified RIO.Text as Text (all, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay)
 import qualified RIO.Char as C (isAlphaNum)
 
@@ -18,7 +18,6 @@ import           Data.Either.Combinators (rightToMaybe)
 import           Data.Maybe (Maybe(..))
 import           Data.Typeable (typeOf)
 
-import           Generic.Random (genericArbitraryU)
 import           Refined 
     ( Predicate
     , Refined
@@ -27,7 +26,7 @@ import           Refined
     , unrefine
     , validate
     )
-import           Test.QuickCheck (Arbitrary, arbitrary)
+import           Test.QuickCheck (Arbitrary, arbitrary, listOf, elements)
 import           Test.QuickCheck.Instances.Text()
 
 import           Database.Persist.TH 
@@ -76,7 +75,7 @@ HalfDayWorked -- Only for WorkedOpenDay
 
 -- Arbitrary instance for QuickCheck
 instance Arbitrary Project where
-    arbitrary = genericArbitraryU
+    arbitrary = Project . Text.pack <$> listOf (elements allAlphaNumChars)
 
 -- We use the refined library to validate the project name
 data AlphaNum
@@ -86,6 +85,9 @@ instance Predicate AlphaNum Text where
             throwRefineOtherException (typeOf p) "Not alpha num text"
 
 type AlphaNumText = Refined AlphaNum Text
+
+allAlphaNumChars :: String
+allAlphaNumChars = filter C.isAlphaNum [minBound ..]
 
 -- Smart constructor which cannot fail
 mkProjectLit :: AlphaNumText -> Project

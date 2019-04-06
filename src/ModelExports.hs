@@ -1,5 +1,6 @@
 module ModelExports
-    ( EntityField
+    ( AlphaNumText
+    , EntityField
         ( HalfDayType
         , HalfDayWorkedHalfDayId
         , HalfDayWorkedNotes 
@@ -15,6 +16,7 @@ module ModelExports
     , Unique(UniqueHalfDayId, UniqueName, DayAndTimeInDay)
     , migrateAll
     , mkProject
+    , mkProjectLit
     , projectName
     )
 

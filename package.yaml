@@ -8,7 +8,6 @@ dependencies:
 - either
 - esqueleto
 - formatting
-- generic-random
 - hspec
 - microlens-platform
 - monad-loops
