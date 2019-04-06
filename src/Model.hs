@@ -5,20 +5,19 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeSynonymInstances               #-}
 
-module Model 
+module Model
 where
 
 import           RIO
 import qualified RIO.Text ()
-import qualified RIO.Text as Text (all, pack)
+import qualified RIO.Text as Text (all, length, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay)
-import qualified RIO.Char as C (isAlphaNum)
 
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Maybe (Maybe(..))
 import           Data.Typeable (typeOf)
 
-import           Refined 
+import           Refined
     ( Predicate
     , Refined
     , refine
@@ -26,10 +25,10 @@ import           Refined
     , unrefine
     , validate
     )
-import           Test.QuickCheck (Arbitrary, arbitrary, listOf, elements)
+import           Test.QuickCheck (Arbitrary, arbitrary, elements, choose, vectorOf, sized)
 import           Test.QuickCheck.Instances.Text()
 
-import           Database.Persist.TH 
+import           Database.Persist.TH
    ( mkMigrate
    , mkPersist
    , persistLowerCase
@@ -73,27 +72,39 @@ HalfDayWorked -- Only for WorkedOpenDay
     deriving Show
 |]
 
--- Arbitrary instance for QuickCheck
+-- Max length of project name
+projNameMaxLength :: Int
+projNameMaxLength = 20
+
+-- Allowed chars for project name
+projNameAllowedChars :: String
+projNameAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
+
+-- Predicate to check if the project is valid
+projNameValid :: Text -> Bool
+projNameValid name = Text.length name <= projNameMaxLength &&
+    Text.all (`elem` projNameAllowedChars) name
+
 instance Arbitrary Project where
-    arbitrary = Project . Text.pack <$> listOf (elements allAlphaNumChars)
+    arbitrary = sized $ \s -> do
+        n <- choose (0, s `min` projNameMaxLength)
+        xs <- vectorOf n (elements projNameAllowedChars)
+        return (Project (Text.pack xs))
 
 -- We use the refined library to validate the project name
-data AlphaNum
+data ProjName
 
-instance Predicate AlphaNum Text where
-    validate p value = unless (Text.all C.isAlphaNum value) $ 
+instance Predicate ProjName Text where
+    validate p name = unless (projNameValid name) $
             throwRefineOtherException (typeOf p) "Not alpha num text"
 
-type AlphaNumText = Refined AlphaNum Text
-
-allAlphaNumChars :: String
-allAlphaNumChars = filter C.isAlphaNum [minBound ..]
+type ProjNameText = Refined ProjName Text
 
 -- Smart constructor which cannot fail
-mkProjectLit :: AlphaNumText -> Project
-mkProjectLit = Project . unrefine 
+mkProjectLit :: ProjNameText -> Project
+mkProjectLit = Project . unrefine
 
 -- Smart constructor which can fail
-mkProject :: Text -> Maybe Project 
-mkProject name = Project . (unrefine :: AlphaNumText -> Text) <$> 
+mkProject :: Text -> Maybe Project
+mkProject name = Project . (unrefine :: ProjNameText -> Text) <$>
     rightToMaybe (refine name)

@@ -33,7 +33,7 @@ import           Test.QuickCheck (property, Property, ioProperty)
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
-import           ModelExports
+import           ModelExports (Project, mkProjectLit, migrateAll)
 import           ModelFcts
     ( ModelException(..)
     , projAdd
