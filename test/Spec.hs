@@ -62,10 +62,15 @@ modelException = const True
 
 prop_projAddProjExists :: SqlBackend -> Project -> Property
 prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
-    exists <- Q.run (projAdd project >> projExists project)
-    Q.assert exists -- need clean up if it crashes
-    noExists <- Q.run (projRm project >> projExists project)
-    Q.assert (not noExists)
+    (exists, noExists) <- Q.run $ do
+        projAdd project 
+        exists <- projExists project
+        projRm project 
+        noExists <- projExists project
+        cleanProjects
+        return (exists, noExists)
+
+    Q.assert (exists && not noExists)
 
 prop_projAddProjAdd :: SqlBackend -> Project -> Property
 prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
