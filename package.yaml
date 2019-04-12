@@ -79,5 +79,6 @@ default-extensions:
   - LambdaCase
   - NoImplicitPrelude
   - OverloadedStrings
+  - RankNTypes
   - TypeSynonymInstances
  

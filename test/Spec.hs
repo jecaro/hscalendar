@@ -9,7 +9,6 @@ import           Database.Persist.Sqlite
     , Filter
     , runMigration
     , runSqlPersistM
-    , SqlBackend
     , withSqliteConn
     , runSqlPersistM
     , SqlPersistM
@@ -51,17 +50,19 @@ import           ModelFcts
     , projRm
     )
 
-runDB :: SqlBackend -> SqlPersistM a -> IO a
-runDB conn actions = runSqlPersistM actions conn
+-- The type for the runDB function
+type RunDB = (forall a. SqlPersistM a -> IO a)
 
+-- Clean up the project table
 cleanProjects :: (MonadIO m) => SqlPersistT m ()
 cleanProjects = deleteWhere ([] :: [Filter Project])
 
+-- QuickCheck selector for our ModelException
 modelException :: Selector ModelException
 modelException = const True
 
-prop_projAddProjExists :: SqlBackend -> Project -> Property
-prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
+prop_projAddProjExists :: RunDB -> Project -> Property
+prop_projAddProjExists runDB project = Q.monadic (ioProperty . runDB) $ do
     (exists, noExists) <- Q.run $ do
         projAdd project 
         exists <- projExists project
@@ -72,8 +73,8 @@ prop_projAddProjExists conn project = Q.monadic (ioProperty . runDB conn) $ do
 
     Q.assert (exists && not noExists)
 
-prop_projAddProjAdd :: SqlBackend -> Project -> Property
-prop_projAddProjAdd conn project =  Q.monadic (ioProperty . runDB conn) $ do
+prop_projAddProjAdd :: RunDB -> Project -> Property
+prop_projAddProjAdd runDB project =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
         res <- catch (projAdd project >> return False) (\(ModelException _) -> return True)
@@ -91,8 +92,8 @@ instance Arbitrary ProjectUniqueList where
     arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
       where hasNoDups x = length x == length (Set.fromList x) 
 
-prop_projList :: SqlBackend -> ProjectUniqueList -> Property
-prop_projList conn (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB conn) $ do
+prop_projList :: RunDB -> ProjectUniqueList -> Property
+prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB) $ do
     dbProjects <- Q.run $ do
         mapM_ projAdd projects
         res <- projList
@@ -101,53 +102,57 @@ prop_projList conn (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB 
 
     Q.assert $ dbProjects == sort projects
 
-testProjAPI :: SqlBackend -> Spec
-testProjAPI conn =
+testProjAPI :: RunDB -> Spec
+testProjAPI runDB =
     describe "Test the project API" $ do
         context "When the DB is empty" $ do
             it "tests the uniqueness of the name" $
-                runDB conn (projAdd project1 >> projAdd project1)
+                runDB (projAdd project1 >> projAdd project1)
                   `shouldThrow` modelException
             it "tests if a project does not exists" $
-                runDB conn (projExists project1) `shouldReturn` False
+                runDB (projExists project1) `shouldReturn` False
             it "tests if we can remove a project" $
-                runDB conn (projRm project1) `shouldThrow` modelException
+                runDB (projRm project1) `shouldThrow` modelException
             it "tests if we can rename a project not present in the db" $
-                runDB conn (projRename project1 project2)
+                runDB (projRename project1 project2)
                     `shouldThrow` modelException
             it "tests the list of projects" $
-                runDB conn projList `shouldReturn` []
+                runDB projList `shouldReturn` []
         context "One project in DB"
-            $ before_ (runDB conn (projAdd project1))
-            $ after_ (runDB conn cleanProjects)
+            $ before_ (runDB (projAdd project1))
+            $ after_ (runDB cleanProjects)
             $ do
             it "tests if the project exists" $
-                runDB conn (projExists project1) `shouldReturn` True
+                runDB (projExists project1) `shouldReturn` True
             it "tests if we can remove the project" $  do
-                exists <- runDB conn $ do
+                exists <- runDB $ do
                     projRm project1
                     projExists project1
                 exists `shouldBe` False
             it "tests if we can rename it" $ do
-                runDB conn $ projRename project1 project2
-                proj1Exists <- runDB conn (projExists project1)
+                runDB $ projRename project1 project2
+                proj1Exists <- runDB (projExists project1)
                 proj1Exists `shouldBe` False
-                proj2Exists <- runDB conn (projExists project2)
+                proj2Exists <- runDB (projExists project2)
                 proj2Exists `shouldBe` True
             it "tests the list of projects" $
-                runDB conn projList `shouldReturn` [project1]
+                runDB projList `shouldReturn` [project1]
         context "Test properties" $ do
             it "projAdd projExists" $
-                property (prop_projAddProjExists conn)
+                property (prop_projAddProjExists runDB)
             it "projAdd projAdd" $
-                property (prop_projAddProjAdd conn)
+                property (prop_projAddProjAdd runDB)
             it "projList" $
-                property (prop_projList conn)
-  where project1 = mkProjectLit $$(refineTH "TestProject1") 
+                property (prop_projList runDB)
+  where project1 = mkProjectLit $$(refineTH  "TestProject1") 
         project2 = mkProjectLit $$(refineTH "TestProject2") 
 
 main :: IO ()
-main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ 
-    liftIO $ hspec $ beforeAll (runDB conn $ runMigration migrateAll) $ 
-        testProjAPI conn
+main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
+    -- Setup a run function which captures the connection
+    let runDB :: RunDB
+        runDB = \actions -> runSqlPersistM actions conn
+    -- Launch the tests
+    hspec $ beforeAll (runDB $ runMigration migrateAll) $ 
+        testProjAPI runDB
 
