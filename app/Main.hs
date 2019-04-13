@@ -26,8 +26,9 @@ import           CommandLine
     , opts
     )
 import           CustomDay(toDay)
+
 import           HalfDayType (HalfDayType(..))
-import           ModelExports
+import           Model
 import           TimeInDay (TimeInDay(..))
 import           ModelFcts
     ( ModelException(..)

@@ -40,7 +40,7 @@ import           Test.QuickCheck
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
-import           ModelExports (Project, mkProjectLit, migrateAll)
+import           Model (Project, mkProjectLit, migrateAll)
 import           ModelFcts
     ( ModelException(..)
     , projAdd

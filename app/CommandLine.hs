@@ -50,7 +50,7 @@ import           Options.Applicative as Opt
     )
 
 import           CustomDay (CustomDay(..))
-import           ModelExports (Project, mkProject)
+import           Model (Project, mkProject)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 

@@ -45,7 +45,7 @@ import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
-import           ModelExports
+import           Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
