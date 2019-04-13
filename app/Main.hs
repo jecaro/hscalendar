@@ -65,6 +65,7 @@ import           ModelFcts
 -- hsmaster project rename project1 project2 
 
 -- TODO:
+-- - Add init function to create the database
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
@@ -72,26 +73,22 @@ import           ModelFcts
 -- - Append note
 -- - Launch editor
 -- - Project empty string
--- - Add unit testing
--- - Add CI
+-- - Add unit testing for hd/hdw
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
--- - Cascade delete
+-- - Forbid to delete a project if there are links on it
 -- - Add standard documentation
--- - Sort functions in CommandLine module
 -- - Show day of the week
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
-
--- Ideas
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
 
--- Get out the first element of a list which return Just 
+-- | Get out the first element of a list which return Just 
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
 partitionFirst _ [] = (Nothing, [])
 partitionFirst p (x:xs) =
@@ -100,25 +97,25 @@ partitionFirst p (x:xs) =
         Nothing    -> (r', x:xs')
           where (r', xs') = partitionFirst p xs
 
--- Find a SetProj command
+-- | Find a SetProj command
 findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
 findProjCmd = partitionFirst getProj 
   where getProj (MkSetProj s@(SetProj _)) = Just s
         getProj _ = Nothing
 
--- Find a SetArrived command
+-- | Find a SetArrived command
 findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
 findArrivedCmd = partitionFirst getArrived 
   where getArrived (MkSetArrived s@(SetArrived _)) = Just s
         getArrived _ = Nothing
 
--- Find a SetLeft command
+-- | Find a SetLeft command
 findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
 findLeftCmd = partitionFirst getLeft 
   where getLeft (MkSetLeft s@(SetLeft _)) = Just s
         getLeft _ = Nothing
 
--- Find both arrived and left command
+-- | Find both arrived and left command
 findArrivedAndLeftCmd 
     :: [WorkOption] 
     -> (Maybe (SetArrived, SetLeft), [WorkOption])
@@ -129,8 +126,10 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                         -> (Nothing, options)
 
--- List projects
+-- | Execute the command
 run :: (MonadIO m, MonadUnliftIO m) => Cmd -> SqlPersistT m ()
+
+-- List the projects
 run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
@@ -138,10 +137,9 @@ run (ProjAdd project) = catch (void $ projAdd project)
                            (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
 -- Remove a project
--- TODO ask for confirmation when erasing hdw
 run (ProjRm project) = catch (projRm project) 
                           (\(ModelException msg) -> liftIO . putStrLn $ msg)
-
+-- Rename a project
 run (ProjRename p1 p2) = catch 
     (projRename p1 p2) (\(ModelException msg) -> liftIO . putStrLn $ msg)
 
@@ -238,6 +236,7 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
+-- | Main function
 main :: IO ()
 -- runNoLoggingT or runStdoutLoggingT
 main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do

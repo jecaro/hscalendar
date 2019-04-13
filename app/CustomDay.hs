@@ -24,11 +24,11 @@ data CustomDay = MkDay Time.Day        |
                  Tomorrow
     deriving (Eq, Show)
 
--- Get today
+-- | Get today
 today :: (MonadIO m) => m Time.Day
 today = liftIO $ Time.localDay . Time.zonedTimeToLocalTime <$> Time.getZonedTime
 
--- Convert CustomDay to Day
+-- | Convert CustomDay to Day
 toDay :: (MonadIO m) => CustomDay -> m Time.Day 
 toDay Today        = today
 toDay Yesterday    = Time.addDays (-1) <$> today

@@ -1,3 +1,4 @@
+-- | This module reexport the public functions from "Internal.Model"
 module Model
     ( EntityField
         ( HalfDayType
