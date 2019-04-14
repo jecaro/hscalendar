@@ -60,6 +60,7 @@ HalfDay
     -- Constraint
     DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
     deriving Show
+    deriving Eq
 HalfDayWorked -- Only for WorkedOpenDay
     -- Fields
     notes     Text -- default empty string
@@ -72,6 +73,7 @@ HalfDayWorked -- Only for WorkedOpenDay
     -- Constraints
     UniqueHalfDayId halfDayId
     deriving Show
+    deriving Eq
 |]
 
 -- | Max length of project name

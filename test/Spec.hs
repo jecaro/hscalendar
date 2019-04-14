@@ -3,6 +3,7 @@
 import           RIO
 import           RIO.List as L (sort)
 import qualified RIO.Set as Set (fromList)
+import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 
 import           Database.Persist.Sqlite
     ( deleteWhere
@@ -40,26 +41,81 @@ import           Test.QuickCheck
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 
-import           Model (Project, mkProjectLit, migrateAll)
+import           HalfDayType (HalfDayType(..))
+import           Model 
+    ( HalfDay(..)
+    , HalfDayWorked
+    , Project
+    , mkProjectLit
+    , migrateAll
+    )
 import           ModelFcts
     ( ModelException(..)
+    , hdHdwProjGet
+    , hdRm
+    , hdSetHoliday
+    , hdSetWork
+    , hdwSetArrived
+    , hdwSetArrivedAndLeft
+    , hdwSetLeft
+    , hdwSetNotes
+    , hdwSetOffice
+    , hdwSetProject
     , projAdd
     , projExists
     , projList
     , projRename
     , projRm
     )
+import          Office (Office(..))
+import          TimeInDay (TimeInDay(..))
 
--- The type for the runDB function
+-- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)
 
--- Clean up the project table
-cleanProjects :: (MonadIO m) => SqlPersistT m ()
-cleanProjects = deleteWhere ([] :: [Filter Project])
+-- | New type for a unique list of projects to add in the DB
+newtype ProjectUniqueList = ProjectUniqueList [Project]
+    deriving Show
 
--- QuickCheck selector for our ModelException
+-- | Its arbitrary instance, make sure there is no duplicate
+instance Arbitrary ProjectUniqueList where
+    arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
+      where hasNoDups x = length x == length (Set.fromList x) 
+
+
+-- | Clean up the db
+cleanDB :: (MonadIO m) => SqlPersistT m ()
+cleanDB = do
+    deleteWhere ([] :: [Filter HalfDay])
+    deleteWhere ([] :: [Filter HalfDayWorked])
+    deleteWhere ([] :: [Filter Project])
+
+-- | QuickCheck selector for our ModelException
 modelException :: Selector ModelException
 modelException = const True
+
+-- Some constants for the specs
+
+project1, project2 :: Project
+project1 = mkProjectLit $$(refineTH "TestProject1") 
+project2 = mkProjectLit $$(refineTH "TestProject2") 
+
+day :: Time.Day
+day = Time.fromGregorian 1979 03 22
+
+tid :: TimeInDay
+tid = Morning
+
+tod :: Time.TimeOfDay
+tod = Time.TimeOfDay 9 0 0
+
+notes :: Text
+notes = "some notes"
+
+office :: Office
+office = Home
+
+-- Properties
 
 prop_projAddProjExists :: RunDB -> Project -> Property
 prop_projAddProjExists runDB project = Q.monadic (ioProperty . runDB) $ do
@@ -68,7 +124,7 @@ prop_projAddProjExists runDB project = Q.monadic (ioProperty . runDB) $ do
         exists <- projExists project
         projRm project 
         noExists <- projExists project
-        cleanProjects
+        cleanDB
         return (exists, noExists)
 
     Q.assert (exists && not noExists)
@@ -78,26 +134,17 @@ prop_projAddProjAdd runDB project =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
         res <- catch (projAdd project >> return False) (\(ModelException _) -> return True)
-        cleanProjects
+        cleanDB
         return res
 
     Q.assert exceptionRaised
-
--- New type for a unique list of projects to add in the DB
-newtype ProjectUniqueList = ProjectUniqueList [Project]
-    deriving Show
-
--- Its arbitrary instance, make sure there is no duplicate
-instance Arbitrary ProjectUniqueList where
-    arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
-      where hasNoDups x = length x == length (Set.fromList x) 
 
 prop_projList :: RunDB -> ProjectUniqueList -> Property
 prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB) $ do
     dbProjects <- Q.run $ do
         mapM_ projAdd projects
         res <- projList
-        cleanProjects
+        cleanDB
         return res
 
     Q.assert $ dbProjects == sort projects
@@ -120,7 +167,7 @@ testProjAPI runDB =
                 runDB projList `shouldReturn` []
         context "One project in DB"
             $ before_ (runDB (projAdd project1))
-            $ after_ (runDB cleanProjects)
+            $ after_ (runDB cleanDB)
             $ do
             it "tests if the project exists" $
                 runDB (projExists project1) `shouldReturn` True
@@ -144,15 +191,53 @@ testProjAPI runDB =
                 property (prop_projAddProjAdd runDB)
             it "projList" $
                 property (prop_projList runDB)
-  where project1 = mkProjectLit $$(refineTH  "TestProject1") 
-        project2 = mkProjectLit $$(refineTH "TestProject2") 
+
+testHdAPI :: RunDB -> Spec
+testHdAPI runDB =
+    describe "Test hd API" $ do
+        context "When the DB is empty" $ do
+            it "tests getting an entry" $
+                runDB (hdHdwProjGet day tid) `shouldThrow` modelException
+            it "tests removing an entry" $
+                runDB (hdRm day tid) `shouldThrow` modelException
+            it "tests setting arrived time" $
+                runDB (hdwSetArrived day tid tod) `shouldThrow` modelException
+            it "tests setting left time" $
+                runDB (hdwSetLeft day tid tod) `shouldThrow` modelException
+            it "tests setting notes" $
+                runDB (hdwSetNotes day tid notes) `shouldThrow` modelException
+            it "tests setting office" $
+                runDB (hdwSetOffice day tid office) `shouldThrow` modelException
+            it "tests setting the project" $
+                runDB (hdwSetProject day tid project1) `shouldThrow` modelException
+        context "When there is one holiday entry" 
+            $ before_ (runDB $ hdSetHoliday day tid)
+            $ after_ (runDB cleanDB) $ do
+            it "tests getting the entry" $ do
+                res <- runDB (hdHdwProjGet day tid)
+                res `shouldBe` (HalfDay day tid Holiday, Nothing)
+            it "tests removing the entry" $ do
+                runDB (hdRm day tid)
+                (runDB (hdHdwProjGet day tid)) `shouldThrow` modelException
+            it "tests setting arrived time" $
+                runDB (hdwSetArrived day tid tod) `shouldThrow` modelException
+            it "tests setting left time" $
+                runDB (hdwSetLeft day tid tod) `shouldThrow` modelException
+            it "tests setting notes" $
+                runDB (hdwSetNotes day tid notes) `shouldThrow` modelException
+            it "tests setting office" $
+                runDB (hdwSetOffice day tid office) `shouldThrow` modelException
+            it "tests setting the project" $
+                runDB (hdwSetProject day tid project1) `shouldThrow` modelException
+                
 
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
     -- Setup a run function which captures the connection
     let runDB :: RunDB
-        runDB = \actions -> runSqlPersistM actions conn
+        runDB actions = runSqlPersistM actions conn
     -- Launch the tests
-    hspec $ beforeAll (runDB $ runMigration migrateAll) $ 
+    hspec $ beforeAll (runDB $ runMigration migrateAll) $ do
         testProjAPI runDB
+        testHdAPI runDB
 
