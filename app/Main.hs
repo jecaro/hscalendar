@@ -85,6 +85,7 @@ import           ModelFcts
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
 -- - specialise exceptions
+-- - replace pattern matching with record syntax
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"

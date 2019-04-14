@@ -5,6 +5,9 @@ import           RIO.List as L (sort)
 import qualified RIO.Set as Set (fromList)
 import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 
+import           Control.Monad (ap)
+import           Control.Monad.Logger (runNoLoggingT)
+
 import           Database.Persist.Sqlite
     ( deleteWhere
     , Filter
@@ -15,7 +18,6 @@ import           Database.Persist.Sqlite
     , SqlPersistM
     , SqlPersistT
     )
-import           Control.Monad.Logger (runNoLoggingT)
 import           Refined (refineTH)
 import           Test.Hspec
     ( after_
@@ -232,43 +234,47 @@ testHdAPI runDB =
             it "tests removing the entry" $ do
                 runDB (hdRm day tid) 
                 runDB (hdHdwProjGet day tid) `shouldThrow` modelException
+            -- TODO override with work entry
             itemsNoWorkedEntry runDB
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWork day tid project1) $ do
             it "tests getting the entry" $ do
                 (hd, mbHdwProj) <- runDB (hdHdwProjGet day tid)
                 hd `shouldBe` HalfDay day tid Worked
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {}, proj) -> proj == project1)
+                mbHdwProj `projShouldBe` project1
             it "tests removing the entry" $ do
                 runDB (hdRm day tid)
                 runDB (hdHdwProjGet day tid) `shouldThrow` modelException
+            -- TODO override with holiday entry
             it "tests setting arrived time" $ do
                 runDB (hdwSetArrived day tid arrived) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedArrived (fst x) == arrived)
+                mbHdwProj `hdwShouldSatisfy` ((==) arrived . halfDayWorkedArrived)
             it "tests setting left time" $ do
                 runDB (hdwSetLeft day tid left) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedLeft (fst x) == left)
+                mbHdwProj `hdwShouldSatisfy` ((==) left . halfDayWorkedLeft)
             it "tests setting arrived and left time" $ do
                 runDB (hdwSetArrivedAndLeft day tid arrived left) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False 
-                    (\x -> halfDayWorkedArrived (fst x) == arrived && halfDayWorkedLeft (fst x) == left)
+                -- We check that arrived and left times are good
+                mbHdwProj `hdwShouldSatisfy` (and . ap [ (==) arrived . halfDayWorkedArrived, 
+                                                         (==) left . halfDayWorkedLeft ] . pure) 
             it "tests setting notes" $ do
                 runDB (hdwSetNotes day tid notes)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedNotes (fst x) == notes)
+                mbHdwProj `hdwShouldSatisfy` ((==) notes . halfDayWorkedNotes)
             it "tests setting office" $ do
                 runDB (hdwSetOffice day tid office)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedOffice (fst x) == office)
+                mbHdwProj `hdwShouldSatisfy` ((==) office . halfDayWorkedOffice)
             it "tests setting the project" $ do
                 runDB (projAdd project2 >> hdwSetProject day tid project2)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` maybe False (\x -> snd x == project2)
+                mbHdwProj `projShouldBe` project2
+  where 
+    projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
+    hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred .fst)
 
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
