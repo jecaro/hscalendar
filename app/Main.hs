@@ -84,6 +84,7 @@ import           ModelFcts
 -- - Use esqueleto for join (project, hdw)
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
+-- - specialise exceptions
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"

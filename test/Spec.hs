@@ -194,6 +194,21 @@ testProjAPI runDB =
             it "projList" $
                 property (prop_projList runDB)
 
+itemsNoWorkedEntry :: RunDB -> Spec
+itemsNoWorkedEntry runDB = do
+    it "tests setting arrived time" $
+        runDB (hdwSetArrived day tid arrived) `shouldThrow` modelException
+    it "tests setting left time" $
+        runDB (hdwSetLeft day tid left) `shouldThrow` modelException
+    it "tests setting arrived and left time" $
+        runDB (hdwSetArrivedAndLeft day tid arrived left) `shouldThrow` modelException
+    it "tests setting notes" $
+        runDB (hdwSetNotes day tid notes) `shouldThrow` modelException
+    it "tests setting office" $
+        runDB (hdwSetOffice day tid office) `shouldThrow` modelException
+    it "tests setting the project" $
+        runDB (hdwSetProject day tid project1) `shouldThrow` modelException
+
 testHdAPI :: RunDB -> Spec
 testHdAPI runDB =
     describe "Test hd API" $ 
@@ -208,38 +223,16 @@ testHdAPI runDB =
                 runDB (hdHdwProjGet day tid) `shouldThrow` modelException
             it "tests removing an entry" $
                 runDB (hdRm day tid) `shouldThrow` modelException
-            it "tests setting arrived time" $
-                runDB (hdwSetArrived day tid arrived) `shouldThrow` modelException
-            it "tests setting left time" $
-                runDB (hdwSetLeft day tid left) `shouldThrow` modelException
-            it "tests setting arrived and left time" $
-                runDB (hdwSetArrivedAndLeft day tid arrived left) `shouldThrow` modelException
-            it "tests setting notes" $
-                runDB (hdwSetNotes day tid notes) `shouldThrow` modelException
-            it "tests setting office" $
-                runDB (hdwSetOffice day tid office) `shouldThrow` modelException
-            it "tests setting the project" $
-                runDB (hdwSetProject day tid project1) `shouldThrow` modelException
+            itemsNoWorkedEntry runDB
         context "When there is one holiday entry" $ 
             before_ (runDB $ hdSetHoliday day tid) $ do
             it "tests getting the entry" $ do
                 res <- runDB (hdHdwProjGet day tid)
                 res `shouldBe` (HalfDay day tid Holiday, Nothing)
-            it "tests removing the entry" $
-                runDB (hdRm day tid >> hdHdwProjGet day tid)
-                    `shouldThrow` modelException
-            it "tests setting arrived time" $
-                runDB (hdwSetArrived day tid arrived) `shouldThrow` modelException
-            it "tests setting left time" $
-                runDB (hdwSetLeft day tid left) `shouldThrow` modelException
-            it "tests setting arrived and left time" $
-                runDB (hdwSetArrivedAndLeft day tid arrived left) `shouldThrow` modelException
-            it "tests setting notes" $
-                runDB (hdwSetNotes day tid notes) `shouldThrow` modelException
-            it "tests setting office" $
-                runDB (hdwSetOffice day tid office) `shouldThrow` modelException
-            it "tests setting the project" $
-                runDB (hdwSetProject day tid project1) `shouldThrow` modelException
+            it "tests removing the entry" $ do
+                runDB (hdRm day tid) 
+                runDB (hdHdwProjGet day tid) `shouldThrow` modelException
+            itemsNoWorkedEntry runDB
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWork day tid project1) $ do
             it "tests getting the entry" $ do
@@ -248,53 +241,37 @@ testHdAPI runDB =
                 mbHdwProj `shouldSatisfy` (\case
                     Nothing -> False
                     Just (HalfDayWorked {}, proj) -> proj == project1)
-            it "tests removing the entry" $
-                runDB (hdRm day tid >> hdHdwProjGet day tid)
-                    `shouldThrow` modelException
+            it "tests removing the entry" $ do
+                runDB (hdRm day tid)
+                runDB (hdHdwProjGet day tid) `shouldThrow` modelException
             it "tests setting arrived time" $ do
                 runDB (hdwSetArrived day tid arrived) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {halfDayWorkedArrived}, _) -> 
-                        halfDayWorkedArrived == arrived)
+                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedArrived (fst x) == arrived)
             it "tests setting left time" $ do
                 runDB (hdwSetLeft day tid left) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {halfDayWorkedLeft}, _) -> 
-                        halfDayWorkedLeft == left)
+                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedLeft (fst x) == left)
             it "tests setting arrived and left time" $ do
                 runDB (hdwSetArrivedAndLeft day tid arrived left) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {halfDayWorkedArrived, halfDayWorkedLeft}, _) -> 
-                        halfDayWorkedArrived == arrived && halfDayWorkedLeft == left)
+                mbHdwProj `shouldSatisfy` maybe False 
+                    (\x -> halfDayWorkedArrived (fst x) == arrived && halfDayWorkedLeft (fst x) == left)
             it "tests setting notes" $ do
                 runDB (hdwSetNotes day tid notes)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {halfDayWorkedNotes}, _) -> 
-                        halfDayWorkedNotes == notes)
+                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedNotes (fst x) == notes)
             it "tests setting office" $ do
                 runDB (hdwSetOffice day tid office)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (HalfDayWorked {halfDayWorkedOffice}, _) -> 
-                        halfDayWorkedOffice == office)
+                mbHdwProj `shouldSatisfy` maybe False (\x -> halfDayWorkedOffice (fst x) == office)
             it "tests setting the project" $ do
                 runDB (projAdd project2 >> hdwSetProject day tid project2)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
-                mbHdwProj `shouldSatisfy` (\case
-                    Nothing -> False
-                    Just (_, project) -> project == project2)
+                mbHdwProj `shouldSatisfy` maybe False (\x -> snd x == project2)
 
 main :: IO ()
-main = runNoLoggingT . withSqliteConn "test.db" $ \conn -> liftIO $ do
+main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
     -- Setup a run function which captures the connection
     let runDB :: RunDB
         runDB actions = runSqlPersistM actions conn
