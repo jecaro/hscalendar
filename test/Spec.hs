@@ -234,7 +234,8 @@ testHdAPI runDB =
             it "tests removing the entry" $ do
                 runDB (hdRm day tid) 
                 runDB (hdHdwProjGet day tid) `shouldThrow` modelException
-            -- TODO override with work entry
+            it "tests overriding with a worked entry" $ 
+                runDB $ projAdd project1 >> hdSetWork day tid project1
             itemsNoWorkedEntry runDB
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWork day tid project1) $ do
@@ -245,7 +246,8 @@ testHdAPI runDB =
             it "tests removing the entry" $ do
                 runDB (hdRm day tid)
                 runDB (hdHdwProjGet day tid) `shouldThrow` modelException
-            -- TODO override with holiday entry
+            it "tests overriding with a holiday entry" $ 
+                runDB $ hdSetHoliday day tid
             it "tests setting arrived time" $ do
                 runDB (hdwSetArrived day tid arrived) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
