@@ -169,6 +169,22 @@ prop_hdSetHoliday runDB day tid = Q.monadic (ioProperty . runDB) $ do
 
     Q.assert $ halfDayType hd == Holiday && mbHdwProj == Nothing
 
+-- | Test the presence of a worked entry
+prop_hdSetWork :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
+prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
+    (hd, mbHdwProj) <- Q.run $ do
+        projAdd project
+        hdSetWork day tid project
+        res <- hdHdwProjGet day tid
+        cleanDB
+        return res
+
+    Q.assert $ halfDayType hd == Worked && checkProject mbHdwProj
+
+  where checkProject (Just (_, project')) = project' == project
+        checkProject _ = False
+
+
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -295,9 +311,11 @@ testHdAPI runDB =
         context "Test properties" $ do
             it "prop_hdSetHoliday" $
                 property (prop_hdSetHoliday runDB)
+            it "prop_hdSetWork" $
+                property (prop_hdSetWork runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
-    hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred .fst)
+    hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
 
 -- | Main function
 main :: IO ()
