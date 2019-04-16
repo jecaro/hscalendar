@@ -159,11 +159,11 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
     Q.assert $ dbProjects == sort projects
 
 -- | Test the presence of a holiday entry
-prop_hdSetHoliday :: RunDB -> Time.Day -> Property
-prop_hdSetHoliday runDB day = Q.monadic (ioProperty . runDB) $ do
+prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> Property
+prop_hdSetHoliday runDB day tid = Q.monadic (ioProperty . runDB) $ do
     (hd, mbHdwProj) <- Q.run $ do
-        hdSetHoliday day Morning
-        res <- hdHdwProjGet day Morning
+        hdSetHoliday day tid
+        res <- hdHdwProjGet day tid
         cleanDB
         return res
 
