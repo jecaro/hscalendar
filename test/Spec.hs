@@ -43,6 +43,7 @@ import           Test.QuickCheck
     , suchThat)
 import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
+import           Test.QuickCheck.Instances.Time()
 
 import           HalfDayType (HalfDayType(..))
 import           Model 
@@ -153,6 +154,17 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
         return res
 
     Q.assert $ dbProjects == sort projects
+
+prop_hdSetHoliday :: RunDB -> Time.Day -> Property
+prop_hdSetHoliday runDB day = Q.monadic (ioProperty . runDB) $ do
+    (hd, mbHdwProj) <- Q.run $ do
+        hdSetHoliday day Morning
+        res <- hdHdwProjGet day Morning
+        cleanDB
+        return res
+
+    Q.assert $ halfDayType hd == Holiday
+    Q.assert $ mbHdwProj == Nothing
 
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -274,6 +286,9 @@ testHdAPI runDB =
                 runDB (projAdd project2 >> hdwSetProject day tid project2)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day tid)
                 mbHdwProj `projShouldBe` project2
+        context "Test properties" $ do
+            it "prop_hdSetHoliday" $
+                property (prop_hdSetHoliday runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred .fst)
