@@ -286,6 +286,23 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
 
     Q.assert $ maybe False (\((HalfDayWorked _ _ _ office' _ _), _) -> office' == office) mbHdwProj
 
+-- | Test the set project function
+prop_hdSetProject :: RunDB -> Time.Day -> TimeInDay -> Project -> Project -> Property
+prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB) $ do
+    -- Initialize the hdw
+    Q.run $ do
+        projAdd project
+        hdSetWork day tid project
+    
+    -- Update project and get new value
+    exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ModelException _) -> return True)
+    (_, mbHdwProj) <- Q.run $ hdHdwProjGet day tid
+    Q.run $ cleanDB
+
+    let inDB = maybe False (\(_, p) -> project' == p) mbHdwProj
+
+    Q.assert $ inDB /= exceptionRaised 
+
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -424,6 +441,8 @@ testHdAPI runDB =
             --     property (prop_hdSetNotes runDB)
             it "prop_hdSetOffice" $ 
                 property (prop_hdSetOffice runDB)
+            it "prop_hdSetProject" $ 
+                property (prop_hdSetProject runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
