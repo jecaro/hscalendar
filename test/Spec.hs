@@ -172,6 +172,15 @@ prop_hdSetHoliday runDB day tid = Q.monadic (ioProperty . runDB) $ do
 -- | Test the presence of a worked entry
 prop_hdSetWork :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
 prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
+    -- Impossible to set a work hd without an existing project
+    exceptionRaised <- Q.run $ do
+        res <- catch (hdSetWork day tid project >> return False) (\(ModelException _) -> return True)
+        cleanDB
+        return res
+
+    Q.assert exceptionRaised
+
+    -- With a project no problem
     (hd, mbHdwProj) <- Q.run $ do
         projAdd project
         hdSetWork day tid project
@@ -184,6 +193,25 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
   where checkProject (Just (_, project')) = project' == project
         checkProject _ = False
 
+
+-- | Test the set arrived function
+prop_hdSetArrived :: RunDB -> Time.Day -> TimeInDay -> Project -> Time.TimeOfDay -> Property
+prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
+    -- Initialize the hdw
+    (_, mbHdwProj) <- Q.run $ do
+        projAdd project
+        hdSetWork day tid project
+        hdHdwProjGet day tid
+    
+    -- Update arrived time and get new value
+    exceptionRaised <- Q.run $ catch (hdwSetArrived day tid tod >> return False) (\(ModelException _) -> return True)
+    (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
+    Q.run $ cleanDB
+
+    let inRange = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod < left) mbHdwProj
+    let inDB = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod == arrived) mbHdwProj'
+
+    Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
@@ -313,6 +341,8 @@ testHdAPI runDB =
                 property (prop_hdSetHoliday runDB)
             it "prop_hdSetWork" $
                 property (prop_hdSetWork runDB)
+            it "prop_hdSetArrived" $
+                property (prop_hdSetArrived runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
