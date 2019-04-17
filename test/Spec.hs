@@ -3,6 +3,7 @@
 import           RIO
 import           RIO.List as L (sort)
 import qualified RIO.Set as Set (fromList)
+import qualified RIO.Text as Text (Text)
 import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 
 import           Control.Monad (ap)
@@ -257,6 +258,20 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
+-- | Test setting the notes
+prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> Text.Text-> Property
+prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ do
+    -- Initialize the hdw and set the notes
+    (_, mbHdwProj) <- Q.run $ do
+        projAdd project
+        hdSetWork day tid project
+        hdwSetNotes day tid notes
+        res <- hdHdwProjGet day tid
+        cleanDB
+        return res
+
+    Q.assert $ maybe False (\((HalfDayWorked notes' _ _ _ _ _), _) -> notes' == notes) mbHdwProj
+
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -391,6 +406,8 @@ testHdAPI runDB =
                 property (prop_hdSetLeft runDB)
             it "prop_hdSetArrivedAndLeft" $ 
                 property (prop_hdSetArrivedAndLeft runDB)
+            -- it "prop_hdSetNotes" $ 
+            --     property (prop_hdSetNotes runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
