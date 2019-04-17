@@ -221,13 +221,39 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
         hdSetWork day tid project
         hdHdwProjGet day tid
     
-    -- Update arrived time and get new value
+    -- Update left time and get new value
     exceptionRaised <- Q.run $ catch (hdwSetLeft day tid tod >> return False) (\(ModelException _) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
     let inRange = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod > arrived) mbHdwProj
         inDB = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod == left) mbHdwProj'
+
+    Q.assert $ inRange /= exceptionRaised && inRange == inDB
+
+-- | Test setting arrived and left time
+prop_hdSetArrivedAndLeft 
+    :: RunDB 
+    -> Time.Day 
+    -> TimeInDay 
+    -> Project 
+    -> Time.TimeOfDay 
+    -> Time.TimeOfDay 
+    -> Property
+prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioProperty . runDB) $ do
+    -- Initialize the hdw
+    _ <- Q.run $ do
+        projAdd project
+        hdSetWork day tid project
+        hdHdwProjGet day tid
+    
+    -- Update times and get new value
+    exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\(ModelException _) -> return True)
+    (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
+    Q.run $ cleanDB
+
+    let inRange = arrived < left
+        inDB = maybe False (\((HalfDayWorked _ arrived' left' _ _ _), _) -> arrived' == arrived && left == left') mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
@@ -363,6 +389,8 @@ testHdAPI runDB =
                 property (prop_hdSetArrived runDB)
             it "prop_hdSetLeft" $
                 property (prop_hdSetLeft runDB)
+            it "prop_hdSetArrivedAndLeft" $ 
+                property (prop_hdSetArrivedAndLeft runDB)
   where 
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
