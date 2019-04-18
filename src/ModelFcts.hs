@@ -29,6 +29,8 @@ import           RIO
 import qualified RIO.Text as Text (intercalate, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..), toGregorian)
 
+import           Refined (unrefine)
+
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
 import           Database.Persist.Sqlite 
@@ -168,10 +170,10 @@ hdwSetOffice day tid office = do
     update hdwId [HalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
-hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Text -> SqlPersistT m ()
+hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> NotesText -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [HalfDayWorkedNotes =. notes]
+    update hdwId [HalfDayWorkedNotes =. (unrefine notes)]
 
 -- | Set a work half-day with a project
 hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m () 

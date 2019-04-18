@@ -11,11 +11,13 @@ module Model
     , HalfDay(..)
     , HalfDayId
     , HalfDayWorked(..)
+    , NotesText
     , Project
     , ProjName
     , ProjectId
     , Unique(DayAndTimeInDay, UniqueHalfDayId, UniqueName)
     , migrateAll
+    , mkNotes
     , mkProject
     , mkProjectLit
     , projectName

@@ -43,14 +43,13 @@ import           Options.Applicative as Opt
     , maybeReader
     , short
     , some
-    , strOption
     , subparser
     , (<**>)
     , (<|>)
     )
 
 import           CustomDay (CustomDay(..))
-import           Model (Project, mkProject)
+import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 
@@ -67,7 +66,7 @@ data Cmd = DiaryDisplay CustomDay TimeInDay           |
 newtype SetProj = SetProj Project
     deriving (Eq, Show)
 
-newtype SetNotes = SetNotes Text
+newtype SetNotes = SetNotes NotesText
     deriving (Eq, Show)
 
 newtype SetArrived = SetArrived Time.TimeOfDay
@@ -154,6 +153,9 @@ diaryWork = DiaryWork
     <*> tidOption
     <*> some workOption
 
+parseNotes :: ReadM NotesText
+parseNotes = maybeReader $ mkNotes . Text.pack
+
 tidOption :: Opt.Parser TimeInDay
 tidOption =   flag' Morning (long "morning" <> short 'm')
           <|> flag' Afternoon (long "afternoon" <> short 'a')
@@ -181,7 +183,7 @@ workOptionSetProj = MkSetProj . SetProj <$> option parseProject
     <> help "Set the project" )
 
 workOptionSetNotes :: Opt.Parser WorkOption
-workOptionSetNotes = MkSetNotes . SetNotes <$> strOption
+workOptionSetNotes = MkSetNotes . SetNotes <$> option parseNotes
     (  long "notes"
     <> short 'n'
     <> metavar "NOTES"

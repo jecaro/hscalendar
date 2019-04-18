@@ -3,7 +3,6 @@
 import           RIO
 import           RIO.List as L (sort)
 import qualified RIO.Set as Set (fromList)
-import qualified RIO.Text as Text (Text)
 import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 
 import           Control.Monad (ap)
@@ -19,7 +18,7 @@ import           Database.Persist.Sqlite
     , SqlPersistM
     , SqlPersistT
     )
-import           Refined (refineTH)
+import           Refined (refineTH, unrefine)
 import           Test.Hspec
     ( after_
     , before_
@@ -50,6 +49,7 @@ import           HalfDayType (HalfDayType(..))
 import           Model 
     ( HalfDay(..)
     , HalfDayWorked(..)
+    , NotesText
     , Project(..)
     , mkProjectLit
     , migrateAll
@@ -116,8 +116,8 @@ arrived1 = Time.TimeOfDay 9 0 0
 left1 :: Time.TimeOfDay
 left1 = Time.TimeOfDay 12 0 0
 
-notes1 :: Text
-notes1 = "some notes"
+notes1 :: NotesText
+notes1 = $$(refineTH "some notes")
 
 office1 :: Office
 office1 = Home
@@ -259,7 +259,7 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
 -- | Test setting the notes
-prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> Text.Text-> Property
+prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> NotesText-> Property
 prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the hdw and set the notes
     (_, mbHdwProj) <- Q.run $ do
@@ -270,7 +270,7 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
         cleanDB
         return res
 
-    Q.assert $ maybe False (\((HalfDayWorked notes' _ _ _ _ _), _) -> notes' == notes) mbHdwProj
+    Q.assert $ maybe False (\((HalfDayWorked notes' _ _ _ _ _), _) -> notes' == (unrefine notes)) mbHdwProj
 
 -- | Test setting the office
 prop_hdSetOffice :: RunDB -> Time.Day -> TimeInDay -> Project -> Office-> Property
@@ -417,7 +417,7 @@ testHdAPI runDB =
             it "tests setting notes" $ do
                 runDB (hdwSetNotes day1 tid1 notes1)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)
-                mbHdwProj `hdwShouldSatisfy` ((==) notes1 . halfDayWorkedNotes)
+                mbHdwProj `hdwShouldSatisfy` ((==) (unrefine notes1) . halfDayWorkedNotes)
             it "tests setting office" $ do
                 runDB (hdwSetOffice day1 tid1 office1)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)
@@ -437,8 +437,8 @@ testHdAPI runDB =
                 property (prop_hdSetLeft runDB)
             it "prop_hdSetArrivedAndLeft" $ 
                 property (prop_hdSetArrivedAndLeft runDB)
-            -- it "prop_hdSetNotes" $ 
-            --     property (prop_hdSetNotes runDB)
+            it "prop_hdSetNotes" $ 
+                property (prop_hdSetNotes runDB)
             it "prop_hdSetOffice" $ 
                 property (prop_hdSetOffice runDB)
             it "prop_hdSetProject" $ 

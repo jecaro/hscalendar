@@ -86,6 +86,7 @@ import           ModelFcts
 -- - put db file in a config file as well
 -- - specialise exceptions
 -- - replace pattern matching with record syntax
+-- - test arrived/left with full day
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
