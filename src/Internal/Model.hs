@@ -97,13 +97,14 @@ projNameAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
 
 -- | Predicate to check if the project is valid
 projNameValid :: Text -> Bool
-projNameValid name = Text.length name <= projNameMaxLength &&
-    Text.all (`elem` projNameAllowedChars) name
+projNameValid name =  Text.length name > 0 
+                   && Text.length name <= projNameMaxLength 
+                   && Text.all (`elem` projNameAllowedChars) name
 
 -- | Arbitrary instance for project. Only project with allowed characters
 instance Arbitrary Project where
     arbitrary = sized $ \s -> do
-        n <- choose (0, s `min` projNameMaxLength)
+        n <- choose (1, s `min` projNameMaxLength)
         xs <- vectorOf n (elements projNameAllowedChars)
         return (Project (Text.pack xs))
 

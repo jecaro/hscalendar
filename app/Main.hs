@@ -72,7 +72,6 @@ import           ModelFcts
 -- - Make diary date/TimeInDay optional default today
 -- - Append note
 -- - Launch editor
--- - Project empty string
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
