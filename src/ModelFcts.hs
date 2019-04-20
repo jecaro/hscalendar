@@ -27,7 +27,13 @@ module ModelFcts
 
 import           RIO
 import qualified RIO.Text as Text (intercalate, pack)
-import qualified RIO.Time as Time (Day, TimeOfDay(..), toGregorian)
+import qualified RIO.Time as Time 
+    ( Day
+    , TimeOfDay(..)
+    , defaultTimeLocale 
+    , formatTime
+    , toGregorian
+    )
 
 import           Refined (unrefine)
 
@@ -90,10 +96,13 @@ errTimesAreWrong = "Times are wrong"
 
 -- | Convert a Day to a string in the form dd-mm-yyyy
 showDay :: Time.Day -> Text
-showDay day = Text.intercalate "-" $ fmap printNum [d, m, intY]
+showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY]) 
+            <> " " 
+            <> Text.pack weekDay
   where (y, m, d) = Time.toGregorian day
         intY = fromIntegral y
         printNum = sformat (left 2 '0' %. int) 
+        weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
 
 -- Exported project functions 
 
