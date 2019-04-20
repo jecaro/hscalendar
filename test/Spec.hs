@@ -194,6 +194,24 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
   where checkProject (Just (_, project')) = project' == project
         checkProject _ = False
 
+-- Some helper functions below for the time related properties
+
+beforeLeft :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
+beforeLeft Nothing _ = False
+beforeLeft (Just (HalfDayWorked _ _ left _ _ _, _)) tod = tod < left
+
+afterLeft :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
+afterLeft Nothing _ = False
+afterLeft (Just (HalfDayWorked _ _ left _ _ _, _)) tod = tod >= left
+
+beforeArrived :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
+beforeArrived Nothing _ = False
+beforeArrived (Just (HalfDayWorked _ arrived _ _ _ _, _)) tod = tod <= arrived
+
+afterArrived :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
+afterArrived Nothing _ = False
+afterArrived (Just (HalfDayWorked _ arrived _ _ _ _, _)) tod = tod > arrived
+
 -- | Test the set arrived function
 prop_hdSetArrived :: RunDB -> Time.Day -> TimeInDay -> Project -> Time.TimeOfDay -> Property
 prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
@@ -213,10 +231,10 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
     Q.run $ cleanDB
 
     -- In all case, we need arrive before left
-    let beforeLeft = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod < left) mbHdwProj
+    let beforeCurLeft = beforeLeft mbHdwProj tod
     -- And after morning left if need be
-        afterOtherLeft = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod >= left) mbOHdwProj
-        inRange = beforeLeft && (tid == Morning || afterOtherLeft)
+        afterOtherLeft = afterLeft mbOHdwProj tod
+        inRange = beforeCurLeft && (tid == Morning || afterOtherLeft)
         inDB = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod == arrived) mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
@@ -240,10 +258,10 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
     Q.run $ cleanDB
 
     -- We all case, we need to leave after arrived
-    let afterArrived = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod > arrived) mbHdwProj
+    let afterCurArrived = afterArrived mbHdwProj tod
     -- And before afternoon arrived if need be
-        beforeOtherArrived = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod <= arrived) mbOHdwProj
-        inRange = afterArrived && (tid == Afternoon || beforeOtherArrived)
+        beforeOtherArrived = beforeArrived mbOHdwProj tod
+        inRange = afterCurArrived && (tid == Afternoon || beforeOtherArrived)
         inDB = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod == left) mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
@@ -270,8 +288,8 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let beforeOtherArrived = maybe False (\((HalfDayWorked _ arrived' _ _ _ _), _) -> left <= arrived') mbOHdwProj
-        afterOtherLeft = maybe False (\((HalfDayWorked _ _ left' _ _ _), _) -> arrived >= left') mbOHdwProj
+    let beforeOtherArrived = beforeArrived mbOHdwProj left
+        afterOtherLeft = afterLeft mbOHdwProj arrived
         inRange = arrived < left && (tid == Morning && beforeOtherArrived || tid == Afternoon && afterOtherLeft)
         inDB = maybe False (\((HalfDayWorked _ arrived' left' _ _ _), _) -> arrived' == arrived && left == left') mbHdwProj'
 
