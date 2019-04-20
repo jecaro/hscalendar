@@ -73,7 +73,7 @@ import           ModelFcts
     , projRm
     )
 import          Office (Office(..))
-import          TimeInDay (TimeInDay(..))
+import          TimeInDay (TimeInDay(..), other)
 
 -- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)
@@ -197,18 +197,26 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
 -- | Test the set arrived function
 prop_hdSetArrived :: RunDB -> Time.Day -> TimeInDay -> Project -> Time.TimeOfDay -> Property
 prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
-    -- Initialize the hdw
-    (_, mbHdwProj) <- Q.run $ do
+    -- Initialize the two hdws
+    (mbHdwProj, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
-        hdHdwProjGet day tid
+        hdSetWork day Morning project
+        hdSetWork day Afternoon project
+        (_, mbHdwProj) <- hdHdwProjGet day tid
+        (_, mbOHdwProj) <- hdHdwProjGet day (other tid)
+        -- Return current and other hdw
+        return (mbHdwProj, mbOHdwProj)
     
     -- Update arrived time and get new value
     exceptionRaised <- Q.run $ catch (hdwSetArrived day tid tod >> return False) (\(ModelException _) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let inRange = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod < left) mbHdwProj
+    -- In all case, we need arrive before left
+    let beforeLeft = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod < left) mbHdwProj
+    -- And after morning left if need be
+        afterOtherLeft = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod >= left) mbOHdwProj
+        inRange = beforeLeft && (tid == Morning || afterOtherLeft)
         inDB = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod == arrived) mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
@@ -216,18 +224,26 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
 -- | Test the set left function
 prop_hdSetLeft :: RunDB -> Time.Day -> TimeInDay -> Project -> Time.TimeOfDay -> Property
 prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
-    -- Initialize the hdw
-    (_, mbHdwProj) <- Q.run $ do
+    -- Initialize the two hdws
+    (mbHdwProj, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
-        hdHdwProjGet day tid
+        hdSetWork day Morning project
+        hdSetWork day Afternoon project
+        (_, mbHdwProj) <- hdHdwProjGet day tid
+        (_, mbOHdwProj) <- hdHdwProjGet day (other tid)
+        -- Return current and other hdw
+        return (mbHdwProj, mbOHdwProj)
     
     -- Update left time and get new value
     exceptionRaised <- Q.run $ catch (hdwSetLeft day tid tod >> return False) (\(ModelException _) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let inRange = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod > arrived) mbHdwProj
+    -- We all case, we need to leave after arrived
+    let afterArrived = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod > arrived) mbHdwProj
+    -- And before afternoon arrived if need be
+        beforeOtherArrived = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod <= arrived) mbOHdwProj
+        inRange = afterArrived && (tid == Afternoon || beforeOtherArrived)
         inDB = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod == left) mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
@@ -242,18 +258,21 @@ prop_hdSetArrivedAndLeft
     -> Time.TimeOfDay 
     -> Property
 prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioProperty . runDB) $ do
-    -- Initialize the hdw
-    _ <- Q.run $ do
+    -- Initialize the two hdws and get other hdw
+    (_, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
-        hdHdwProjGet day tid
+        hdSetWork day Morning project
+        hdSetWork day Afternoon project
+        hdHdwProjGet day (other tid)
     
     -- Update times and get new value
     exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\(ModelException _) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let inRange = arrived < left
+    let beforeOtherArrived = maybe False (\((HalfDayWorked _ arrived' _ _ _ _), _) -> left <= arrived') mbOHdwProj
+        afterOtherLeft = maybe False (\((HalfDayWorked _ _ left' _ _ _), _) -> arrived >= left') mbOHdwProj
+        inRange = arrived < left && (tid == Morning && beforeOtherArrived || tid == Afternoon && afterOtherLeft)
         inDB = maybe False (\((HalfDayWorked _ arrived' left' _ _ _), _) -> arrived' == arrived && left == left') mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
