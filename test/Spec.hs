@@ -122,6 +122,16 @@ notes1 = $$(refineTH "some notes")
 office1 :: Office
 office1 = Home
 
+-- Helper functions to simplify the tests
+
+-- | Unwrap HalfDayWorked and apply a predicate
+testHdw :: (HalfDayWorked -> Bool) -> Maybe (HalfDayWorked, Project) -> Bool
+testHdw pred = maybe False (pred . fst)
+
+-- | Unwrap Project and test equality
+checkProj :: Project -> Maybe (HalfDayWorked, Project) -> Bool
+checkProj proj = maybe False $ ((==) proj) . snd
+
 -- Properties
 
 -- | Test adding a project in the DB and testing if it exists
@@ -189,28 +199,27 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
         cleanDB
         return res
 
-    Q.assert $ halfDayType hd == Worked && checkProject mbHdwProj
-
-  where checkProject (Just (_, project')) = project' == project
-        checkProject _ = False
+    Q.assert $ halfDayType hd == Worked && checkProj project mbHdwProj
 
 -- Some helper functions below for the time related properties
 
-beforeLeft :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
-beforeLeft Nothing _ = False
-beforeLeft (Just (HalfDayWorked _ _ left _ _ _, _)) tod = tod < left
+beforeLeft :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+beforeLeft tod mbHdwProj = testHdw ((<) tod . halfDayWorkedLeft) mbHdwProj
 
-afterLeft :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
-afterLeft Nothing _ = False
-afterLeft (Just (HalfDayWorked _ _ left _ _ _, _)) tod = tod >= left
+afterLeft :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+afterLeft tod mbHdwProj = testHdw ((>=) tod . halfDayWorkedLeft) mbHdwProj
 
-beforeArrived :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
-beforeArrived Nothing _ = False
-beforeArrived (Just (HalfDayWorked _ arrived _ _ _ _, _)) tod = tod <= arrived
+beforeArrived :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+beforeArrived tod mbHdwProj =  testHdw ((<=) tod . halfDayWorkedArrived) mbHdwProj
 
-afterArrived :: Maybe (HalfDayWorked, Project) -> Time.TimeOfDay -> Bool
-afterArrived Nothing _ = False
-afterArrived (Just (HalfDayWorked _ arrived _ _ _ _, _)) tod = tod > arrived
+afterArrived :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+afterArrived tod mbHdwProj =  testHdw ((>) tod . halfDayWorkedArrived) mbHdwProj
+
+arrivedEquals :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+arrivedEquals tod mbHdwProj = testHdw ((==) tod . halfDayWorkedArrived) mbHdwProj
+
+leftEquals :: Time.TimeOfDay -> Maybe (HalfDayWorked, Project) -> Bool
+leftEquals tod mbHdwProj = testHdw ((==) tod . halfDayWorkedLeft) mbHdwProj
 
 -- | Test the set arrived function
 prop_hdSetArrived :: RunDB -> Time.Day -> TimeInDay -> Project -> Time.TimeOfDay -> Property
@@ -231,11 +240,11 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
     Q.run $ cleanDB
 
     -- In all case, we need arrive before left
-    let beforeCurLeft = beforeLeft mbHdwProj tod
+    let beforeCurLeft = beforeLeft tod mbHdwProj
     -- And after morning left if need be
-        afterOtherLeft = afterLeft mbOHdwProj tod
+        afterOtherLeft = afterLeft tod mbOHdwProj
         inRange = beforeCurLeft && (tid == Morning || afterOtherLeft)
-        inDB = maybe False (\((HalfDayWorked _ arrived _ _ _ _), _) -> tod == arrived) mbHdwProj'
+        inDB = arrivedEquals tod mbHdwProj' 
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
@@ -258,11 +267,11 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
     Q.run $ cleanDB
 
     -- We all case, we need to leave after arrived
-    let afterCurArrived = afterArrived mbHdwProj tod
+    let afterCurArrived = afterArrived tod mbHdwProj
     -- And before afternoon arrived if need be
-        beforeOtherArrived = beforeArrived mbOHdwProj tod
+        beforeOtherArrived = beforeArrived tod mbOHdwProj
         inRange = afterCurArrived && (tid == Afternoon || beforeOtherArrived)
-        inDB = maybe False (\((HalfDayWorked _ _ left _ _ _), _) -> tod == left) mbHdwProj'
+        inDB = leftEquals tod mbHdwProj'
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
@@ -288,10 +297,10 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let beforeOtherArrived = beforeArrived mbOHdwProj left
-        afterOtherLeft = afterLeft mbOHdwProj arrived
+    let beforeOtherArrived = beforeArrived left mbOHdwProj
+        afterOtherLeft = afterLeft arrived mbOHdwProj 
         inRange = arrived < left && (tid == Morning && beforeOtherArrived || tid == Afternoon && afterOtherLeft)
-        inDB = maybe False (\((HalfDayWorked _ arrived' left' _ _ _), _) -> arrived' == arrived && left == left') mbHdwProj'
+        inDB = arrivedEquals arrived mbHdwProj' && leftEquals left mbHdwProj' 
 
     Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
@@ -307,7 +316,7 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
         cleanDB
         return res
 
-    Q.assert $ maybe False (\((HalfDayWorked notes' _ _ _ _ _), _) -> notes' == (unrefine notes)) mbHdwProj
+    Q.assert $ testHdw ((==) (unrefine notes) . halfDayWorkedNotes) mbHdwProj
 
 -- | Test setting the office
 prop_hdSetOffice :: RunDB -> Time.Day -> TimeInDay -> Project -> Office-> Property
@@ -321,7 +330,7 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
         cleanDB
         return res
 
-    Q.assert $ maybe False (\((HalfDayWorked _ _ _ office' _ _), _) -> office' == office) mbHdwProj
+    Q.assert $ testHdw ((==) office . halfDayWorkedOffice) mbHdwProj
 
 -- | Test the set project function
 prop_hdSetProject :: RunDB -> Time.Day -> TimeInDay -> Project -> Project -> Property
@@ -336,7 +345,7 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
     (_, mbHdwProj) <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
-    let inDB = maybe False (\(_, p) -> project' == p) mbHdwProj
+    let inDB = checkProj project' mbHdwProj 
 
     Q.assert $ inDB /= exceptionRaised 
 
@@ -481,8 +490,8 @@ testHdAPI runDB =
             it "prop_hdSetProject" $ 
                 property (prop_hdSetProject runDB)
   where 
-    projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` maybe False ((==) proj . snd)
-    hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False (pred . fst)
+    projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` checkProj proj
+    hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` testHdw pred
 
 -- | Main function
 main :: IO ()
