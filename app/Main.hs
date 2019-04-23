@@ -31,7 +31,10 @@ import           HalfDayType (HalfDayType(..))
 import           Model
 import           TimeInDay (TimeInDay(..))
 import           ModelFcts
-    ( ModelException(..)
+    ( HdNotFound(..)
+    , ProjExists(..)
+    , ProjNotFound(..)
+    , TimesAreWrong(..)
     , hdHdwProjGet
     , hdRm
     , hdSetHoliday
@@ -80,9 +83,10 @@ import           ModelFcts
 -- - Use esqueleto for join (project, hdw)
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
--- - specialise exceptions
 -- - replace pattern matching with record syntax
--- - test arrived/left with full day
+-- - refactor print exception
+-- - find a way to selection exceptions in hdHdwProjGet
+-- - sort out what to keep between prop_hdSetProject prop_hdSetWork
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
@@ -123,7 +127,7 @@ findArrivedAndLeftCmd options =
         (mbLeft,    options'') = findLeftCmd options'
     in case (mbArrived, mbLeft) of
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
-        _                         -> (Nothing, options)
+        _                           -> (Nothing, options)
 
 -- | Execute the command
 run :: (MonadIO m, MonadUnliftIO m) => Cmd -> SqlPersistT m ()
@@ -133,14 +137,16 @@ run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd project) = catch (void $ projAdd project) 
-                           (\(ModelException msg) -> liftIO . putStrLn $ msg)
+                           (\e@(ProjExists _) -> liftIO . putStrLn $ (Text.pack $ show e))
 
 -- Remove a project
 run (ProjRm project) = catch (projRm project) 
-                          (\(ModelException msg) -> liftIO . putStrLn $ msg)
+                           (\e@(ProjExists _) -> liftIO . putStrLn $ (Text.pack $ show e))
 -- Rename a project
-run (ProjRename p1 p2) = catch 
-    (projRename p1 p2) (\(ModelException msg) -> liftIO . putStrLn $ msg)
+run (ProjRename p1 p2) = catches (projRename p1 p2)
+    [ Handler (\e@(ProjExists _)   -> liftIO . putStrLn $ (Text.pack $ show e))
+    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ (Text.pack $ show e))
+    ]
 
 -- Display an entry
 run (DiaryDisplay cd tid) = do
@@ -152,8 +158,8 @@ run (DiaryDisplay cd tid) = do
     eiHdHdwProj <- try $ hdHdwProjGet day tid
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
-           Left (ModelException msg) -> [ msg ]
-           Right (_, Nothing)        -> [ (Text.pack . show) Holiday ]
+           Left (e@(HdNotFound _ _)) -> [ (Text.pack . show) e ]
+           Right (_, Nothing) -> [ (Text.pack . show) Holiday ]
            Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> projectName project
@@ -182,11 +188,11 @@ run (DiaryWork cd tid wopts) = do
             eiAdded <- try $ hdSetWork day tid proj
             case eiAdded of
                 Right _ -> return $ Right otherOpts
-                Left (ModelException msg) -> return $ Left msg
+                Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
         -- Holiday but no project
         (Right (_, Nothing), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
         -- No hd, but no project either
-        (Left (ModelException _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+        (Left (HdNotFound _ _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
     
     -- Apply remaining options
     case eiOtherOpts of
@@ -197,15 +203,14 @@ run (DiaryWork cd tid wopts) = do
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
                     catch (hdwSetArrivedAndLeft day tid a l) 
-                        (\(ModelException msg) -> liftIO $ putStrLn msg)
+                        (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
                 Nothing -> return ()
             -- Then apply remaining commands
             mapM_ dispatchEditWithError otherOpts' 
             -- Display new Half-Day
             run $ DiaryDisplay cd tid
-          where dispatchEditWithError x = 
-                    catch (dispatchEdit day tid x) 
-                          (\(ModelException msg) -> liftIO $ putStrLn msg)
+          where dispatchEditWithError x = catch (dispatchEdit day tid x) 
+                    (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
 
 -- Set a holiday entry
 run (DiaryHoliday cd tid) = do
@@ -217,7 +222,7 @@ run (DiaryHoliday cd tid) = do
 -- Delete an entry
 run (DiaryRm cs tid) = do
     day <- toDay cs
-    catch (hdRm day tid) (\(ModelException msg) -> liftIO $ putStrLn msg)
+    catch (hdRm day tid) (\e@(HdNotFound _ _) -> liftIO $ putStrLn $ Text.pack $ show e)
 
 -- Dispatch edit
 dispatchEdit

@@ -3,7 +3,11 @@
 module ModelFcts 
     (
     -- * Types
-      ModelException(..)
+      ProjExists(..)
+    , ProjNotFound(..)
+    , HdNotFound(..)
+    , HdwIdNotFound(..)
+    , TimesAreWrong(..)
     -- * Half-day functions
     , hdHdwProjGet
     , hdRm
@@ -26,7 +30,7 @@ module ModelFcts
     ) where
 
 import           RIO
-import qualified RIO.Text as Text (intercalate, pack)
+import qualified RIO.Text as Text (intercalate, pack, unpack)
 import qualified RIO.Time as Time 
     ( Day
     , TimeOfDay(..)
@@ -64,33 +68,58 @@ import           Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
--- | The exception type for the module with an associated error message
-newtype ModelException = ModelException Text deriving (Show)
-
-instance Exception ModelException
-
 -- Error strings
 
-errProjNotFound :: Project -> Text
-errProjNotFound project = "The project " <> projectName project <> " is not in the database"
+newtype ProjNotFound = ProjNotFound Project
 
-errProjExists :: Project -> Text
-errProjExists project = "The project " <> projectName project <> " exists in the database"
+instance Exception ProjNotFound
 
-errHdNotFound :: Time.Day -> TimeInDay -> Text
-errHdNotFound day tid = "Nothing for " <> showDay day <> " " <> (Text.pack . show) tid
+instance Show ProjNotFound where
+    show (ProjNotFound project) = "The project " <> name <> " is not in the database"
+      where name = Text.unpack (projectName project)
 
-errHdwIdNotFound :: HalfDayId -> Text
-errHdwIdNotFound hdwId = "No half-day worked entry for " <> (Text.pack . show) hdwId
+newtype ProjExists = ProjExists Project
 
-errProjIdNotFound :: ProjectId -> Text
-errProjIdNotFound pId = "No project entry for " <> (Text.pack . show) pId
+instance Exception ProjExists
 
-errDbInconsistency :: Text
-errDbInconsistency = "Warning db inconsistency"
+instance Show ProjExists where
+    show (ProjExists project) = "The project " <> name <> " exists in the database"
+      where name = Text.unpack (projectName project)
 
-errTimesAreWrong :: Text
-errTimesAreWrong = "Times are wrong"
+data HdNotFound = HdNotFound Time.Day TimeInDay
+
+instance Exception HdNotFound
+
+instance Show HdNotFound where
+    show (HdNotFound day tid) = "Nothing for " <> Text.unpack (showDay day) <> " " <> show tid
+
+newtype HdwIdNotFound = HdwIdNotFound HalfDayId
+
+instance Exception HdwIdNotFound
+
+instance Show HdwIdNotFound where
+    show (HdwIdNotFound hdwId) = "No half-day worked entry for " <> show hdwId
+
+newtype ProjIdNotFound = ProjIdNotFound ProjectId
+
+instance Exception ProjIdNotFound
+
+instance Show ProjIdNotFound where
+    show (ProjIdNotFound pId) = "No project entry for " <> show pId
+
+data DbInconsistency = DbInconsistency
+
+instance Exception DbInconsistency
+
+instance Show DbInconsistency where
+    show _ = "Warning db inconsistency"
+
+data TimesAreWrong = TimesAreWrong
+
+instance Exception TimesAreWrong 
+
+instance Show TimesAreWrong where
+    show _ = "Times are wrong"
 
 -- Misc 
 
@@ -142,7 +171,7 @@ projRename p1 p2 = do
 projGetInt :: (MonadIO m) => Project -> SqlPersistT m (Key Project)
 projGetInt project = getBy (UniqueName $ projectName project) >>= 
     \case
-        Nothing             -> throwIO $ ModelException $ errProjNotFound project
+        Nothing             -> throwIO $ ProjNotFound project
         Just (Entity pId _) -> return pId
 
 -- | Guard to check if a project is allready present in the db. If so, raise an
@@ -150,7 +179,7 @@ projGetInt project = getBy (UniqueName $ projectName project) >>=
 guardProjNotExistsInt :: (MonadIO m) => Project -> SqlPersistT m ()
 guardProjNotExistsInt project = do
     exists <- projExists project
-    when exists (throwIO $ ModelException $ errProjExists project)
+    when exists (throwIO $ ProjExists project)
 
 -- Exported hd functions
 
@@ -164,12 +193,12 @@ hdHdwProjGet day tid = do
     (Entity hdId hd) <- hdGetInt day tid 
     eiHdwProj <- try $ hdwProjGetInt hdId
     let mbHdw = case eiHdwProj of       
-          Left (ModelException _)                -> Nothing
+          Left (SomeException _) -> Nothing -- ProjIdNotFound or HdwIdNotFound
           Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
     -- Check for consistency
     case (hd, mbHdw) of
-        (HalfDay _ _ Worked, Nothing) -> throwIO $ ModelException errDbInconsistency
-        (HalfDay _ _ Holiday, Just _) -> throwIO $ ModelException errDbInconsistency
+        (HalfDay _ _ Worked, Nothing) -> throwIO DbInconsistency
+        (HalfDay _ _ Holiday, Just _) -> throwIO DbInconsistency
         (_, _)                        -> return (hd, mbHdw)
 
 -- | Set the office for a day-time in day
@@ -239,7 +268,7 @@ hdSetHoliday
 hdSetHoliday day tid = try (hdGetInt day tid) >>=
     \case 
         -- Create a new entry
-        Left (ModelException _) -> void $ insert $ HalfDay day tid Holiday
+        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid Holiday
         -- Edit existing entry
         Right (Entity hdId _)   -> do          
             -- Delete entry from HalfDayWorked if it exists
@@ -260,7 +289,7 @@ hdSetWork day tid project = do
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
         -- Create a new entry
-        Left (ModelException _) -> insert $ HalfDay day tid Worked 
+        Left (HdNotFound _ _) -> insert $ HalfDay day tid Worked 
         -- Edit existing entry
         Right (Entity hdId _)   -> do
           -- Update entry
@@ -289,7 +318,7 @@ hdRm day tid = do
 hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
 hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
     \case 
-        Nothing -> throwIO $ ModelException $ errHdNotFound day tid
+        Nothing -> throwIO $ HdNotFound day tid
         Just e  -> return e
 
 -- | Private function to get a half-day work along with the project from a
@@ -300,11 +329,11 @@ hdwProjGetInt
     -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
 hdwProjGetInt hdId = getBy (UniqueHalfDayId hdId) >>=
     \case
-        Nothing -> throwIO $ ModelException $ errHdwIdNotFound hdId
+        Nothing -> throwIO $ HdwIdNotFound hdId
         Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
             mbProj <- get pId
             project <- case mbProj of 
-                Nothing -> throwIO $ ModelException $ errProjIdNotFound pId
+                Nothing -> throwIO $ ProjIdNotFound pId
                 Just p  -> return (Entity pId p)
             return (e, project)
 
@@ -327,15 +356,15 @@ timesAreOrderedInDay
     :: TimeInDay 
     -> HalfDayWorked 
     -> Maybe HalfDayWorked 
-    -> Maybe Text
+    -> Bool
 timesAreOrderedInDay Morning hdw mbOtherHdw = 
-    timeAreOrdered $ timesOfDay hdw ++ otherTimes
+    isOrdered $ timesOfDay hdw ++ otherTimes
   where otherTimes = concatMap timesOfDay mbOtherHdw
 -- We switch the arguments and call the same function
 timesAreOrderedInDay Afternoon hdw (Just otherHdw) =
     timesAreOrderedInDay Morning otherHdw (Just hdw)
 -- Afternoon only, just need to check for half day
-timesAreOrderedInDay Afternoon hdw Nothing = timeAreOrdered $ timesOfDay hdw
+timesAreOrderedInDay Afternoon hdw Nothing = isOrdered $ timesOfDay hdw
 
 -- | Set arrived/left time
 editTime :: (MonadIO m, MonadUnliftIO m)
@@ -346,14 +375,13 @@ editTime :: (MonadIO m, MonadUnliftIO m)
 editTime (Entity _ (HalfDay day tid _)) (Entity hdwId hdw) setTime = do
     eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
     let mbOtherHdw = case eiHdHdwProj of
-          Left (ModelException _)     -> Nothing
+          Left (HdNotFound _ _)       -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Apply time to arrived/left hdw
     let hdw' = setTime hdw
     -- Check if it works
-    case timesAreOrderedInDay tid hdw' mbOtherHdw of
-        Just msg -> throwIO $ ModelException msg
-        Nothing  -> replace hdwId hdw'
+    when (not $ timesAreOrderedInDay tid hdw' mbOtherHdw) (throwIO $ TimesAreWrong)
+    replace hdwId hdw'
 
 -- | Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [Time.TimeOfDay]
@@ -364,11 +392,4 @@ isOrdered :: (Ord a) => [a] -> Bool
 isOrdered []       = True
 isOrdered [_]      = True
 isOrdered (x:y:xs) = x <= y && isOrdered (y:xs)
-
--- | Return Nothing if the times in the list are ordered. Return an error
--- message otherwise
-timeAreOrdered :: [Time.TimeOfDay] -> Maybe Text
-timeAreOrdered times = if isOrdered times
-    then Nothing
-    else Just errTimesAreWrong
 

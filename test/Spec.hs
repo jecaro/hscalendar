@@ -55,7 +55,11 @@ import           Model
     , migrateAll
     )
 import           ModelFcts
-    ( ModelException(..)
+    ( HdNotFound(..)
+    , HdwIdNotFound(..)
+    , ProjExists(..)
+    , ProjNotFound(..)
+    , TimesAreWrong(..)
     , hdHdwProjGet
     , hdRm
     , hdSetHoliday
@@ -94,9 +98,21 @@ cleanDB = do
     deleteWhere ([] :: [Filter HalfDay])
     deleteWhere ([] :: [Filter Project])
 
--- | QuickCheck selector for our ModelException
-modelException :: Selector ModelException
-modelException = const True
+-- | hspec selector for ProjExists exception
+projExistsException :: Selector ProjExists
+projExistsException = const True
+
+-- | hspec selector for ProjNotFound exception
+projNotFoundException :: Selector ProjNotFound
+projNotFoundException = const True
+
+-- | hspec selector for HdwIdNotFound exception
+hdwIdNotFoundException :: Selector HdwIdNotFound
+hdwIdNotFoundException = const True
+
+-- | hspec selector for HdNotFound exception
+hdNotFoundException :: Selector HdNotFound
+hdNotFoundException = const True
 
 -- Some constants for the specs
 
@@ -152,7 +168,7 @@ prop_projAddProjAdd :: RunDB -> Project -> Property
 prop_projAddProjAdd runDB project =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
-        res <- catch (projAdd project >> return False) (\(ModelException _) -> return True)
+        res <- catch (projAdd project >> return False) (\(ProjExists _) -> return True)
         cleanDB
         return res
 
@@ -185,7 +201,7 @@ prop_hdSetWork :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
 prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
     -- Impossible to set a work hd without an existing project
     exceptionRaised <- Q.run $ do
-        res <- catch (hdSetWork day tid project >> return False) (\(ModelException _) -> return True)
+        res <- catch (hdSetWork day tid project >> return False) (\(ProjNotFound _) -> return True)
         cleanDB
         return res
 
@@ -235,7 +251,7 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
         return (mbHdwProj, mbOHdwProj)
     
     -- Update arrived time and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetArrived day tid tod >> return False) (\(ModelException _) -> return True)
+    exceptionRaised <- Q.run $ catch (hdwSetArrived day tid tod >> return False) (\(TimesAreWrong) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
@@ -262,7 +278,7 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
         return (mbHdwProj, mbOHdwProj)
     
     -- Update left time and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetLeft day tid tod >> return False) (\(ModelException _) -> return True)
+    exceptionRaised <- Q.run $ catch (hdwSetLeft day tid tod >> return False) (\(TimesAreWrong) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
@@ -293,7 +309,7 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
         hdHdwProjGet day (other tid)
     
     -- Update times and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\(ModelException _) -> return True)
+    exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\(TimesAreWrong) -> return True)
     (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
@@ -332,7 +348,7 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
 
     Q.assert $ testHdw ((==) office . halfDayWorkedOffice) mbHdwProj
 
--- | Test the set project function
+-- | Test the set project function -- TODO update to test when the new project exists
 prop_hdSetProject :: RunDB -> Time.Day -> TimeInDay -> Project -> Project -> Property
 prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the hdw
@@ -341,7 +357,7 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
         hdSetWork day tid project
     
     -- Update project and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ModelException _) -> return True)
+    exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ProjNotFound _) -> return True)
     (_, mbHdwProj) <- Q.run $ hdHdwProjGet day tid
     Q.run $ cleanDB
 
@@ -356,14 +372,14 @@ testProjAPI runDB =
         context "When the DB is empty" $ do
             it "tests the uniqueness of the name" $
                 runDB (projAdd project1 >> projAdd project1)
-                  `shouldThrow` modelException
+                  `shouldThrow` projExistsException
             it "tests if a project does not exists" $
                 runDB (projExists project1) `shouldReturn` False
             it "tests if we can remove a project" $
-                runDB (projRm project1) `shouldThrow` modelException
+                runDB (projRm project1) `shouldThrow` projNotFoundException
             it "tests if we can rename a project not present in the db" $
                 runDB (projRename project1 project2)
-                    `shouldThrow` modelException
+                    `shouldThrow` projNotFoundException
             it "tests the list of projects" $
                 runDB projList `shouldReturn` []
         context "One project in DB" $ 
@@ -393,20 +409,20 @@ testProjAPI runDB =
                 property (prop_projList runDB)
 
 -- | When there is no work entry, all these should throw an exception
-itemsNoWorkedEntry :: RunDB -> Spec
-itemsNoWorkedEntry runDB = do
+itemsNoWorkedEntry :: Exception e => RunDB -> Selector e -> Spec
+itemsNoWorkedEntry runDB exception = do
     it "tests setting arrived time" $
-        runDB (hdwSetArrived day1 tid1 arrived1) `shouldThrow` modelException
+        runDB (hdwSetArrived day1 tid1 arrived1) `shouldThrow` exception
     it "tests setting left time" $
-        runDB (hdwSetLeft day1 tid1 left1) `shouldThrow` modelException
+        runDB (hdwSetLeft day1 tid1 left1) `shouldThrow` exception
     it "tests setting arrived and left time" $
-        runDB (hdwSetArrivedAndLeft day1 tid1 arrived1 left1) `shouldThrow` modelException
+        runDB (hdwSetArrivedAndLeft day1 tid1 arrived1 left1) `shouldThrow` exception
     it "tests setting notes" $
-        runDB (hdwSetNotes day1 tid1 notes1) `shouldThrow` modelException
+        runDB (hdwSetNotes day1 tid1 notes1) `shouldThrow` exception
     it "tests setting office" $
-        runDB (hdwSetOffice day1 tid1 office1) `shouldThrow` modelException
+        runDB (hdwSetOffice day1 tid1 office1) `shouldThrow` exception
     it "tests setting the project" $
-        runDB (hdwSetProject day1 tid1 project1) `shouldThrow` modelException
+        runDB (hdwSetProject day1 tid1 project1) `shouldThrow` exception
 
 -- | Test the HD API
 testHdAPI :: RunDB -> Spec
@@ -420,10 +436,11 @@ testHdAPI runDB =
                 runDB $  projAdd project1 
                       >> hdSetWork day1 tid1 project1
             it "tests getting an entry" $
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` modelException
+                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests removing an entry" $
-                runDB (hdRm day1 tid1) `shouldThrow` modelException
-            itemsNoWorkedEntry runDB
+                runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
+            -- No hd in the DB
+            itemsNoWorkedEntry runDB hdNotFoundException
         context "When there is one holiday entry" $ 
             before_ (runDB $ hdSetHoliday day1 tid1) $ do
             it "tests getting the entry" $ do
@@ -431,10 +448,12 @@ testHdAPI runDB =
                 res `shouldBe` (HalfDay day1 tid1 Holiday, Nothing)
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1) 
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` modelException
+                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a worked entry" $ 
                 runDB $ projAdd project1 >> hdSetWork day1 tid1 project1
-            itemsNoWorkedEntry runDB
+            -- There is an hd in the DB but this is a holiday one, so this is
+            -- the relevant exception to catch
+            itemsNoWorkedEntry runDB hdwIdNotFoundException
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWork day1 tid1 project1) $ do
             it "tests getting the entry" $ do
@@ -443,7 +462,7 @@ testHdAPI runDB =
                 mbHdwProj `projShouldBe` project1
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` modelException
+                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a holiday entry" $ 
                 runDB $ hdSetHoliday day1 tid1
             it "tests setting arrived time" $ do
