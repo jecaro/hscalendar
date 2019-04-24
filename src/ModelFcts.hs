@@ -191,15 +191,20 @@ hdHdwProjGet
     -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
 hdHdwProjGet day tid = do
     (Entity hdId hd) <- hdGetInt day tid 
-    eiHdwProj <- try $ hdwProjGetInt hdId
+    eiHdwProj <- tryJust projOrHwdIdNotFound (hdwProjGetInt hdId)
     let mbHdw = case eiHdwProj of       
-          Left (SomeException _) -> Nothing -- ProjIdNotFound or HdwIdNotFound
-          Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
+           Left  _ -> Nothing 
+           Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
     -- Check for consistency
     case (hd, mbHdw) of
         (HalfDay _ _ Worked, Nothing) -> throwIO DbInconsistency
         (HalfDay _ _ Holiday, Just _) -> throwIO DbInconsistency
         (_, _)                        -> return (hd, mbHdw)
+  where 
+    projOrHwdIdNotFound e = 
+        let projNotFound = fmap toException (fromException e :: Maybe ProjIdNotFound)
+            hwdIdNotFound = fmap toException (fromException e :: Maybe HdwIdNotFound)
+        in projNotFound <|> hwdIdNotFound
 
 -- | Set the office for a day-time in day
 hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
