@@ -348,14 +348,14 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
 
     Q.assert $ testHdw ((==) office . halfDayWorkedOffice) mbHdwProj
 
--- | Test the set project function -- TODO update to test when the new project exists
+-- | Test the set project function
 prop_hdSetProject :: RunDB -> Time.Day -> TimeInDay -> Project -> Project -> Property
 prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the hdw
     Q.run $ do
         projAdd project
         hdSetWork day tid project
-    
+
     -- Update project and get new value
     exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ProjNotFound _) -> return True)
     (_, mbHdwProj) <- Q.run $ hdHdwProjGet day tid

@@ -84,9 +84,6 @@ import           ModelFcts
 -- - put default values in a config file as well as open days
 -- - put db file in a config file as well
 -- - replace pattern matching with record syntax
--- - refactor print exception
--- - find a way to selection exceptions in hdHdwProjGet
--- - sort out what to keep between prop_hdSetProject prop_hdSetWork
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
