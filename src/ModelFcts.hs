@@ -6,7 +6,7 @@ module ModelFcts
       ProjExists(..)
     , ProjNotFound(..)
     , HdNotFound(..)
-    , HdwIdNotFound(..)
+    , HdIdNotFound(..)
     , TimesAreWrong(..)
     -- * Half-day functions
     , hdHdwProjGet
@@ -68,8 +68,9 @@ import           Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
--- Error strings
+-- Exceptions that are likely to occure
 
+-- | The requested project has not be found
 newtype ProjNotFound = ProjNotFound Project
 
 instance Exception ProjNotFound
@@ -78,6 +79,7 @@ instance Show ProjNotFound where
     show (ProjNotFound project) = "The project " <> name <> " is not in the database"
       where name = Text.unpack (projectName project)
 
+-- | A project with the same name allready exists in the db
 newtype ProjExists = ProjExists Project
 
 instance Exception ProjExists
@@ -86,6 +88,7 @@ instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
       where name = Text.unpack (projectName project)
 
+-- | There is no record for specified HD
 data HdNotFound = HdNotFound Time.Day TimeInDay
 
 instance Exception HdNotFound
@@ -93,13 +96,25 @@ instance Exception HdNotFound
 instance Show HdNotFound where
     show (HdNotFound day tid) = "Nothing for " <> Text.unpack (showDay day) <> " " <> show tid
 
-newtype HdwIdNotFound = HdwIdNotFound HalfDayId
+-- | There is no work record in HDW for specified HD
+newtype HdIdNotFound = HdIdNotFound HalfDayId
 
-instance Exception HdwIdNotFound
+instance Exception HdIdNotFound
 
-instance Show HdwIdNotFound where
-    show (HdwIdNotFound hdwId) = "No half-day worked entry for " <> show hdwId
+instance Show HdIdNotFound where
+    show (HdIdNotFound hdwId) = "No half-day worked entry for " <> show hdwId
 
+-- | Given times are wrong
+data TimesAreWrong = TimesAreWrong
+
+instance Exception TimesAreWrong 
+
+instance Show TimesAreWrong where
+    show _ = "Times are wrong"
+
+-- The following exceptions should never happen
+
+-- | Specified project id has not been found
 newtype ProjIdNotFound = ProjIdNotFound ProjectId
 
 instance Exception ProjIdNotFound
@@ -107,19 +122,13 @@ instance Exception ProjIdNotFound
 instance Show ProjIdNotFound where
     show (ProjIdNotFound pId) = "No project entry for " <> show pId
 
+-- | Inconsistency in the DB
 data DbInconsistency = DbInconsistency
 
 instance Exception DbInconsistency
 
 instance Show DbInconsistency where
     show _ = "Warning db inconsistency"
-
-data TimesAreWrong = TimesAreWrong
-
-instance Exception TimesAreWrong 
-
-instance Show TimesAreWrong where
-    show _ = "Times are wrong"
 
 -- Misc 
 
@@ -191,7 +200,7 @@ hdHdwProjGet
     -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
 hdHdwProjGet day tid = do
     (Entity hdId hd) <- hdGetInt day tid 
-    eiHdwProj <- tryJust projOrHwdIdNotFound (hdwProjGetInt hdId)
+    eiHdwProj <- tryJust projOrHdIdNotFound (hdwProjGetInt hdId)
     let mbHdw = case eiHdwProj of       
            Left  _ -> Nothing 
            Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
@@ -201,9 +210,9 @@ hdHdwProjGet day tid = do
         (HalfDay _ _ Holiday, Just _) -> throwIO DbInconsistency
         (_, _)                        -> return (hd, mbHdw)
   where 
-    projOrHwdIdNotFound e = 
+    projOrHdIdNotFound e = 
         let projNotFound = fmap toException (fromException e :: Maybe ProjIdNotFound)
-            hwdIdNotFound = fmap toException (fromException e :: Maybe HdwIdNotFound)
+            hwdIdNotFound = fmap toException (fromException e :: Maybe HdIdNotFound)
         in projNotFound <|> hwdIdNotFound
 
 -- | Set the office for a day-time in day
@@ -307,7 +316,7 @@ hdSetWork day tid project = do
                    else Time.TimeOfDay 13 30 0 
     tLeft = if tid == Morning 
                 then Time.TimeOfDay 12 0 0
-                 else Time.TimeOfDay 17 30 0 
+                else Time.TimeOfDay 17 30 0 
    
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
@@ -334,7 +343,7 @@ hdwProjGetInt
     -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
 hdwProjGetInt hdId = getBy (UniqueHalfDayId hdId) >>=
     \case
-        Nothing -> throwIO $ HdwIdNotFound hdId
+        Nothing -> throwIO $ HdIdNotFound hdId
         Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
             mbProj <- get pId
             project <- case mbProj of 

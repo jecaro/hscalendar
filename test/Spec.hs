@@ -56,7 +56,7 @@ import           Model
     )
 import           ModelFcts
     ( HdNotFound(..)
-    , HdwIdNotFound(..)
+    , HdIdNotFound(..)
     , ProjExists(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
@@ -106,9 +106,9 @@ projExistsException = const True
 projNotFoundException :: Selector ProjNotFound
 projNotFoundException = const True
 
--- | hspec selector for HdwIdNotFound exception
-hdwIdNotFoundException :: Selector HdwIdNotFound
-hdwIdNotFoundException = const True
+-- | hspec selector for HdIdNotFound exception
+hdIdNotFoundException :: Selector HdIdNotFound
+hdIdNotFoundException = const True
 
 -- | hspec selector for HdNotFound exception
 hdNotFoundException :: Selector HdNotFound
@@ -453,7 +453,7 @@ testHdAPI runDB =
                 runDB $ projAdd project1 >> hdSetWork day1 tid1 project1
             -- There is an hd in the DB but this is a holiday one, so this is
             -- the relevant exception to catch
-            itemsNoWorkedEntry runDB hdwIdNotFoundException
+            itemsNoWorkedEntry runDB hdIdNotFoundException
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWork day1 tid1 project1) $ do
             it "tests getting the entry" $ do
