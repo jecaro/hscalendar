@@ -264,17 +264,7 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
-data Times = Times { arrived :: Time.TimeOfDay
-                   , left    :: Time.TimeOfDay } 
-    deriving (Show, Generic)
-
-instance FromJSON Times
-instance ToJSON Times
-
-data Config = Config { db        :: Path Abs File
-                     , morning   :: Times
-                     , afternoon :: Times
-                     } 
+newtype Config = Config { db :: Path Abs File } 
     deriving (Show, Generic)
 
 instance FromJSON Config
@@ -289,9 +279,7 @@ getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
-    return $ Config defaultDb morning afternoon
-  where morning   = Times (Time.TimeOfDay  9 00 00) (Time.TimeOfDay 12 00 00)
-        afternoon = Times (Time.TimeOfDay 13 30 00) (Time.TimeOfDay 17 00 00)
+    return $ Config defaultDb 
 
 getConfig :: (MonadIO m) => m Config
 getConfig = do
