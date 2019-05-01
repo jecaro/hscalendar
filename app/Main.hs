@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 import           RIO
 import qualified RIO.Text as Text (intercalate, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..))
@@ -12,8 +14,33 @@ import           Database.Persist.Sqlite
     , withSqlitePool
     )
 import           Data.Text.IO (putStrLn) 
-import           Formatting (int, left, sformat, (%.))
+import           Data.Yaml 
+    ( FromJSON
+    , ToJSON
+    , encodeFile
+    , decodeFileThrow
+    , prettyPrintParseException
+    )
+import qualified Formatting as F (int, left, sformat)
+import           Formatting ((%.))
 import           Options.Applicative (execParser)
+import           Path 
+    ( Abs
+    , Dir
+    , File
+    , Path
+    , Rel
+    , mkRelDir
+    , mkRelFile
+    , toFilePath
+    , (</>)
+    )
+import           Path.IO 
+    ( XdgDirectory(XdgConfig)
+    , doesFileExist
+    , ensureDir
+    , getXdgDir
+    )
 
 import           CommandLine 
     ( Cmd(..)
@@ -165,7 +192,7 @@ run (DiaryDisplay cd tid) = do
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
   where showTime (Time.TimeOfDay h m _) = 
-            Text.intercalate ":" $ fmap (sformat (left 2 '0' %. int)) [h, m]
+            Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
@@ -237,10 +264,52 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
--- | Main function
-main :: IO ()
--- runNoLoggingT or runStdoutLoggingT
-main = runNoLoggingT . withSqlitePool "file.db" 3 . runSqlPool $ do
-    runMigration migrateAll
-    liftIO (execParser opts) >>= run
+data Times = Times { arrived :: Time.TimeOfDay
+                   , left    :: Time.TimeOfDay } 
+    deriving (Show, Generic)
 
+instance FromJSON Times
+instance ToJSON Times
+
+data Config = Config { db        :: Path Abs File
+                     , morning   :: Times
+                     , afternoon :: Times
+                     } 
+    deriving (Show, Generic)
+
+instance FromJSON Config
+instance ToJSON Config
+
+getFileInConfigDir :: MonadIO m => Path Rel t -> m (Path Abs t)
+getFileInConfigDir file = flip (</>) file <$> getConfigDir
+
+getConfigDir :: MonadIO m => m (Path Abs Dir)
+getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
+
+defaultConfig :: MonadIO m => m (Config)
+defaultConfig = do
+    defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
+    return $ Config defaultDb morning afternoon
+  where morning   = Times (Time.TimeOfDay  9 00 00) (Time.TimeOfDay 12 00 00)
+        afternoon = Times (Time.TimeOfDay 13 30 00) (Time.TimeOfDay 17 00 00)
+
+getConfig :: (MonadIO m) => m Config
+getConfig = do
+    -- Create config file directory
+    getConfigDir >>= ensureDir 
+    -- Config file
+    fc <- getFileInConfigDir $(mkRelFile "config.yml") 
+    -- Create it if it doesn't exist
+    exists <- doesFileExist fc
+    unless exists (liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
+    -- Read config from the file
+    decodeFileThrow $ toFilePath fc
+
+main :: IO ()
+main = try getConfig >>=
+    \case 
+        Left e       -> putStrLn $ Text.pack $ prettyPrintParseException e
+        Right config -> runNoLoggingT . withSqlitePool dbFile 3 . runSqlPool $ do
+            runMigration migrateAll
+            liftIO (execParser opts) >>= run
+          where dbFile = Text.pack $ toFilePath $ db config
