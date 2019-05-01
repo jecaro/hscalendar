@@ -161,15 +161,15 @@ run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd project) = catch (void $ projAdd project) 
-                           (\e@(ProjExists _) -> liftIO . putStrLn $ (Text.pack $ show e))
+                           (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
 
 -- Remove a project
 run (ProjRm project) = catch (projRm project) 
-                           (\e@(ProjExists _) -> liftIO . putStrLn $ (Text.pack $ show e))
+                           (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
 -- Rename a project
 run (ProjRename p1 p2) = catches (projRename p1 p2)
-    [ Handler (\e@(ProjExists _)   -> liftIO . putStrLn $ (Text.pack $ show e))
-    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ (Text.pack $ show e))
+    [ Handler (\e@(ProjExists _)   -> liftIO . putStrLn $ Text.pack $ show e)
+    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ Text.pack $ show e)
     ]
 
 -- Display an entry
@@ -182,7 +182,7 @@ run (DiaryDisplay cd tid) = do
     eiHdHdwProj <- try $ hdHdwProjGet day tid
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
-           Left (e@(HdNotFound _ _)) -> [ (Text.pack . show) e ]
+           Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
            Right (_, Nothing) -> [ (Text.pack . show) Holiday ]
            Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
@@ -286,7 +286,7 @@ getFileInConfigDir file = flip (</>) file <$> getConfigDir
 getConfigDir :: MonadIO m => m (Path Abs Dir)
 getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 
-defaultConfig :: MonadIO m => m (Config)
+defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
     return $ Config defaultDb morning afternoon
