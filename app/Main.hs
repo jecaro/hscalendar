@@ -264,23 +264,28 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
+-- | Simple configuration stored in the config file
 newtype Config = Config { db :: Path Abs File } 
     deriving (Show, Generic)
 
 instance FromJSON Config
 instance ToJSON Config
 
+-- | Get a path from a file in the config directory
 getFileInConfigDir :: MonadIO m => Path Rel t -> m (Path Abs t)
 getFileInConfigDir file = flip (</>) file <$> getConfigDir
 
+-- | Get the configuration directory
 getConfigDir :: MonadIO m => m (Path Abs Dir)
 getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 
+-- | Create a default configuration
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
     return $ Config defaultDb 
 
+-- | Read the configuration from the config file, create it if it doesn't exist
 getConfig :: (MonadIO m) => m Config
 getConfig = do
     -- Create config file directory
@@ -293,6 +298,7 @@ getConfig = do
     -- Read config from the file
     decodeFileThrow $ toFilePath fc
 
+-- | Main function
 main :: IO ()
 main = try getConfig >>=
     \case 
