@@ -22,6 +22,7 @@ dependencies:
 - quickcheck-instances
 - refined
 - rio
+- rio-orphans
 - template-haskell
 - text
 - text-zipper
