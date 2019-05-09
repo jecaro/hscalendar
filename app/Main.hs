@@ -305,13 +305,15 @@ getConfig = do
 main :: IO ()
 main = do
     -- Parse command line
-    (options, cmd) <- execParser opts
-    -- Init log option
-    logOptions <- logOptionsHandle stderr (verbose options)
+    (Options verbose level, cmd) <- execParser opts
+    -- Init log options: level and verbose mode
+    logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose 
     -- Read config file with logger
     withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
         \case 
+            -- Error with the config file end of the program
             Left e -> runRIO lf $ logError $ display $ Text.pack (prettyPrintParseException e)
+            -- Got the config, carry on
             Right config -> runRIO lf $ 
                 withSqlitePool dbFile 3 . runSqlPool $ do
                   runMigration migrateAll

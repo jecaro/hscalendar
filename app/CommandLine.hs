@@ -45,6 +45,7 @@ import           Options.Applicative as Opt
     , some
     , subparser
     , switch
+    , value
     , (<**>)
     , (<|>)
     )
@@ -54,7 +55,8 @@ import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
 
-newtype Options = Options { verbose :: Bool }
+data Options = Options { optVerbose :: !Bool,
+                         optLevel   :: !LogLevel }
 
 data Cmd = DiaryDisplay CustomDay TimeInDay           |
            DiaryHoliday CustomDay TimeInDay           |
@@ -115,6 +117,13 @@ parseCustomDay = attoReadM parser
 
 parseProject :: ReadM Project
 parseProject = maybeReader $ mkProject . Text.pack
+
+parseLevel :: ReadM LogLevel
+parseLevel = attoReadM parser
+  where parser =   string "debug" $> LevelDebug
+               <|> string "info"  $> LevelInfo
+               <|> string "warn"  $> LevelWarn
+               <|> string "error" $> LevelError
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
@@ -220,7 +229,15 @@ cmd = hsubparser
     )
 
 options :: Opt.Parser Options
-options = Options <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
+options = Options 
+    <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
+    <*> option parseLevel 
+        (  long "level" 
+        <> short 'l' 
+        <> metavar "LEVEL" 
+        <> help "log level" 
+        <> value LevelInfo
+        )
 
 optionsAndCmd :: Opt.Parser (Options, Cmd)
 optionsAndCmd = curry id <$> options <*> cmd
