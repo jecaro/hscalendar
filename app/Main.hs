@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 import           RIO
 import           RIO.Orphans()
 import qualified RIO.Text as Text (intercalate, pack)
@@ -14,34 +12,13 @@ import           Database.Persist.Sqlite
     , withSqlitePool
     )
 import           Data.Text.IO (putStrLn) 
-import           Data.Yaml 
-    ( FromJSON
-    , ToJSON
-    , encodeFile
-    , decodeFileThrow
-    , prettyPrintParseException
-    )
+import           Data.Yaml (prettyPrintParseException)
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
 import           Options.Applicative (execParser)
-import           Path 
-    ( Abs
-    , Dir
-    , File
-    , Path
-    , Rel
-    , mkRelDir
-    , mkRelFile
-    , toFilePath
-    , (</>)
-    )
-import           Path.IO 
-    ( XdgDirectory(XdgConfig)
-    , doesFileExist
-    , ensureDir
-    , getXdgDir
-    )
+import           Path (toFilePath)
 
+import           Config (Config(..), getConfig)
 import           CommandLine 
     ( Cmd(..)
     , Options(..)
@@ -264,42 +241,6 @@ dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdwSetLeft day tid time
 dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
-
--- | Simple configuration stored in the config file
-newtype Config = Config { db :: Path Abs File } 
-    deriving (Show, Generic)
-
-instance FromJSON Config
-instance ToJSON Config
-
--- | Get a path from a file in the config directory
-getFileInConfigDir :: MonadIO m => Path Rel t -> m (Path Abs t)
-getFileInConfigDir file = flip (</>) file <$> getConfigDir
-
--- | Get the configuration directory
-getConfigDir :: MonadIO m => m (Path Abs Dir)
-getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
-
--- | Create a default configuration
-defaultConfig :: MonadIO m => m Config
-defaultConfig = do
-    defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
-    return $ Config defaultDb 
-
--- | Read the configuration from the config file, create it if it doesn't exist
-getConfig :: HasLogFunc m => RIO m Config
-getConfig = do
-    -- Create config file directory
-    getConfigDir >>= ensureDir 
-    -- Config file
-    fc <- getFileInConfigDir $(mkRelFile "config.yml") 
-    -- Create it if it doesn't exist
-    exists <- doesFileExist fc
-    unless exists (do 
-        logDebug "The config file doesn't exist, create it."
-        liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
-    -- Read config from the file
-    decodeFileThrow $ toFilePath fc
 
 -- | Main function
 main :: IO ()
