@@ -1,12 +1,12 @@
 module CommandLine
     ( Cmd(..)
+    , Options(..)
     , SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
     , SetOffice(..)
     , SetProj(..)
     , WorkOption(..)
-    , cmd
     , opts
     ) where
 
@@ -37,13 +37,14 @@ import           Options.Applicative as Opt
     , idm
     , info
     , long
+    , maybeReader
     , metavar
     , option
     , progDesc
-    , maybeReader
     , short
     , some
     , subparser
+    , switch
     , (<**>)
     , (<|>)
     )
@@ -52,6 +53,8 @@ import           CustomDay (CustomDay(..))
 import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
+
+newtype Options = Options { verbose :: Bool }
 
 data Cmd = DiaryDisplay CustomDay TimeInDay           |
            DiaryHoliday CustomDay TimeInDay           |
@@ -133,9 +136,9 @@ projCmd = subparser
     )
 
 diaryDisplay :: Opt.Parser Cmd
-diaryDisplay = DiaryDisplay 
+diaryDisplay = DiaryDisplay
     <$> argument parseCustomDay (metavar "DAY")
-    <*> tidOption 
+    <*> tidOption
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm
@@ -216,6 +219,12 @@ cmd = hsubparser
     <> command "diary"   (info diaryCmd (progDesc "Diary commands"))
     )
 
-opts :: ParserInfo Cmd
-opts = info (cmd <**> helper) idm
+options :: Opt.Parser Options
+options = Options <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
+
+optionsAndCmd :: Opt.Parser (Options, Cmd)
+optionsAndCmd = curry id <$> options <*> cmd
+
+opts :: ParserInfo (Options, Cmd)
+opts = info (optionsAndCmd <**> helper) idm
 

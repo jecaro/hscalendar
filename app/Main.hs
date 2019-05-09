@@ -44,6 +44,7 @@ import           Path.IO
 
 import           CommandLine 
     ( Cmd(..)
+    , Options(..)
     , SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
@@ -303,8 +304,10 @@ getConfig = do
 -- | Main function
 main :: IO ()
 main = do
+    -- Parse command line
+    (options, cmd) <- execParser opts
     -- Init log option
-    logOptions <- logOptionsHandle stderr False
+    logOptions <- logOptionsHandle stderr (verbose options)
     -- Read config file with logger
     withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
         \case 
@@ -312,5 +315,5 @@ main = do
             Right config -> runRIO lf $ 
                 withSqlitePool dbFile 3 . runSqlPool $ do
                   runMigration migrateAll
-                  liftIO (execParser opts) >>= run
+                  run cmd
               where dbFile = Text.pack $ toFilePath $ db config
