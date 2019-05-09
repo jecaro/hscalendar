@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           RIO
+import           RIO.Orphans()
 import qualified RIO.Text as Text (intercalate, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..))
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Logger (runNoLoggingT)
 import           Database.Persist.Sqlite
     ( SqlPersistT
     , runMigration
@@ -286,7 +286,7 @@ defaultConfig = do
     return $ Config defaultDb 
 
 -- | Read the configuration from the config file, create it if it doesn't exist
-getConfig :: (MonadIO m) => m Config
+getConfig :: HasLogFunc m => RIO m Config
 getConfig = do
     -- Create config file directory
     getConfigDir >>= ensureDir 
@@ -294,16 +294,23 @@ getConfig = do
     fc <- getFileInConfigDir $(mkRelFile "config.yml") 
     -- Create it if it doesn't exist
     exists <- doesFileExist fc
-    unless exists (liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
+    unless exists (do 
+        logDebug "The config file doesn't exist, create it."
+        liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
     -- Read config from the file
     decodeFileThrow $ toFilePath fc
 
 -- | Main function
 main :: IO ()
-main = try getConfig >>=
-    \case 
-        Left e       -> putStrLn $ Text.pack $ prettyPrintParseException e
-        Right config -> runNoLoggingT . withSqlitePool dbFile 3 . runSqlPool $ do
-            runMigration migrateAll
-            liftIO (execParser opts) >>= run
-          where dbFile = Text.pack $ toFilePath $ db config
+main = do
+    -- Init log option
+    logOptions <- logOptionsHandle stderr False
+    -- Read config file with logger
+    withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
+        \case 
+            Left e -> runRIO lf $ logError $ display $ Text.pack (prettyPrintParseException e)
+            Right config -> runRIO lf $ 
+                withSqlitePool dbFile 3 . runSqlPool $ do
+                  runMigration migrateAll
+                  liftIO (execParser opts) >>= run
+              where dbFile = Text.pack $ toFilePath $ db config
