@@ -1,5 +1,3 @@
-{-# LANGUAGE LiberalTypeSynonyms #-}
-
 import           RIO
 import           RIO.Orphans()
 import qualified RIO.Text as Text (intercalate, pack)
@@ -14,6 +12,7 @@ import           Database.Persist.Sqlite
     , runSqlPersistMPool
     , withSqlitePool
     )
+import           Database.Persist.Sql (ConnectionPool)
 import           Data.Text.IO (putStrLn) 
 import           Data.Yaml (prettyPrintParseException)
 import qualified Formatting as F (int, left, sformat)
@@ -245,23 +244,23 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
-type RunDB = forall a. SqlPersistM a -> IO a
-
+-- | The app data
 data App = App
-    { appLogFunc :: !LogFunc,
-      appSQLFunc :: !RunDB
+    { appLogFunc  :: !LogFunc        -- ^ The log function
+    , appConnPool :: !ConnectionPool -- ^ The connexion pool
     }
 
-class HasSQLFunc env where
-    getSQLFunc :: env -> RunDB
+class HasConnPool env where
+    connPoolL :: Lens' env ConnectionPool
 
-instance HasSQLFunc App where
-    getSQLFunc = appSQLFunc
+instance HasConnPool App where
+    connPoolL = lens appConnPool (\x y -> x { appConnPool = y })
 
-runDB :: (HasSQLFunc env) => SqlPersistM a-> RIO env a
+-- | Run sql actions with the pool
+runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
 runDB actions = do
-    sqlF <- asks getSQLFunc
-    liftIO $ sqlF actions
+    pool <- view connPoolL
+    liftIO $ runSqlPersistMPool actions pool
 
 -- | Main function
 main :: IO ()
@@ -279,10 +278,9 @@ main = do
             Right config ->
                 -- Create the sql pool with RIO to handle log
                 runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
-                    -- Initialise the application
-                    let app = App { appLogFunc = lf
-                                  , appSQLFunc = \actions -> 
-                                        runSqlPersistMPool actions pool }
+                    -- Initialize the application
+                    let app = App { appLogFunc  = lf
+                                  , appConnPool = pool }
 
                     -- Run the app
                     liftIO $ runRIO app $
