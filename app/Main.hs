@@ -1,3 +1,5 @@
+{-# LANGUAGE LiberalTypeSynonyms #-}
+
 import           RIO
 import           RIO.Orphans()
 import qualified RIO.Text as Text (intercalate, pack)
@@ -7,8 +9,9 @@ import           Control.Monad (void)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Database.Persist.Sqlite
     ( SqlPersistT
+    , SqlPersistM
     , runMigration
-    , runSqlPool
+    , runSqlPersistMPool
     , withSqlitePool
     )
 import           Data.Text.IO (putStrLn) 
@@ -242,6 +245,24 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
+type RunDB = forall a. SqlPersistM a -> IO a
+
+data App = App
+    { appLogFunc :: !LogFunc,
+      appSQLFunc :: !RunDB
+    }
+
+class HasSQLFunc env where
+    getSQLFunc :: env -> RunDB
+
+instance HasSQLFunc App where
+    getSQLFunc = appSQLFunc
+
+runDB :: (HasSQLFunc env) => SqlPersistM a-> RIO env a
+runDB actions = do
+    sqlF <- asks getSQLFunc
+    liftIO $ sqlF actions
+
 -- | Main function
 main :: IO ()
 main = do
@@ -254,9 +275,18 @@ main = do
         \case 
             -- Error with the config file end of the program
             Left e -> runRIO lf $ logError $ display $ Text.pack (prettyPrintParseException e)
-            -- Got the config, carry on
-            Right config -> runRIO lf $ 
-                withSqlitePool dbFile 3 . runSqlPool $ do
-                  runMigration migrateAll
-                  run cmd
+            -- Got config file carry on
+            Right config ->
+                -- Create the sql pool with RIO to handle log
+                runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
+                    -- Initialise the application
+                    let app = App { appLogFunc = lf
+                                  , appSQLFunc = \actions -> 
+                                        runSqlPersistMPool actions pool }
+
+                    -- Run the app
+                    liftIO $ runRIO app $
+                        runDB $ do 
+                            runMigration migrateAll
+                            run cmd
               where dbFile = Text.pack $ toFilePath $ db config
