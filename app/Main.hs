@@ -4,7 +4,7 @@ import qualified RIO.Text as Text (intercalate, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..))
 
 import           Control.Monad (void)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.IO.Class (liftIO)
 import           Database.Persist.Sqlite
     ( SqlPersistT
     , SqlPersistM
@@ -134,20 +134,21 @@ findArrivedAndLeftCmd options =
         _                           -> (Nothing, options)
 
 -- | Execute the command
-run :: (MonadIO m, MonadUnliftIO m) => Cmd -> SqlPersistT m ()
+run :: (HasConnPool env) => Cmd -> RIO env ()
 
 -- List the projects
-run ProjList = projList >>= liftIO . mapM_ (putStrLn . projectName)
+run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . projectName) 
 
 -- Add a project
-run (ProjAdd project) = catch (void $ projAdd project) 
+run (ProjAdd project) = catch (void $ runDB $ projAdd project) 
                            (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
 
 -- Remove a project
-run (ProjRm project) = catch (projRm project) 
+run (ProjRm project) = catch (runDB $ projRm project) 
                            (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
+
 -- Rename a project
-run (ProjRename p1 p2) = catches (projRename p1 p2)
+run (ProjRename p1 p2) = catches (runDB $ projRename p1 p2)
     [ Handler (\e@(ProjExists _)   -> liftIO . putStrLn $ Text.pack $ show e)
     , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ Text.pack $ show e)
     ]
@@ -159,7 +160,7 @@ run (DiaryDisplay cd tid) = do
     -- Display input date
     liftIO . putStrLn $ showDay day <> " " <> (Text.pack . show) tid
     -- Get half-day
-    eiHdHdwProj <- try $ hdHdwProjGet day tid
+    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
            Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
@@ -181,7 +182,7 @@ run (DiaryWork cd tid wopts) = do
     day <- toDay cd
 
     -- Get hdw
-    eiHdHdwProj <- try $ hdHdwProjGet day tid
+    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
  
     -- Create it with a project if needed
     eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
@@ -189,7 +190,7 @@ run (DiaryWork cd tid wopts) = do
         (Right (_, Just (_, _)), _) -> return $ Right wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
-            eiAdded <- try $ hdSetWork day tid proj
+            eiAdded <- try $ runDB $ hdSetWork day tid proj
             case eiAdded of
                 Right _ -> return $ Right otherOpts
                 Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
@@ -206,27 +207,27 @@ run (DiaryWork cd tid wopts) = do
             let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
-                    catch (hdwSetArrivedAndLeft day tid a l) 
-                        (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
+                     catch (runDB $ hdwSetArrivedAndLeft day tid a l) 
+                         (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
                 Nothing -> return ()
             -- Then apply remaining commands
-            mapM_ dispatchEditWithError otherOpts' 
+            runDB $ mapM_ dispatchEditWithError otherOpts' 
             -- Display new Half-Day
             run $ DiaryDisplay cd tid
           where dispatchEditWithError x = catch (dispatchEdit day tid x) 
                     (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
-
+ 
 -- Set a holiday entry
 run (DiaryHoliday cd tid) = do
     day <- toDay cd
-    hdSetHoliday day tid
+    runDB $ hdSetHoliday day tid
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
 
 -- Delete an entry
 run (DiaryRm cs tid) = do
     day <- toDay cs
-    catch (hdRm day tid) (\e@(HdNotFound _ _) -> liftIO $ putStrLn $ Text.pack $ show e)
+    catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> liftIO $ putStrLn $ Text.pack $ show e)
 
 -- Dispatch edit
 dispatchEdit
@@ -283,8 +284,7 @@ main = do
                                   , appConnPool = pool }
 
                     -- Run the app
-                    liftIO $ runRIO app $
-                        runDB $ do 
-                            runMigration migrateAll
-                            run cmd
+                    liftIO $ runRIO app $ do
+                        runDB $ runMigration migrateAll
+                        run cmd
               where dbFile = Text.pack $ toFilePath $ db config
