@@ -33,7 +33,6 @@ import           Run (App(..), run)
 -- hsmaster project rename project1 project2 
 
 -- TODO:
--- - Add init function to create the database
 -- - Add import CSV
 -- - Add stats for a year
 -- - Add optional day/time
@@ -47,7 +46,6 @@ import           Run (App(..), run)
 -- - Add colors/bold
 -- - Use esqueleto for join (project, hdw)
 -- - put default values in a config file as well as open days
--- - put db file in a config file as well
 -- - replace pattern matching with record syntax
 
 -- | Main function
@@ -70,6 +68,8 @@ main = do
                     let app = App { appLogFunc  = lf
                                   , appConnPool = pool }
 
-                    -- Run the app
-                    liftIO $ runRIO app $ run cmd
+                    -- Run the app, handle exceptions (should be only because
+                    -- the database is not initialized)
+                    liftIO $ runRIO app $ catch (run cmd) (\e -> 
+                        logError $ "Error: " <> display (e :: SomeException))
               where dbFile = Text.pack $ toFilePath $ db config

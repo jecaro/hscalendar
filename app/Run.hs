@@ -227,6 +227,9 @@ class HasConnPool env where
 instance HasConnPool App where
     connPoolL = lens appConnPool (\x y -> x { appConnPool = y })
 
+instance HasLogFunc App where
+    logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
+
 -- | Run sql actions with the pool
 runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
 runDB actions = do
