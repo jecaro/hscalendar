@@ -15,6 +15,7 @@ import           Control.Monad.IO.Class (liftIO)
 import           Database.Persist.Sqlite
     ( SqlPersistT
     , SqlPersistM
+    , runMigration
     , runSqlPersistMPool
     )
 import           Database.Persist.Sql (ConnectionPool)
@@ -101,6 +102,9 @@ findArrivedAndLeftCmd options =
 
 -- | Execute the command
 run :: (HasConnPool env) => Cmd -> RIO env ()
+
+-- Migrate the database
+run Migrate = runDB $ runMigration migrateAll
 
 -- List the projects
 run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . projectName) 

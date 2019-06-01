@@ -58,7 +58,8 @@ import           TimeInDay (TimeInDay(..))
 data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
-data Cmd = DiaryDisplay CustomDay TimeInDay           |
+data Cmd = Migrate                                    |
+           DiaryDisplay CustomDay TimeInDay           |
            DiaryHoliday CustomDay TimeInDay           |
            DiaryRm CustomDay TimeInDay                |
            DiaryWork CustomDay TimeInDay [WorkOption] |
@@ -225,6 +226,7 @@ workOptionSetOffice = MkSetOffice . SetOffice <$> option parseOffice
 cmd :: Opt.Parser Cmd
 cmd = hsubparser
     (  command "project" (info projCmd  (progDesc "Project commands"))
+    <> command "migrate" (info (pure Migrate) (progDesc "Migrate database"))
     <> command "diary"   (info diaryCmd (progDesc "Diary commands"))
     )
 

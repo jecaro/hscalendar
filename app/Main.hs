@@ -4,8 +4,7 @@ import qualified RIO.Text as Text (pack)
 
 import           Control.Monad.IO.Class (liftIO)
 import           Database.Persist.Sqlite
-    ( runMigration
-    , withSqlitePool
+    ( withSqlitePool
     )
 import           Data.Yaml (prettyPrintParseException)
 import           Options.Applicative (execParser)
@@ -16,8 +15,7 @@ import           CommandLine
     ( Options(..)
     , opts
     )
-import           Model
-import           Run (App(..), run, runDB)
+import           Run (App(..), run)
 
 -- Synopsis
 -- hsmaster diary work date -m|-a [commands]
@@ -73,7 +71,5 @@ main = do
                                   , appConnPool = pool }
 
                     -- Run the app
-                    liftIO $ runRIO app $ do
-                        runDB $ runMigration migrateAll
-                        run cmd
+                    liftIO $ runRIO app $ run cmd
               where dbFile = Text.pack $ toFilePath $ db config
