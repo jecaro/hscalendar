@@ -6,6 +6,7 @@ module Model
         , HalfDayWorkedNotes 
         , HalfDayWorkedOffice
         , HalfDayWorkedProjectId
+        , ProjectId
         , ProjectName
         )
     , HalfDay(..)

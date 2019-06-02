@@ -30,6 +30,7 @@ module ModelFcts
     ) where
 
 import           RIO
+import           RIO.List as L (headMaybe)
 import qualified RIO.Text as Text (intercalate, pack, unpack)
 import qualified RIO.Time as Time 
     ( Day
@@ -43,6 +44,7 @@ import           Refined (unrefine)
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
+import qualified Database.Esqueleto as E
 import           Database.Persist.Sqlite 
     ( Entity(..)
     , SelectOpt(Asc)
@@ -50,7 +52,6 @@ import           Database.Persist.Sqlite
     , Key
     , delete
     , deleteWhere
-    , get
     , getBy
     , insert
     , replace
@@ -65,6 +66,7 @@ import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
 import           Model
+--import           Internal.Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
@@ -341,15 +343,13 @@ hdwProjGetInt
     :: (MonadIO m) 
     => HalfDayId 
     -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
-hdwProjGetInt hdId = getBy (UniqueHalfDayId hdId) >>=
-    \case
-        Nothing -> throwIO $ HdIdNotFound hdId
-        Just e@(Entity _ (HalfDayWorked _ _ _ _ pId _)) -> do
-            mbProj <- get pId
-            project <- case mbProj of 
-                Nothing -> throwIO $ ProjIdNotFound pId
-                Just p  -> return (Entity pId p)
-            return (e, project)
+hdwProjGetInt hdId = do
+    hdwProjs <- E.select $
+        E.from $ \(hdw, proj) -> do
+        E.where_ (hdw E.^. HalfDayWorkedProjectId E.==. proj E.^. ProjectId E.&&. 
+                  hdw E.^. HalfDayWorkedHalfDayId E.==. E.val hdId)
+        return (hdw, proj)
+    maybe (throwIO $ HdIdNotFound hdId) return (L.headMaybe hdwProjs)
 
 -- | Private function to get a half-day work along with the project from a day
 -- and a time in day
