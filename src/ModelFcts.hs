@@ -29,7 +29,7 @@ module ModelFcts
     , showDay
     ) where
 
-import           RIO
+import           RIO hiding (on, (^.)) -- We use esqueleto symbols
 import           RIO.List as L (headMaybe)
 import qualified RIO.Text as Text (intercalate, pack, unpack)
 import qualified RIO.Time as Time 
@@ -44,7 +44,19 @@ import           Refined (unrefine)
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
-import qualified Database.Esqueleto as E
+import           Database.Esqueleto 
+    ( LeftOuterJoin(..)
+    , from
+    , just
+    , on
+    , select
+    , val
+    , where_
+    , (?.)
+    , (&&.)
+    , (^.)
+    , (==.)
+    )
 import           Database.Persist.Sqlite 
     ( Entity(..)
     , SelectOpt(Asc)
@@ -58,8 +70,8 @@ import           Database.Persist.Sqlite
     , selectList
     , update
     , (=.)
-    , (==.)
     )
+import qualified Database.Persist.Sqlite as P ((==.))
 
 import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
@@ -166,7 +178,7 @@ projRm project = do
     -- The following can throw exception same exception apply to this function
     -- so we dont catch it here
     pId <- projGetInt project 
-    deleteWhere [HalfDayWorkedProjectId ==. pId]
+    deleteWhere [HalfDayWorkedProjectId P.==. pId]
     delete pId
 
 -- | Rename a project 
@@ -201,11 +213,11 @@ hdHdwProjGet
     -> TimeInDay 
     -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
 hdHdwProjGet day tid = 
-    (E.select $ E.from $ \(hd `E.LeftOuterJoin` mbHdw `E.LeftOuterJoin` mbProj) -> do
-        E.where_ (hd  E.^. HalfDayDay             E.==. E.val day E.&&.
-                  hd  E.^. HalfDayTimeInDay       E.==. E.val tid)           
-        E.on (mbProj E.?. ProjectId      E.==. mbHdw E.?. HalfDayWorkedProjectId)
-        E.on (E.just (hd E.^. HalfDayId) E.==. mbHdw E.?. HalfDayWorkedHalfDayId)
+    (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+        where_ (hd ^. HalfDayDay        ==. val day &&.
+                hd ^. HalfDayTimeInDay  ==. val tid)           
+        on (mbProj ?. ProjectId    ==. mbHdw ?. HalfDayWorkedProjectId)
+        on (just (hd ^. HalfDayId) ==. mbHdw ?. HalfDayWorkedHalfDayId)
         return (hd, mbHdw, mbProj)) >>=
     \case
         []    -> throwIO $ HdNotFound day tid
@@ -286,7 +298,7 @@ hdSetHoliday day tid = try (hdGetInt day tid) >>=
         -- Edit existing entry
         Right (Entity hdId _)   -> do          
             -- Delete entry from HalfDayWorked if it exists
-            deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
+            deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
             -- Update entry
             update hdId [HalfDayType =. Holiday]
 
@@ -323,9 +335,9 @@ hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m ()
 hdRm day tid = do
     (Entity hdId _) <- hdGetInt day tid
     -- Delete entry from HalfDayWorked if it exists
-    deleteWhere [HalfDayWorkedHalfDayId ==. hdId]
+    deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
     delete hdId
- 
+
 -- Internal project functions
 
 -- | Get a half day if it exists or raise an exception
@@ -343,12 +355,11 @@ hdHdwProjGetInt
     -> TimeInDay 
     -> SqlPersistT m (Entity HalfDay, Entity HalfDayWorked, Entity Project)
 hdHdwProjGetInt day tid = do
-    hdHdwProjs <- E.select $
-        E.from $ \(hd, hdw, proj) -> do
-        E.where_ (hd  E.^. HalfDayDay             E.==. E.val day           E.&&.
-                  hd  E.^. HalfDayTimeInDay       E.==. E.val tid           E.&&.
-                  hdw E.^. HalfDayWorkedProjectId E.==. proj E.^. ProjectId E.&&. 
-                  hdw E.^. HalfDayWorkedHalfDayId E.==. hd E.^. HalfDayId)
+    hdHdwProjs <- select $ from $ \(hd, hdw, proj) -> do
+        where_ (hd  ^. HalfDayDay             ==. val day           &&.
+                hd  ^. HalfDayTimeInDay       ==. val tid           &&.
+                hdw ^. HalfDayWorkedProjectId ==. proj ^. ProjectId &&. 
+                hdw ^. HalfDayWorkedHalfDayId ==. hd ^. HalfDayId)
         return (hd, hdw, proj)
     maybe (throwIO $ HdwNotFound day tid) return (L.headMaybe hdHdwProjs)
 
