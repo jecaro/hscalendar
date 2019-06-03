@@ -7,7 +7,6 @@ module ModelFcts
     , ProjNotFound(..)
     , HdNotFound(..)
     , HdwNotFound(..)
-    , HdIdNotFound(..)
     , TimesAreWrong(..)
     -- * Half-day functions
     , hdHdwProjGet
@@ -67,7 +66,6 @@ import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
 import           Model
---import           Internal.Model
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
 
@@ -98,14 +96,6 @@ instance Exception HdNotFound
 
 instance Show HdNotFound where
     show (HdNotFound day tid) = "Nothing for " <> Text.unpack (showDay day) <> " " <> show tid
-
--- | There is no work record in HDW for specified HD
-newtype HdIdNotFound = HdIdNotFound HalfDayId
-
-instance Exception HdIdNotFound
-
-instance Show HdIdNotFound where
-    show (HdIdNotFound hdwId) = "No half-day worked entry for " <> show hdwId
 
 -- | There is no work record in HDW for specified day and time in day
 data HdwNotFound = HdwNotFound Time.Day TimeInDay
@@ -210,22 +200,20 @@ hdHdwProjGet
     => Time.Day
     -> TimeInDay 
     -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, Project))
-hdHdwProjGet day tid = do
-    (Entity hdId hd) <- hdGetInt day tid 
-    eiHdwProj <- tryJust projOrHdIdNotFound (hdwProjGetInt hdId)
-    let mbHdw = case eiHdwProj of       
-           Left  _ -> Nothing 
-           Right (Entity _ hdw, Entity _ project) -> Just (hdw, project)
-    -- Check for consistency
-    case (hd, mbHdw) of
-        (HalfDay _ _ Worked, Nothing) -> throwIO DbInconsistency
-        (HalfDay _ _ Holiday, Just _) -> throwIO DbInconsistency
-        (_, _)                        -> return (hd, mbHdw)
-  where 
-    projOrHdIdNotFound e = 
-        let projNotFound = fmap toException (fromException e :: Maybe ProjIdNotFound)
-            hwdIdNotFound = fmap toException (fromException e :: Maybe HdIdNotFound)
-        in projNotFound <|> hwdIdNotFound
+hdHdwProjGet day tid = 
+    (E.select $ E.from $ \(hd `E.LeftOuterJoin` mbHdw `E.LeftOuterJoin` mbProj) -> do
+        E.where_ (hd  E.^. HalfDayDay             E.==. E.val day E.&&.
+                  hd  E.^. HalfDayTimeInDay       E.==. E.val tid)           
+        E.on (mbProj E.?. ProjectId      E.==. mbHdw E.?. HalfDayWorkedProjectId)
+        E.on (E.just (hd E.^. HalfDayId) E.==. mbHdw E.?. HalfDayWorkedHalfDayId)
+        return (hd, mbHdw, mbProj)) >>=
+    \case
+        []    -> throwIO $ HdNotFound day tid
+        (x:_) -> case x of
+            (Entity _ hd, Nothing, Nothing) -> return (hd, Nothing)
+            (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) 
+                -> return (hd, Just (hdw, proj))
+            _ -> throwIO DbInconsistency
 
 -- | Set the office for a day-time in day
 hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
@@ -346,20 +334,6 @@ hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
     \case 
         Nothing -> throwIO $ HdNotFound day tid
         Just e  -> return e
-
--- | Private function to get a half-day work along with the project from a
--- half-day id
-hdwProjGetInt 
-    :: (MonadIO m) 
-    => HalfDayId 
-    -> SqlPersistT m (Entity HalfDayWorked, Entity Project)
-hdwProjGetInt hdId = do
-    hdwProjs <- E.select $
-        E.from $ \(hdw, proj) -> do
-        E.where_ (hdw E.^. HalfDayWorkedProjectId E.==. proj E.^. ProjectId E.&&. 
-                  hdw E.^. HalfDayWorkedHalfDayId E.==. E.val hdId)
-        return (hdw, proj)
-    maybe (throwIO $ HdIdNotFound hdId) return (L.headMaybe hdwProjs)
 
 -- | Private function to get a half-day work along with the project from a day
 -- and a time in day

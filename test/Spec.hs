@@ -57,7 +57,6 @@ import           Model
 import           ModelFcts
     ( HdNotFound(..)
     , HdwNotFound(..)
-    , HdIdNotFound(..)
     , ProjExists(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
@@ -106,10 +105,6 @@ projExistsException = const True
 -- | hspec selector for ProjNotFound exception
 projNotFoundException :: Selector ProjNotFound
 projNotFoundException = const True
-
--- | hspec selector for HdIdNotFound exception
-hdIdNotFoundException :: Selector HdIdNotFound
-hdIdNotFoundException = const True
 
 -- | hspec selector for HdNotFound exception
 hdNotFoundException :: Selector HdNotFound
