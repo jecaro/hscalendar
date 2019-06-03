@@ -1,7 +1,10 @@
 -- | This module reexport the public functions from "Internal.Model"
 module Model
     ( EntityField
-        ( HalfDayType
+        ( HalfDayDay
+        , HalfDayId
+        , HalfDayTimeInDay
+        , HalfDayType
         , HalfDayWorkedHalfDayId
         , HalfDayWorkedNotes 
         , HalfDayWorkedOffice

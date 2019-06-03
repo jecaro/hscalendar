@@ -106,6 +106,15 @@ instance Exception HdIdNotFound
 instance Show HdIdNotFound where
     show (HdIdNotFound hdwId) = "No half-day worked entry for " <> show hdwId
 
+-- | There is no work record in HDW for specified day and time in day
+data HdwNotFound = HdwNotFound Time.Day TimeInDay
+
+instance Exception HdwNotFound
+
+instance Show HdwNotFound where
+    show (HdwNotFound day tid) = "No half-day worked entry for " 
+        <> Text.unpack (showDay day) <> " " <> show tid
+
 -- | Given times are wrong
 data TimesAreWrong = TimesAreWrong
 
@@ -359,9 +368,14 @@ hdHdwProjGetInt
     -> TimeInDay 
     -> SqlPersistT m (Entity HalfDay, Entity HalfDayWorked, Entity Project)
 hdHdwProjGetInt day tid = do
-    eHd@(Entity hdId _) <- hdGetInt day tid
-    (eHdw, eProj) <- hdwProjGetInt hdId
-    return (eHd, eHdw, eProj)
+    hdHdwProjs <- E.select $
+        E.from $ \(hd, hdw, proj) -> do
+        E.where_ (hd  E.^. HalfDayDay             E.==. E.val day           E.&&.
+                  hd  E.^. HalfDayTimeInDay       E.==. E.val tid           E.&&.
+                  hdw E.^. HalfDayWorkedProjectId E.==. proj E.^. ProjectId E.&&. 
+                  hdw E.^. HalfDayWorkedHalfDayId E.==. hd E.^. HalfDayId)
+        return (hd, hdw, proj)
+    maybe (throwIO $ HdwNotFound day tid) return (L.headMaybe hdHdwProjs)
 
 -- hd private functions
 
