@@ -6,6 +6,7 @@ module ModelFcts
       ProjExists(..)
     , ProjNotFound(..)
     , HdNotFound(..)
+    , HdwNotFound(..)
     , HdIdNotFound(..)
     , TimesAreWrong(..)
     -- * Half-day functions
@@ -403,7 +404,7 @@ editTime :: (MonadIO m, MonadUnliftIO m)
 editTime (Entity _ (HalfDay day tid _)) (Entity hdwId hdw) setTime = do
     eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
     let mbOtherHdw = case eiHdHdwProj of
-          Left (HdNotFound _ _)       -> Nothing
+          Left (HdwNotFound _ _)      -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Apply time to arrived/left hdw
     let hdw' = setTime hdw
