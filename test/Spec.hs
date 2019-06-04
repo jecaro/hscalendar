@@ -148,6 +148,14 @@ testHdw pred = maybe False (pred . fst)
 checkProj :: Project -> Maybe (HalfDayWorked, Project) -> Bool
 checkProj proj = maybe False $ ((==) proj) . snd
 
+-- | hdSetWork with default value for arrived/left
+hdSetWorkDefault :: MonadUnliftIO m => Time.Day -> TimeInDay -> Project -> SqlPersistT m ()
+hdSetWorkDefault day tid project = hdSetWork day tid project (arrived tid) (left tid)
+  where arrived Morning   = Time.TimeOfDay 8 30 0
+        arrived Afternoon = Time.TimeOfDay 13 30 0
+        left Morning   = Time.TimeOfDay 12 0 0
+        left Afternoon = Time.TimeOfDay 17 0 0
+
 -- Properties
 
 -- | Test adding a project in the DB and testing if it exists
@@ -201,7 +209,7 @@ prop_hdSetWork :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
 prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
     -- Impossible to set a work hd without an existing project
     exceptionRaised <- Q.run $ do
-        res <- catch (hdSetWork day tid project >> return False) (\(ProjNotFound _) -> return True)
+        res <- catch (hdSetWorkDefault day tid project >> return False) (\(ProjNotFound _) -> return True)
         cleanDB
         return res
 
@@ -210,7 +218,7 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
     -- With a project no problem
     (hd, mbHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
+        hdSetWorkDefault day tid project 
         res <- hdHdwProjGet day tid
         cleanDB
         return res
@@ -243,8 +251,8 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
     -- Initialize the two hdws
     (mbHdwProj, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day Morning project
-        hdSetWork day Afternoon project
+        hdSetWorkDefault day Morning project
+        hdSetWorkDefault day Afternoon project
         (_, mbHdwProj) <- hdHdwProjGet day tid
         (_, mbOHdwProj) <- hdHdwProjGet day (other tid)
         -- Return current and other hdw
@@ -270,8 +278,8 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the two hdws
     (mbHdwProj, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day Morning project
-        hdSetWork day Afternoon project
+        hdSetWorkDefault day Morning project
+        hdSetWorkDefault day Afternoon project
         (_, mbHdwProj) <- hdHdwProjGet day tid
         (_, mbOHdwProj) <- hdHdwProjGet day (other tid)
         -- Return current and other hdw
@@ -304,8 +312,8 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
     -- Initialize the two hdws and get other hdw
     (_, mbOHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day Morning project
-        hdSetWork day Afternoon project
+        hdSetWorkDefault day Morning project 
+        hdSetWorkDefault day Afternoon project 
         hdHdwProjGet day (other tid)
     
     -- Update times and get new value
@@ -326,7 +334,7 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
     -- Initialize the hdw and set the notes
     (_, mbHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
+        hdSetWorkDefault day tid project
         hdwSetNotes day tid notes
         res <- hdHdwProjGet day tid
         cleanDB
@@ -340,7 +348,7 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
     -- Initialize the hdw and set the office
     (_, mbHdwProj) <- Q.run $ do
         projAdd project
-        hdSetWork day tid project
+        hdSetWorkDefault day tid project
         hdwSetOffice day tid office
         res <- hdHdwProjGet day tid
         cleanDB
@@ -354,7 +362,7 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
     -- Initialize the hdw
     Q.run $ do
         projAdd project
-        hdSetWork day tid project
+        hdSetWorkDefault day tid project
 
     -- Update project and get new value
     exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ProjNotFound _) -> return True)
@@ -434,7 +442,7 @@ testHdAPI runDB =
                 runDB (hdSetHoliday day1 tid1) 
             it "tests adding a work entry" $ 
                 runDB $  projAdd project1 
-                      >> hdSetWork day1 tid1 project1
+                      >> hdSetWorkDefault day1 tid1 project1
             it "tests getting an entry" $
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests removing an entry" $
@@ -450,12 +458,12 @@ testHdAPI runDB =
                 runDB (hdRm day1 tid1) 
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a worked entry" $ 
-                runDB $ projAdd project1 >> hdSetWork day1 tid1 project1
+                runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1
             -- There is an hd in the DB but this is a holiday one, so this is
             -- the relevant exception to catch
             itemsNoWorkedEntry runDB hdwNotFoundException
         context "When there is one work entry" $ 
-            before_ (runDB $ projAdd project1 >> hdSetWork day1 tid1 project1) $ do
+            before_ (runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1) $ do
             it "tests getting the entry" $ do
                 (hd, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)
                 hd `shouldBe` HalfDay day1 tid1 Worked
