@@ -7,6 +7,7 @@ module Config
 where
 
 import           RIO
+import qualified RIO.Time as Time (TimeOfDay(..))
 import           Data.Yaml 
     ( FromJSON
     , ToJSON
@@ -31,9 +32,11 @@ import           Path.IO
     , getXdgDir
     )
 
+import DefaultHours (DefaultHoursForDay(..), DefaultHours(..))
 
 -- | Simple configuration stored in the config file
-newtype Config = Config { db :: Path Abs File } 
+data Config = Config { db           :: Path Abs File 
+                     , defaultHours :: DefaultHoursForDay } 
     deriving (Show, Generic)
 
 instance FromJSON Config
@@ -51,7 +54,9 @@ getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
-    return $ Config defaultDb 
+    let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0) 
+        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 30 0) 
+    return $ Config defaultDb $ DefaultHoursForDay morning afternoon
 
 -- | Read the configuration from the config file, create it if it doesn't exist
 getConfig :: HasLogFunc m => RIO m Config
