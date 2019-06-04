@@ -150,7 +150,7 @@ checkProj proj = maybe False $ ((==) proj) . snd
 
 -- | hdSetWork with default value for arrived/left
 hdSetWorkDefault :: MonadUnliftIO m => Time.Day -> TimeInDay -> Project -> SqlPersistT m ()
-hdSetWorkDefault day tid project = hdSetWork day tid project (arrived tid) (left tid)
+hdSetWorkDefault day tid project = hdSetWork day tid project Rennes (arrived tid) (left tid)
   where arrived Morning   = Time.TimeOfDay 8 30 0
         arrived Afternoon = Time.TimeOfDay 13 30 0
         left Morning   = Time.TimeOfDay 12 0 0

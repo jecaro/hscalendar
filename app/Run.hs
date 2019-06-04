@@ -165,11 +165,11 @@ run (DiaryWork cd tid wopts) = do
         (Right (_, Just (_, _)), _) -> return $ Right wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
-            defaultHoursForDay <- fmap defaultHours $ view configL
+            config <- view configL
             let (DefaultHours arrived left) = case tid of
-                    Morning   -> morning defaultHoursForDay
-                    Afternoon -> afternoon defaultHoursForDay
-            eiAdded <- try $ runDB $ hdSetWork day tid proj arrived left
+                    Morning   -> morning (defaultHours config)
+                    Afternoon -> afternoon (defaultHours config)
+            eiAdded <- try $ runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
             case eiAdded of
                 Right _ -> return $ Right otherOpts
                 Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e

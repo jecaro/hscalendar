@@ -34,6 +34,8 @@ import           Path.IO
     , getXdgDir
     )
 
+import           Office(Office(..))
+
 -- | Two default hours for a half-day worked
 data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay
                                  , left    :: !Time.TimeOfDay }
@@ -51,8 +53,10 @@ instance FromJSON DefaultHoursForDay
 instance ToJSON DefaultHoursForDay
 
 -- | Simple configuration stored in the config file
-data Config = Config { db           :: !(Path Abs File) 
-                     , defaultHours :: !DefaultHoursForDay } 
+data Config = Config { db            :: !(Path Abs File) 
+                     , defaultHours  :: !DefaultHoursForDay 
+                     , defaultOffice :: !Office
+                     } 
     deriving (Show, Generic)
 
 instance FromJSON Config
@@ -72,7 +76,10 @@ defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
     let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0) 
         afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 30 0) 
-    return $ Config defaultDb $ DefaultHoursForDay morning afternoon
+    return $ Config { db = defaultDb
+                    , defaultHours = DefaultHoursForDay morning afternoon 
+                    , defaultOffice = Rennes 
+                    }
 
 -- | Read the configuration from the config file, create it if it doesn't exist
 getConfig :: HasLogFunc m => RIO m Config

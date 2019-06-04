@@ -302,17 +302,17 @@ hdSetHoliday day tid = try (hdGetInt day tid) >>=
             -- Update entry
             update hdId [HalfDayType =. Holiday]
 
--- | Set a half-day as working on a project. It uses default values for the rest
--- of the field
+-- | Set a half-day as working on a project. 
 hdSetWork 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
     -> Project 
+    -> Office
     -> Time.TimeOfDay
     -> Time.TimeOfDay
     -> SqlPersistT m () 
-hdSetWork day tid project tArrived tLeft = do 
+hdSetWork day tid project office tArrived tLeft = do 
     projId <- projGetInt project
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
@@ -323,7 +323,7 @@ hdSetWork day tid project tArrived tLeft = do
           -- Update entry
           update hdId [HalfDayType =. Worked]
           return hdId
-    void $ insert $ HalfDayWorked "" tArrived tLeft Rennes projId hdId
+    void $ insert $ HalfDayWorked "" tArrived tLeft office projId hdId
    
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
