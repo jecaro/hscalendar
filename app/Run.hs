@@ -23,7 +23,11 @@ import           Data.Text.IO (putStrLn)
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
 
-import           Config(Config, defaultHours)
+import           Config
+    ( Config(..)
+    , DefaultHours(..)
+    , DefaultHoursForDay(..)
+    )
 import           CommandLine 
     ( Cmd(..)
     , SetArrived(..)
@@ -35,7 +39,6 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 
-import           DefaultHours(DefaultHours(..), morning, afternoon)
 import           HalfDayType (HalfDayType(..))
 import           Model
 import           ModelFcts

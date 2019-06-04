@@ -1,9 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Config 
-  ( Config(..), 
-    getConfig
-  )
+    ( Config(..)
+    , DefaultHours(..)
+    , DefaultHoursForDay(..)
+    , getConfig
+    )
 where
 
 import           RIO
@@ -32,7 +34,19 @@ import           Path.IO
     , getXdgDir
     )
 
-import DefaultHours (DefaultHoursForDay(..), DefaultHours(..))
+data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay
+                                 , left    :: !Time.TimeOfDay }
+    deriving (Show, Generic)
+
+instance FromJSON DefaultHours
+instance ToJSON DefaultHours
+
+data DefaultHoursForDay = DefaultHoursForDay { morning   :: !DefaultHours
+                                             , afternoon :: !DefaultHours }
+    deriving (Show, Generic)
+
+instance FromJSON DefaultHoursForDay
+instance ToJSON DefaultHoursForDay
 
 -- | Simple configuration stored in the config file
 data Config = Config { db           :: !(Path Abs File) 
