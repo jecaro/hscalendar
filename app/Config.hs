@@ -34,6 +34,7 @@ import           Path.IO
     , getXdgDir
     )
 
+-- | Two default hours for a half-day worked
 data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay
                                  , left    :: !Time.TimeOfDay }
     deriving (Show, Generic)
@@ -41,6 +42,7 @@ data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay
 instance FromJSON DefaultHours
 instance ToJSON DefaultHours
 
+-- | The default hours for a full day worked
 data DefaultHoursForDay = DefaultHoursForDay { morning   :: !DefaultHours
                                              , afternoon :: !DefaultHours }
     deriving (Show, Generic)
