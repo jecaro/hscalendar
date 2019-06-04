@@ -309,8 +309,10 @@ hdSetWork
     => Time.Day 
     -> TimeInDay 
     -> Project 
+    -> Time.TimeOfDay
+    -> Time.TimeOfDay
     -> SqlPersistT m () 
-hdSetWork day tid project = do 
+hdSetWork day tid project tArrived tLeft = do 
     projId <- projGetInt project
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
@@ -322,13 +324,6 @@ hdSetWork day tid project = do
           update hdId [HalfDayType =. Worked]
           return hdId
     void $ insert $ HalfDayWorked "" tArrived tLeft Rennes projId hdId
-  where 
-    tArrived = if tid == Morning 
-                   then Time.TimeOfDay 9 0 0 
-                   else Time.TimeOfDay 13 30 0 
-    tLeft = if tid == Morning 
-                then Time.TimeOfDay 12 0 0
-                else Time.TimeOfDay 17 30 0 
    
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 

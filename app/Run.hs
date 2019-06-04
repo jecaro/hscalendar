@@ -23,6 +23,7 @@ import           Data.Text.IO (putStrLn)
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
 
+import           Config(Config, defaultHours)
 import           CommandLine 
     ( Cmd(..)
     , SetArrived(..)
@@ -34,6 +35,7 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 
+import           DefaultHours(DefaultHours(..), morning, afternoon)
 import           HalfDayType (HalfDayType(..))
 import           Model
 import           ModelFcts
@@ -101,7 +103,7 @@ findArrivedAndLeftCmd options =
         _                           -> (Nothing, options)
 
 -- | Execute the command
-run :: (HasConnPool env) => Cmd -> RIO env ()
+run :: (HasConnPool env, HasConfig env) => Cmd -> RIO env ()
 
 -- Migrate the database
 run Migrate = runDB $ runMigration migrateAll
@@ -160,7 +162,11 @@ run (DiaryWork cd tid wopts) = do
         (Right (_, Just (_, _)), _) -> return $ Right wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
-            eiAdded <- try $ runDB $ hdSetWork day tid proj
+            defaultHoursForDay <- fmap defaultHours $ view configL
+            let (DefaultHours arrived left) = case tid of
+                    Morning   -> morning defaultHoursForDay
+                    Afternoon -> afternoon defaultHoursForDay
+            eiAdded <- try $ runDB $ hdSetWork day tid proj arrived left
             case eiAdded of
                 Right _ -> return $ Right otherOpts
                 Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
@@ -219,6 +225,7 @@ dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid pr
 data App = App
     { appLogFunc  :: !LogFunc        -- ^ The log function
     , appConnPool :: !ConnectionPool -- ^ The connexion pool
+    , appConfig   :: !Config         -- ^ The configuration file
     }
 
 class HasConnPool env where
@@ -229,6 +236,12 @@ instance HasConnPool App where
 
 instance HasLogFunc App where
     logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
+
+class HasConfig env where
+    configL :: Lens' env Config
+
+instance HasConfig App where
+    configL = lens appConfig (\x y -> x { appConfig = y })
 
 -- | Run sql actions with the pool
 runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a

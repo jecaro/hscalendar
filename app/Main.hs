@@ -66,7 +66,8 @@ main = do
                 runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
                     -- Initialize the application
                     let app = App { appLogFunc  = lf
-                                  , appConnPool = pool }
+                                  , appConnPool = pool 
+                                  , appConfig   = config }
 
                     -- Run the app, handle exceptions (should be only because
                     -- the database is not initialized)
