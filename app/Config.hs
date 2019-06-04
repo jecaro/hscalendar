@@ -35,8 +35,8 @@ import           Path.IO
 import DefaultHours (DefaultHoursForDay(..), DefaultHours(..))
 
 -- | Simple configuration stored in the config file
-data Config = Config { db           :: Path Abs File 
-                     , defaultHours :: DefaultHoursForDay } 
+data Config = Config { db           :: !(Path Abs File) 
+                     , defaultHours :: !DefaultHoursForDay } 
     deriving (Show, Generic)
 
 instance FromJSON Config
