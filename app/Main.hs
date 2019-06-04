@@ -46,6 +46,8 @@ import           Run (App(..), run)
 -- - Add colors/bold
 -- - Put open days in config file
 -- - Replace pattern matching with record syntax
+-- - Put default office in the configuration file
+-- - hdSetWork make sure times are ok
 
 -- | Main function
 main :: IO ()
