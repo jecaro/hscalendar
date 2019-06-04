@@ -44,9 +44,8 @@ import           Run (App(..), run)
 -- - Use Lens instead of records
 -- - Forbid to delete a project if there are links on it
 -- - Add colors/bold
--- - Use esqueleto for join (project, hdw)
--- - put default values in a config file as well as open days
--- - replace pattern matching with record syntax
+-- - Put open days in config file
+-- - Replace pattern matching with record syntax
 
 -- | Main function
 main :: IO ()
