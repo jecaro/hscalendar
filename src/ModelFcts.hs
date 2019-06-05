@@ -254,9 +254,10 @@ hdwSetArrived
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrived day tid tod = do
-    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
-    editTime eHd eHdw $ setArrived tod
-  where setArrived tod' hdw = hdw { halfDayWorkedArrived = tod' }
+    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    let hdw' = hdw { halfDayWorkedArrived = tod }
+    guardNewTimesAreOk day tid hdw' 
+    replace hdwId hdw'
 
 -- | Set left time for a working half-day
 hdwSetLeft 
@@ -266,12 +267,12 @@ hdwSetLeft
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetLeft day tid tod = do
-    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
-    editTime eHd eHdw $ setLeft tod
-  where setLeft tod' hdw = hdw { halfDayWorkedLeft = tod' }
+    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    let hdw' = hdw { halfDayWorkedLeft = tod }
+    guardNewTimesAreOk day tid hdw' 
+    replace hdwId hdw'
 
--- | Set both arrived and left time for a working half-day. Arrived time must be
--- < to left time
+-- | Set both arrived and left time for a working half-day
 hdwSetArrivedAndLeft 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
@@ -280,11 +281,11 @@ hdwSetArrivedAndLeft
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrivedAndLeft day tid tArrived tLeft = do
-    (eHd, eHdw, _) <- hdHdwProjGetInt day tid
-    editTime eHd eHdw $ setArrivedAndLeft tArrived tLeft
-  where setArrivedAndLeft arrived' left' hdw = 
-            hdw { halfDayWorkedArrived = arrived'
-                , halfDayWorkedLeft    = left' }
+    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    let hdw' = hdw { halfDayWorkedArrived = tArrived
+                   , halfDayWorkedLeft    = tLeft }
+    guardNewTimesAreOk day tid hdw' 
+    replace hdwId hdw'
 
 -- | Set a half-day as holiday
 hdSetHoliday 
@@ -319,11 +320,13 @@ hdSetWork day tid project office tArrived tLeft = do
         -- Create a new entry
         Left (HdNotFound _ _) -> insert $ HalfDay day tid Worked 
         -- Edit existing entry
-        Right (Entity hdId _)   -> do
+        Right (Entity hdId _) -> do
           -- Update entry
           update hdId [HalfDayType =. Worked]
           return hdId
-    void $ insert $ HalfDayWorked "" tArrived tLeft office projId hdId
+    let hdw = HalfDayWorked "" tArrived tLeft office projId hdId
+    guardNewTimesAreOk day tid hdw
+    void $ insert hdw
    
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
@@ -375,22 +378,21 @@ timesAreOrderedInDay Afternoon hdw (Just otherHdw) =
 -- Afternoon only, just need to check for half day
 timesAreOrderedInDay Afternoon hdw Nothing = isOrdered $ timesOfDay hdw
 
--- | Set arrived/left time
-editTime :: (MonadIO m, MonadUnliftIO m)
-    => Entity HalfDay
-    -> Entity HalfDayWorked
-    -> (HalfDayWorked -> HalfDayWorked)
+-- | Make sure that the times in hdw are ok:
+--   - arrived < left
+--   - consistent with the potential other hdw
+guardNewTimesAreOk :: (MonadIO m, MonadUnliftIO m)
+    => Time.Day
+    -> TimeInDay
+    -> HalfDayWorked
     -> SqlPersistT m ()
-editTime (Entity _ (HalfDay day tid _)) (Entity hdwId hdw) setTime = do
+guardNewTimesAreOk day tid hdw = do
     eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
     let mbOtherHdw = case eiHdHdwProj of
           Left (HdwNotFound _ _)      -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
-    -- Apply time to arrived/left hdw
-    let hdw' = setTime hdw
     -- Check if it works
-    when (not $ timesAreOrderedInDay tid hdw' mbOtherHdw) (throwIO $ TimesAreWrong)
-    replace hdwId hdw'
+    when (not $ timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
 
 -- | Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [Time.TimeOfDay]
