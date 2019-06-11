@@ -44,6 +44,7 @@ import           Model
 import           ModelFcts
     ( HdNotFound(..)
     , ProjExists(..)
+    , ProjHasHDW(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , hdHdwProjGet
@@ -119,8 +120,10 @@ run (ProjAdd project) = catch (void $ runDB $ projAdd project)
                            (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
 
 -- Remove a project
-run (ProjRm project) = catch (runDB $ projRm project) 
-                           (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
+run (ProjRm project) = catches (runDB $ projRm project) 
+    [ Handler (\e@(ProjHasHDW _)   -> liftIO . putStrLn $ Text.pack $ show e)
+    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ Text.pack $ show e)
+    ]
 
 -- Rename a project
 run (ProjRename p1 p2) = catches (runDB $ projRename p1 p2)

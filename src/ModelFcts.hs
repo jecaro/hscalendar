@@ -4,6 +4,7 @@ module ModelFcts
     (
     -- * Types
       ProjExists(..)
+    , ProjHasHDW(..)
     , ProjNotFound(..)
     , HdNotFound(..)
     , HdwNotFound(..)
@@ -68,6 +69,7 @@ import           Database.Persist.Sqlite
     , insert
     , replace
     , selectList
+    , selectFirst
     , update
     , (=.)
     )
@@ -83,7 +85,7 @@ import           TimeInDay(TimeInDay(..), other)
 
 -- Exceptions that are likely to occure
 
--- | The requested project has not be found
+-- | The requested project has not been found
 newtype ProjNotFound = ProjNotFound Project
 
 instance Exception ProjNotFound
@@ -99,6 +101,15 @@ instance Exception ProjExists
 
 instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
+      where name = Text.unpack (projectName project)
+
+-- | The project has associated hdw
+newtype ProjHasHDW = ProjHasHDW Project
+
+instance Exception ProjHasHDW
+
+instance Show ProjHasHDW where
+    show (ProjHasHDW project) = "The project " <> name <> " has associated half-day work"
       where name = Text.unpack (projectName project)
 
 -- | There is no record for specified HD
@@ -178,8 +189,11 @@ projRm project = do
     -- The following can throw exception same exception apply to this function
     -- so we dont catch it here
     pId <- projGetInt project 
-    deleteWhere [HalfDayWorkedProjectId P.==. pId]
-    delete pId
+    -- Test if there is hdw using this project
+    selectFirst [HalfDayWorkedProjectId P.==. pId] [] >>=
+        \case
+            Nothing -> delete pId
+            Just _  -> throwIO $ ProjHasHDW project
 
 -- | Rename a project 
 projRename :: (MonadIO m) => Project -> Project -> SqlPersistT m ()

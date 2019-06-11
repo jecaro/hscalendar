@@ -42,11 +42,12 @@ import           Run (App(..), run)
 -- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
--- - Forbid to delete a project if there are links on it
+-- - Forbid to delete a project if there are links on it + test
 -- - Add colors/bold
 -- - Put open days in config file
 -- - Replace pattern matching with record syntax
--- - add test for hdSetWork times 
+-- - Factorize print exceptions code in Run
+-- - Add holiday type RTTE, RTTS, CP, TP, SS
 
 -- | Main function
 main :: IO ()
