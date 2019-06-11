@@ -41,7 +41,7 @@ import           Test.QuickCheck
     , listOf
     , ioProperty
     , suchThat)
-import qualified Test.QuickCheck.Monadic as Q (assert, monadic, run)
+import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run)
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
@@ -231,6 +231,21 @@ prop_hdSetWork runDB day tid project office arrived left = Q.monadic (ioProperty
         hdSetWorkDefault day (other tid) project 
         hdSetWork day tid project office arrived left >> return False) (\(TimesAreWrong) -> return True)
 
+    testDBAndTimes day tid arrived left exceptionRaised
+    Q.run $ cleanDB
+
+-- | Check if:
+--   - the times are ok and are in DB
+--   - the times are not ok and an exception was raised
+testDBAndTimes 
+    :: MonadUnliftIO m 
+    => Time.Day
+    -> TimeInDay
+    -> Time.TimeOfDay
+    -> Time.TimeOfDay
+    -> Bool
+    -> Q.PropertyM (SqlPersistT m) ()    
+testDBAndTimes day tid arrived left exceptionRaised = do
     (mbHdwProj, mbOHdwProj) <- Q.run $ do
         (_, mbHdwProj) <- hdHdwProjGet day tid
         (_, mbOHdwProj) <- hdHdwProjGet day $ other tid
@@ -328,23 +343,17 @@ prop_hdSetArrivedAndLeft
     -> Property
 prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the two hdws and get other hdw
-    (_, mbOHdwProj) <- Q.run $ do
+    Q.run $ do
         projAdd project
         hdSetWorkDefault day Morning project 
         hdSetWorkDefault day Afternoon project 
-        hdHdwProjGet day (other tid)
     
     -- Update times and get new value
     exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\(TimesAreWrong) -> return True)
-    (_, mbHdwProj') <- Q.run $ hdHdwProjGet day tid
+
+    testDBAndTimes day tid arrived left exceptionRaised
+
     Q.run $ cleanDB
-
-    let beforeOtherArrived = beforeArrived left mbOHdwProj
-        afterOtherLeft = afterLeft arrived mbOHdwProj 
-        inRange = arrived < left && (tid == Morning && beforeOtherArrived || tid == Afternoon && afterOtherLeft)
-        inDB = arrivedEquals arrived mbHdwProj' && leftEquals left mbHdwProj' 
-
-    Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
 -- | Test setting the notes
 prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> NotesText-> Property
