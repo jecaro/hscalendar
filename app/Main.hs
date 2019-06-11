@@ -47,7 +47,6 @@ import           Run (App(..), run)
 -- - Put open days in config file
 -- - Replace pattern matching with record syntax
 -- - add test for hdSetWork times 
--- - extract times from commands
 
 -- | Main function
 main :: IO ()

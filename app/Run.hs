@@ -166,12 +166,21 @@ run (DiaryWork cd tid wopts) = do
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
-            let (DefaultHours arrived left) = case tid of
+            -- Get the default times from the config file
+            let (DefaultHours dArrived dLeft) = case tid of
                     Morning   -> morning (defaultHours config)
                     Afternoon -> afternoon (defaultHours config)
+            -- Get the arrived and left commands if they exists, maintaining 
+            -- the other options
+                (mbArrived, otherOpts') = findArrivedCmd otherOpts
+                (mbLeft, otherOpts'') = findLeftCmd otherOpts'
+            -- Unwarp maybe and the newtype
+                arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
+                left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
+            -- Carry on, we have now everything to create the hwd
             eiAdded <- try $ runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
             case eiAdded of
-                Right _ -> return $ Right otherOpts
+                Right _ -> return $ Right otherOpts''
                 Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
         -- Holiday but no project
         (Right (_, Nothing), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
@@ -182,7 +191,7 @@ run (DiaryWork cd tid wopts) = do
     case eiOtherOpts of
         Left msg -> liftIO $ putStrLn msg
         Right otherOpts -> do
-            -- Apply set arrived set left when we have to two options
+            -- Apply set arrived set left when we have the two options
             let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
