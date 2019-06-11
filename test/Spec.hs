@@ -58,6 +58,7 @@ import           ModelFcts
     ( HdNotFound(..)
     , HdwNotFound(..)
     , ProjExists(..)
+    , ProjHasHDW(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , hdHdwProjGet
@@ -105,6 +106,10 @@ projExistsException = const True
 -- | hspec selector for ProjNotFound exception
 projNotFoundException :: Selector ProjNotFound
 projNotFoundException = const True
+
+-- | hspec selector for ProjHasHDW exception
+projHasHDWException :: Selector ProjHasHDW
+projHasHDWException = const True
 
 -- | hspec selector for HdNotFound exception
 hdNotFoundException :: Selector HdNotFound
@@ -427,6 +432,9 @@ testProjAPI runDB =
                     projRm project1
                     projExists project1
                 exists `shouldBe` False
+            it "tests if we can remove the project if it is used" $  do
+                runDB (hdSetWorkDefault day1 tid1 project1 >> projRm project1)
+                    `shouldThrow` projHasHDWException
             it "tests if we can rename it" $ do
                 runDB $ projRename project1 project2
                 proj1Exists <- runDB (projExists project1)
