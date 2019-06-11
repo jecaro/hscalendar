@@ -68,6 +68,10 @@ import           TimeInDay (TimeInDay(..))
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
 
+-- | Print an exception 
+printException :: (MonadIO m, Show a) => a -> m ()
+printException e =  liftIO . putStrLn $ Text.pack $ show e
+
 -- | Get out the first element of a list which return Just 
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
 partitionFirst _ [] = (Nothing, [])
@@ -117,18 +121,18 @@ run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . projectName)
 
 -- Add a project
 run (ProjAdd project) = catch (void $ runDB $ projAdd project) 
-                           (\e@(ProjExists _) -> liftIO . putStrLn $ Text.pack $ show e)
+                           (\e@(ProjExists _) -> printException e)
 
 -- Remove a project
 run (ProjRm project) = catches (runDB $ projRm project) 
-    [ Handler (\e@(ProjHasHDW _)   -> liftIO . putStrLn $ Text.pack $ show e)
-    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ Text.pack $ show e)
+    [ Handler (\e@(ProjHasHDW _)   -> printException e)
+    , Handler (\e@(ProjNotFound _) -> printException e)
     ]
 
 -- Rename a project
 run (ProjRename p1 p2) = catches (runDB $ projRename p1 p2)
-    [ Handler (\e@(ProjExists _)   -> liftIO . putStrLn $ Text.pack $ show e)
-    , Handler (\e@(ProjNotFound _) -> liftIO . putStrLn $ Text.pack $ show e)
+    [ Handler (\e@(ProjExists _)   -> printException e)
+    , Handler (\e@(ProjNotFound _) -> printException e)
     ]
 
 -- Display an entry
@@ -199,14 +203,14 @@ run (DiaryWork cd tid wopts) = do
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
                      catch (runDB $ hdwSetArrivedAndLeft day tid a l) 
-                         (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
+                         (\e@TimesAreWrong -> printException e)
                 Nothing -> return ()
             -- Then apply remaining commands
             runDB $ mapM_ dispatchEditWithError otherOpts' 
             -- Display new Half-Day
             run $ DiaryDisplay cd tid
           where dispatchEditWithError x = catch (dispatchEdit day tid x) 
-                    (\e@TimesAreWrong -> liftIO $ putStrLn $ Text.pack $ show e)
+                    (\e@TimesAreWrong -> printException e)
  
 -- Set a holiday entry
 run (DiaryHoliday cd tid) = do
@@ -218,7 +222,7 @@ run (DiaryHoliday cd tid) = do
 -- Delete an entry
 run (DiaryRm cs tid) = do
     day <- toDay cs
-    catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> liftIO $ putStrLn $ Text.pack $ show e)
+    catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> printException e)
 
 -- Dispatch edit
 dispatchEdit
