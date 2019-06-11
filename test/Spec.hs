@@ -204,9 +204,9 @@ prop_hdSetHoliday runDB day tid = Q.monadic (ioProperty . runDB) $ do
 
     Q.assert $ halfDayType hd == Holiday && mbHdwProj == Nothing
 
--- | Test the presence of a worked entry
-prop_hdSetWork :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
-prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
+-- | Test that hdSetWork raises an exception if the project does not exists
+prop_hdSetWorkNoProj :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
+prop_hdSetWorkNoProj runDB day tid project = Q.monadic (ioProperty . runDB) $ do
     -- Impossible to set a work hd without an existing project
     exceptionRaised <- Q.run $ do
         res <- catch (hdSetWorkDefault day tid project >> return False) (\(ProjNotFound _) -> return True)
@@ -215,15 +215,33 @@ prop_hdSetWork runDB day tid project = Q.monadic (ioProperty . runDB) $ do
 
     Q.assert exceptionRaised
 
-    -- With a project no problem
-    (hd, mbHdwProj) <- Q.run $ do
+-- | Test that hdSetWork raises an exception if the times are wrong
+prop_hdSetWork 
+    :: RunDB 
+    -> Time.Day 
+    -> TimeInDay 
+    -> Project 
+    -> Office 
+    -> Time.TimeOfDay 
+    -> Time.TimeOfDay 
+    -> Property
+prop_hdSetWork runDB day tid project office arrived left = Q.monadic (ioProperty . runDB) $ do
+    exceptionRaised <- Q.run $ catch (do 
         projAdd project
-        hdSetWorkDefault day tid project 
-        res <- hdHdwProjGet day tid
-        cleanDB
-        return res
+        hdSetWorkDefault day (other tid) project 
+        hdSetWork day tid project office arrived left >> return False) (\(TimesAreWrong) -> return True)
 
-    Q.assert $ halfDayType hd == Worked && checkProj project mbHdwProj
+    (mbHdwProj, mbOHdwProj) <- Q.run $ do
+        (_, mbHdwProj) <- hdHdwProjGet day tid
+        (_, mbOHdwProj) <- hdHdwProjGet day $ other tid
+        return (mbHdwProj, mbOHdwProj)
+
+    let beforeOtherArrived = beforeArrived left mbOHdwProj
+        afterOtherLeft = afterLeft arrived mbOHdwProj 
+        inRange = arrived < left && (tid == Morning && beforeOtherArrived || tid == Afternoon && afterOtherLeft)
+        inDB = arrivedEquals arrived mbHdwProj && leftEquals left mbHdwProj 
+
+    Q.assert $ inRange /= exceptionRaised && inRange == inDB
 
 -- Some helper functions below for the time related properties
 
@@ -502,6 +520,8 @@ testHdAPI runDB =
         context "Test properties" $ do
             it "prop_hdSetHoliday" $
                 property (prop_hdSetHoliday runDB)
+            it "prop_hdSetWorkNoProj" $
+                property (prop_hdSetWorkNoProj runDB)
             it "prop_hdSetWork" $
                 property (prop_hdSetWork runDB)
             it "prop_hdSetArrived" $
