@@ -96,9 +96,10 @@ attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 
 parseOffice :: ReadM Office
 parseOffice = attoReadM parser
-  where parser =   string "rennes" $> Rennes
-               <|> string "home"   $> Home
+  where parser =   string "home"   $> Home
+               <|> string "out"    $> OutOfOffice
                <|> string "poool"  $> Poool
+               <|> string "rennes" $> Rennes
 
 parseTimeOfDay :: ReadM Time.TimeOfDay
 parseTimeOfDay = attoReadM parser
