@@ -140,14 +140,6 @@ instance Show TimesAreWrong where
 
 -- The following exceptions should never happen
 
--- | Specified project id has not been found
-newtype ProjIdNotFound = ProjIdNotFound ProjectId
-
-instance Exception ProjIdNotFound
-
-instance Show ProjIdNotFound where
-    show (ProjIdNotFound pId) = "No project entry for " <> show pId
-
 -- | Inconsistency in the DB
 data DbInconsistency = DbInconsistency
 
