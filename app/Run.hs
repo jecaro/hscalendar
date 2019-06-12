@@ -39,7 +39,6 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 
-import           HalfDayType (HalfDayType(..))
 import           Model
 import           ModelFcts
     ( HdNotFound(..)
@@ -146,7 +145,7 @@ run (DiaryDisplay cd tid) = do
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
            Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
-           Right (_, Nothing) -> [ (Text.pack . show) Holiday ]
+           Right ((HalfDay _ _ hdt), Nothing) -> [ (Text.pack . show) hdt ]
            Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> projectName project
@@ -213,9 +212,9 @@ run (DiaryWork cd tid wopts) = do
                     (\e@TimesAreWrong -> printException e)
  
 -- Set a holiday entry
-run (DiaryHoliday cd tid) = do
+run (DiaryHoliday cd tid hdt) = do
     day <- toDay cd
-    runDB $ hdSetHoliday day tid
+    runDB $ hdSetHoliday day tid hdt
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
 

@@ -51,6 +51,7 @@ import           Options.Applicative as Opt
     )
 
 import           CustomDay (CustomDay(..))
+import           HalfDayType (HalfDayType(..))
 import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..))
@@ -58,14 +59,14 @@ import           TimeInDay (TimeInDay(..))
 data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
-data Cmd = Migrate                                    |
-           DiaryDisplay CustomDay TimeInDay           |
-           DiaryHoliday CustomDay TimeInDay           |
-           DiaryRm CustomDay TimeInDay                |
-           DiaryWork CustomDay TimeInDay [WorkOption] |
-           ProjAdd Project                            |
-           ProjList                                   |
-           ProjRename Project Project                 |
+data Cmd = Migrate                                      |
+           DiaryDisplay CustomDay TimeInDay             |
+           DiaryHoliday CustomDay TimeInDay HalfDayType |
+           DiaryRm CustomDay TimeInDay                  |
+           DiaryWork CustomDay TimeInDay [WorkOption]   |
+           ProjAdd Project                              |
+           ProjList                                     |
+           ProjRename Project Project                   |
            ProjRm Project
     deriving (Eq, Show)
 
@@ -127,6 +128,16 @@ parseLevel = attoReadM parser
                <|> string "warn"  $> LevelWarn
                <|> string "error" $> LevelError
 
+parseHalfDayType :: ReadM HalfDayType
+parseHalfDayType = attoReadM parser
+  where parser =   string "cp"   $> CP
+               <|> string "ef"   $> EF
+               <|> string "rtte" $> RTTE
+               <|> string "rtts" $> RTTS
+               <|> string "ss"   $> SS
+               <|> string "ph"   $> PublicHoliday
+               <|> string "tp"   $> TP
+
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
 
@@ -160,6 +171,7 @@ diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday
     <$> argument parseCustomDay (metavar "DAY")
     <*> tidOption
+    <*> argument parseHalfDayType (metavar "HALF-DAY TYPE")
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork

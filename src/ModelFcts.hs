@@ -3,7 +3,8 @@
 module ModelFcts 
     (
     -- * Types
-      ProjExists(..)
+      BadArgument(..)
+    , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
     , HdNotFound(..)
@@ -155,6 +156,14 @@ instance Exception DbInconsistency
 instance Show DbInconsistency where
     show _ = "Warning db inconsistency"
 
+-- | Bad argument for function
+data BadArgument = BadArgument
+
+instance Exception BadArgument
+
+instance Show BadArgument where
+    show _ = "Bad argument"
+
 -- Misc 
 
 -- | Convert a Day to a string in the form dd-mm-yyyy
@@ -305,17 +314,20 @@ hdwSetArrivedAndLeft day tid tArrived tLeft = do
 hdSetHoliday 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
-    -> TimeInDay -> SqlPersistT m () 
-hdSetHoliday day tid = try (hdGetInt day tid) >>=
+    -> TimeInDay 
+    -> HalfDayType
+    -> SqlPersistT m () 
+hdSetHoliday _ _ Worked = throwIO BadArgument
+hdSetHoliday day tid hdt = try (hdGetInt day tid) >>=
     \case 
         -- Create a new entry
-        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid Holiday
+        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid hdt
         -- Edit existing entry
-        Right (Entity hdId _)   -> do          
+        Right (Entity hdId _)   -> do
             -- Delete entry from HalfDayWorked if it exists
             deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
             -- Update entry
-            update hdId [HalfDayType =. Holiday]
+            update hdId [HalfDayType =. hdt]
 
 -- | Set a half-day as working on a project. 
 hdSetWork 

@@ -55,7 +55,8 @@ import           Model
     , migrateAll
     )
 import           ModelFcts
-    ( HdNotFound(..)
+    ( BadArgument(..)
+    , HdNotFound(..)
     , HdwNotFound(..)
     , ProjExists(..)
     , ProjHasHDW(..)
@@ -115,9 +116,13 @@ projHasHDWException = const True
 hdNotFoundException :: Selector HdNotFound
 hdNotFoundException = const True
 
--- | hspec selector for HdNotFound exception
+-- | hspec selector for HdwNotFound exception
 hdwNotFoundException :: Selector HdwNotFound
 hdwNotFoundException = const True
+
+-- | hspec selector for BadArgument exception
+badArgumentException :: Selector BadArgument
+badArgumentException = const True
 
 -- Some constants for the specs
 
@@ -142,6 +147,9 @@ notes1 = $$(refineTH "some notes")
 
 office1 :: Office
 office1 = Home
+
+hdt1 :: HalfDayType
+hdt1 = CP
 
 -- Helper functions to simplify the tests
 
@@ -199,15 +207,25 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
     Q.assert $ dbProjects == sort projects
 
 -- | Test the presence of a holiday entry
-prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> Property
-prop_hdSetHoliday runDB day tid = Q.monadic (ioProperty . runDB) $ do
-    (hd, mbHdwProj) <- Q.run $ do
-        hdSetHoliday day tid
-        res <- hdHdwProjGet day tid
-        cleanDB
-        return res
+prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> HalfDayType -> Property
+prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
-    Q.assert $ halfDayType hd == Holiday && mbHdwProj == Nothing
+    exceptionRaised <- Q.run $ catch (hdSetHoliday day tid hdt >> return False) 
+        (\BadArgument -> return True)
+
+    -- Impossible to set a holiday worked
+    Q.assert $ exceptionRaised == (hdt == Worked)
+
+    -- Check if the value in the database is right
+    when (not exceptionRaised) $ do
+        (hd, mbHdwProj) <- Q.run $ do
+            res <- hdHdwProjGet day tid
+            return res
+
+        Q.assert $ halfDayType hd == hdt && mbHdwProj == Nothing
+
+    Q.run cleanDB
+
 
 -- | Test that hdSetWork raises an exception if the project does not exists
 prop_hdSetWorkNoProj :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
@@ -237,7 +255,7 @@ prop_hdSetWork runDB day tid project office arrived left = Q.monadic (ioProperty
         hdSetWork day tid project office arrived left >> return False) (\(TimesAreWrong) -> return True)
 
     testDBAndTimes day tid arrived left exceptionRaised
-    Q.run $ cleanDB
+    Q.run cleanDB
 
 -- | Check if:
 --   - the times are ok and are in DB
@@ -474,7 +492,9 @@ testHdAPI runDB =
         after_ (runDB cleanDB) $ do
         context "When the DB is empty" $ do
             it "tests adding a holiday entry" $
-                runDB (hdSetHoliday day1 tid1) 
+                runDB (hdSetHoliday day1 tid1 hdt1) 
+            it "tests adding a holiday entry bad argument" $
+                runDB (hdSetHoliday day1 tid1 Worked) `shouldThrow` badArgumentException
             it "tests adding a work entry" $ 
                 runDB $  projAdd project1 
                       >> hdSetWorkDefault day1 tid1 project1
@@ -485,10 +505,10 @@ testHdAPI runDB =
             -- No hd in the DB
             itemsNoWorkedEntry runDB hdwNotFoundException
         context "When there is one holiday entry" $ 
-            before_ (runDB $ hdSetHoliday day1 tid1) $ do
+            before_ (runDB $ hdSetHoliday day1 tid1 hdt1) $ do
             it "tests getting the entry" $ do
                 res <- runDB (hdHdwProjGet day1 tid1)
-                res `shouldBe` (HalfDay day1 tid1 Holiday, Nothing)
+                res `shouldBe` (HalfDay day1 tid1 hdt1, Nothing)
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1) 
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
@@ -507,7 +527,7 @@ testHdAPI runDB =
                 runDB (hdRm day1 tid1)
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a holiday entry" $ 
-                runDB $ hdSetHoliday day1 tid1
+                runDB $ hdSetHoliday day1 tid1 hdt1
             it "tests setting arrived time" $ do
                 runDB (hdwSetArrived day1 tid1 arrived1) 
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)

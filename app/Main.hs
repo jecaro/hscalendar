@@ -39,13 +39,12 @@ import           Run (App(..), run)
 -- - Make diary date/TimeInDay optional default today
 -- - Append note
 -- - Launch editor
--- - Remove public holiday
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
 -- - Add colors/bold
--- - Put open days in config file
+-- - Put defaults for open days in config file
 -- - Replace pattern matching with record syntax
--- - Add holiday type RTTE, RTTS, CP, TP, SS
+-- - Remove ProjIdNotFound
 
 -- | Main function
 main :: IO ()
