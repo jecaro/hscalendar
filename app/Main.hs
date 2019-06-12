@@ -24,7 +24,7 @@ import           Run (App(..), run)
 --     -n note      set note
 --     -a 00:00     set arrived time
 --     -l 00:00     set left time
--- hsmaster diary holiday date -m|-a
+-- hsmaster diary holiday date -m|-a [cp|ef|rtte|rtts|ss|ph|tp]
 -- hsmaster diary rm date -m|-a
 -- hsmaster diary display date -m|-a
 -- hsmaster project list
@@ -45,6 +45,7 @@ import           Run (App(..), run)
 -- - Put defaults for open days in config file
 -- - Replace pattern matching with record syntax
 -- - Remove ProjIdNotFound
+-- - Find translations for hdt
 
 -- | Main function
 main :: IO ()
