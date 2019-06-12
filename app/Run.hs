@@ -18,11 +18,11 @@ import           Database.Persist.Sqlite
     , runMigration
     , runSqlPersistMPool
     )
-import           Database.Persist.Sql (ConnectionPool)
 import           Data.Text.IO (putStrLn) 
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
 
+import           App (App(..), HasConfig(..), HasConnPool(..))
 import           Config
     ( Config(..)
     , DefaultHours(..)
@@ -239,27 +239,6 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid note
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
 
--- | The app data
-data App = App
-    { appLogFunc  :: !LogFunc        -- ^ The log function
-    , appConnPool :: !ConnectionPool -- ^ The connexion pool
-    , appConfig   :: !Config         -- ^ The configuration file
-    }
-
-class HasConnPool env where
-    connPoolL :: Lens' env ConnectionPool
-
-instance HasConnPool App where
-    connPoolL = lens appConnPool (\x y -> x { appConnPool = y })
-
-instance HasLogFunc App where
-    logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
-
-class HasConfig env where
-    configL :: Lens' env Config
-
-instance HasConfig App where
-    configL = lens appConfig (\x y -> x { appConfig = y })
 
 -- | Run sql actions with the pool
 runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
