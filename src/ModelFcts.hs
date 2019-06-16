@@ -410,7 +410,7 @@ guardNewTimesAreOk day tid hdw = do
           Left (HdwNotFound _ _)      -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Check if it works
-    when (not $ timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
+    unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
 
 -- | Return the times in the day in a list
 timesOfDay :: HalfDayWorked -> [Time.TimeOfDay]

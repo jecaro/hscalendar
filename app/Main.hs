@@ -44,7 +44,8 @@ import           Run (App(..), run)
 -- - Add colors/bold
 -- - Put defaults for open days in config file
 -- - Replace pattern matching with record syntax
--- - Find translations for hdt
+-- - Put ModelFcts in Model
+-- - Add ExitWith
 
 -- | Main function
 main :: IO ()

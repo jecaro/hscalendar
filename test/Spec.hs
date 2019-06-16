@@ -149,7 +149,7 @@ office1 :: Office
 office1 = Home
 
 hdt1 :: HalfDayType
-hdt1 = CP
+hdt1 = PayedLeave
 
 -- Helper functions to simplify the tests
 

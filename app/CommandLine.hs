@@ -130,13 +130,13 @@ parseLevel = attoReadM parser
 
 parseHalfDayType :: ReadM HalfDayType
 parseHalfDayType = attoReadM parser
-  where parser =   string "cp"   $> CP
-               <|> string "ef"   $> EF
+  where parser =   string "pl"   $> PayedLeave
+               <|> string "fe"   $> FamilyEvent
                <|> string "rtte" $> RTTE
                <|> string "rtts" $> RTTS
-               <|> string "ss"   $> SS
+               <|> string "ul"   $> UnpayedLeave
                <|> string "ph"   $> PublicHoliday
-               <|> string "tp"   $> TP
+               <|> string "pt"   $> PartTime
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
