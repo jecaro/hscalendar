@@ -6,6 +6,7 @@ module App
 where
 
 import           RIO
+import           RIO.Process (ProcessContext)
 
 import           Database.Persist.Sql (ConnectionPool)
 
@@ -13,9 +14,10 @@ import           Config(Config(..))
 
 -- | The app data
 data App = App
-    { appLogFunc  :: !LogFunc        -- ^ The log function
-    , appConnPool :: !ConnectionPool -- ^ The connexion pool
-    , appConfig   :: !Config         -- ^ The configuration file
+    { appLogFunc        :: !LogFunc        -- ^ The log function
+    , appConnPool       :: !ConnectionPool -- ^ The connexion pool
+    , appConfig         :: !Config         -- ^ The configuration file
+    , appProcessContext :: !ProcessContext
     }
 
 class HasConnPool env where
@@ -32,3 +34,9 @@ class HasConfig env where
 
 instance HasConfig App where
     configL = lens appConfig (\x y -> x { appConfig = y })
+
+class HasProcessContext env where
+    processContextL :: Lens' env ProcessContext
+
+instance HasProcessContext App where
+    processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })

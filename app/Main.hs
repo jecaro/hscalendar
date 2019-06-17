@@ -1,5 +1,6 @@
 import           RIO
 import           RIO.Orphans()
+import           RIO.Process (mkDefaultProcessContext)
 import qualified RIO.Text as Text (pack)
 
 import           Control.Monad.IO.Class (liftIO)
@@ -62,10 +63,12 @@ main = do
             Right config ->
                 -- Create the sql pool with RIO to handle log
                 runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
+                    pc <- mkDefaultProcessContext
                     -- Initialize the application
-                    let app = App { appLogFunc  = lf
-                                  , appConnPool = pool 
-                                  , appConfig   = config }
+                    let app = App { appLogFunc        = lf
+                                  , appConnPool       = pool 
+                                  , appConfig         = config
+                                  , appProcessContext = pc }
 
                     -- Run the app, handle exceptions (should be only because
                     -- the database is not initialized)
