@@ -28,6 +28,7 @@ import           Run (App(..), run)
 -- hsmaster diary holiday date -m|-a [cp|ef|rtte|rtts|ss|ph|tp]
 -- hsmaster diary rm date -m|-a
 -- hsmaster diary display date -m|-a
+-- hsmaster diary edit date -m|-a
 -- hsmaster project list
 -- hsmaster project rm project
 -- hsmaster project add project

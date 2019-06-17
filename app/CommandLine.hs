@@ -61,6 +61,7 @@ data Options = Options { optVerbose :: !Bool,
 
 data Cmd = Migrate                                      |
            DiaryDisplay CustomDay TimeInDay             |
+           DiaryEdit CustomDay TimeInDay                |
            DiaryHoliday CustomDay TimeInDay HalfDayType |
            DiaryRm CustomDay TimeInDay                  |
            DiaryWork CustomDay TimeInDay [WorkOption]   |
@@ -167,6 +168,11 @@ diaryRm = DiaryRm
     <$> argument parseCustomDay (metavar "DAY")
     <*> tidOption
 
+diaryEdit :: Opt.Parser Cmd
+diaryEdit = DiaryEdit
+    <$> argument parseCustomDay (metavar "DAY")
+    <*> tidOption
+
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday
     <$> argument parseCustomDay (metavar "DAY")
@@ -192,6 +198,7 @@ diaryCmd = hsubparser
     <> command "work"    (info diaryWork    (progDesc "Set work entry"))
     <> command "holiday" (info diaryHoliday (progDesc "Set holiday entry"))
     <> command "rm"      (info diaryRm      (progDesc "Remove entry"))
+    <> command "edit"    (info diaryEdit    (progDesc "Edit entry"))
     )
 
 workOption :: Opt.Parser WorkOption

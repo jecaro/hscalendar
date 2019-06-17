@@ -159,7 +159,10 @@ run (DiaryDisplay cd tid) = do
   where showTime (Time.TimeOfDay h m _) = 
             Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
 
--- Set a work entry 
+-- Edit an entry
+run (DiaryEdit _ _) = undefined
+
+    -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
 
     -- Get actual day
