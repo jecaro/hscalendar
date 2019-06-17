@@ -40,8 +40,9 @@ import           CommandLine
 import           CustomDay(toDay)
 
 import           Model
-import           ModelFcts
-    ( HdNotFound(..)
+    ( HalfDay(..)
+    , HalfDayWorked(..)
+    , HdNotFound(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
@@ -56,7 +57,9 @@ import           ModelFcts
     , hdwSetNotes
     , hdwSetOffice
     , hdwSetProject
+    , migrateAll
     , projAdd
+    , projectName 
     , projList
     , projRename
     , projRm

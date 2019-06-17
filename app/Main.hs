@@ -42,9 +42,8 @@ import           Run (App(..), run)
 -- - Put -p as positional parameter
 -- - Use Lens instead of records
 -- - Add colors/bold
--- - Put defaults for open days in config file
+-- - Put defaults values in config file
 -- - Replace pattern matching with record syntax
--- - Put ModelFcts in Model
 -- - Add ExitWith
 
 -- | Main function

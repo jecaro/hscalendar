@@ -47,17 +47,13 @@ import           Test.QuickCheck.Instances.Time()
 
 import           HalfDayType (HalfDayType(..))
 import           Model 
-    ( HalfDay(..)
-    , HalfDayWorked(..)
-    , NotesText
-    , Project(..)
-    , mkProjectLit
-    , migrateAll
-    )
-import           ModelFcts
     ( BadArgument(..)
+    , HalfDay(..)
+    , HalfDayWorked(..)
     , HdNotFound(..)
     , HdwNotFound(..)
+    , NotesText
+    , Project(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
@@ -72,6 +68,8 @@ import           ModelFcts
     , hdwSetNotes
     , hdwSetOffice
     , hdwSetProject
+    , migrateAll
+    , mkProjectLit
     , projAdd
     , projExists
     , projList
