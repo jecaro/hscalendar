@@ -7,6 +7,7 @@ where
 
 import           RIO
 import           RIO.Orphans()
+import           RIO.Process (proc, runProcess)
 import qualified RIO.Text as Text (intercalate, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..))
 
@@ -21,8 +22,15 @@ import           Database.Persist.Sqlite
 import           Data.Text.IO (putStrLn) 
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
+import           System.Environment (lookupEnv)
 
-import           App (App(..), HasConfig(..), HasConnPool(..))
+
+import           App 
+    ( App(..)
+    , HasConfig(..)
+    , HasConnPool(..)
+    , HasProcessContext(..)
+    )
 import           Config
     ( Config(..)
     , DefaultHours(..)
@@ -113,7 +121,9 @@ findArrivedAndLeftCmd options =
         _                           -> (Nothing, options)
 
 -- | Execute the command
-run :: (HasConnPool env, HasConfig env) => Cmd -> RIO env ()
+run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
+    => Cmd 
+    -> RIO env ()
 
 -- Migrate the database
 run Migrate = runDB $ runMigration migrateAll
@@ -160,7 +170,17 @@ run (DiaryDisplay cd tid) = do
             Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
 
 -- Edit an entry
-run (DiaryEdit _ _) = undefined
+run (DiaryEdit _ _) = do
+    -- Find an editor
+    editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
+    -- Make sure it exists on path
+    -- Launch process
+    _ <- proc editor [] runProcess
+    -- Handle error code
+    -- Parse result
+    -- Delete tmp file
+    -- Commit to database
+    return ()
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do

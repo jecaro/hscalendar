@@ -2,11 +2,12 @@ module App
     ( App(..)
     , HasConnPool(..)
     , HasConfig(..)
+    , HasProcessContext(..)
     )
 where
 
 import           RIO
-import           RIO.Process (ProcessContext)
+import           RIO.Process (HasProcessContext(..), ProcessContext)
 
 import           Database.Persist.Sql (ConnectionPool)
 
@@ -34,9 +35,6 @@ class HasConfig env where
 
 instance HasConfig App where
     configL = lens appConfig (\x y -> x { appConfig = y })
-
-class HasProcessContext env where
-    processContextL :: Lens' env ProcessContext
 
 instance HasProcessContext App where
     processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })
