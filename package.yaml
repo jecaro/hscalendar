@@ -24,6 +24,7 @@ dependencies:
 - rio
 - rio-orphans
 - template-haskell
+- temporary
 - text
 - text-zipper
 - transformers
