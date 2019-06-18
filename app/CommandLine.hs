@@ -100,18 +100,18 @@ attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 readOffice :: ReadM Office
 readOffice = attoReadM officeParser
 
-parseTimeOfDay :: ReadM Time.TimeOfDay
-parseTimeOfDay = attoReadM parser
+readTimeOfDay :: ReadM Time.TimeOfDay
+readTimeOfDay = attoReadM parser
   where parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 readCustomDay :: ReadM CustomDay
 readCustomDay = attoReadM customDayParser
 
-parseProject :: ReadM Project
-parseProject = maybeReader $ mkProject . Text.pack
+readProject :: ReadM Project
+readProject = maybeReader $ mkProject . Text.pack
 
-parseLevel :: ReadM LogLevel
-parseLevel = attoReadM parser
+readLevel :: ReadM LogLevel
+readLevel = attoReadM parser
   where parser =   string "debug" $> LevelDebug
                <|> string "info"  $> LevelInfo
                <|> string "warn"  $> LevelWarn
@@ -121,15 +121,15 @@ readHalfDayType :: ReadM HalfDayType
 readHalfDayType = attoReadM halfDayTypeParser
 
 projRm :: Opt.Parser Cmd
-projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
+projRm = ProjRm <$> argument readProject (metavar "PROJECT...")
 
 projRename :: Opt.Parser Cmd
 projRename = ProjRename
-    <$> argument parseProject (metavar "PROJECT...")
-    <*> argument parseProject (metavar "PROJECT...")
+    <$> argument readProject (metavar "PROJECT...")
+    <*> argument readProject (metavar "PROJECT...")
 
 projAdd :: Opt.Parser Cmd
-projAdd = ProjAdd <$> argument parseProject (metavar "PROJECT...")
+projAdd = ProjAdd <$> argument readProject (metavar "PROJECT...")
 
 projCmd :: Opt.Parser Cmd
 projCmd = subparser
@@ -166,8 +166,8 @@ diaryWork = DiaryWork
     <*> tidOption
     <*> some workOption
 
-parseNotes :: ReadM NotesText
-parseNotes = maybeReader $ mkNotes . Text.pack
+readNotes :: ReadM NotesText
+readNotes = maybeReader $ mkNotes . Text.pack
 
 tidOption :: Opt.Parser TimeInDay
 tidOption =   flag' Morning (long "morning" <> short 'm')
@@ -190,28 +190,28 @@ workOption = workOptionSetProj    <|>
              workOptionSetOffice
 
 workOptionSetProj :: Opt.Parser WorkOption
-workOptionSetProj = MkSetProj . SetProj <$> option parseProject
+workOptionSetProj = MkSetProj . SetProj <$> option readProject
     (  long "project"
     <> short 'p'
     <> metavar "PROJECT"
     <> help "Set the project" )
 
 workOptionSetNotes :: Opt.Parser WorkOption
-workOptionSetNotes = MkSetNotes . SetNotes <$> option parseNotes
+workOptionSetNotes = MkSetNotes . SetNotes <$> option readNotes
     (  long "notes"
     <> short 'n'
     <> metavar "NOTES"
     <> help "Set the notes" )
 
 workOptionSetArrived :: Opt.Parser WorkOption
-workOptionSetArrived = MkSetArrived . SetArrived <$> option parseTimeOfDay
+workOptionSetArrived = MkSetArrived . SetArrived <$> option readTimeOfDay
     (  long "arrived"
     <> short 'a'
     <> metavar "TIME"
     <> help "Time of arrival" )
 
 workOptionSetLeft :: Opt.Parser WorkOption
-workOptionSetLeft = MkSetLeft . SetLeft <$> option parseTimeOfDay
+workOptionSetLeft = MkSetLeft . SetLeft <$> option readTimeOfDay
     (  long "left"
     <> short 'l'
     <> metavar "TIME"
@@ -234,7 +234,7 @@ cmd = hsubparser
 options :: Opt.Parser Options
 options = Options 
     <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
-    <*> option parseLevel 
+    <*> option readLevel 
         (  long "level" 
         <> short 'l' 
         <> metavar "LEVEL" 
