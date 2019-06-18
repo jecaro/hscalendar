@@ -75,6 +75,14 @@ import           Model
     )
 import           TimeInDay (TimeInDay(..))
 
+-- | The editor returns an error
+newtype ProcessReturnsError = ProcessReturnsError String
+
+instance Exception ProcessReturnsError
+
+instance Show ProcessReturnsError where
+    show (ProcessReturnsError cmd) = "The process " <> cmd <> " returns an error"
+
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
 
@@ -173,10 +181,10 @@ run (DiaryDisplay cd tid) = do
 run (DiaryEdit _ _) = do
     -- Find an editor
     editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
-    -- Make sure it exists on path
     -- Launch process
-    _ <- proc editor [] runProcess
+    exitCode <- proc editor [] runProcess
     -- Handle error code
+    when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
     -- Parse result
     -- Delete tmp file
     -- Commit to database
