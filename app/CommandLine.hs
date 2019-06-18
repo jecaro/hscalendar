@@ -17,9 +17,7 @@ import qualified RIO.Time as Time (TimeOfDay(..))
 import           Data.Attoparsec.Text as Atto
     ( Parser
     , string
-    , decimal
     , endOfInput
-    , char
     , parseOnly
     )
 import           Data.Functor (($>))
@@ -54,7 +52,12 @@ import           CustomDay (CustomDay(..))
 import           HalfDayType (HalfDayType(..))
 import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
-import           Parsers (customDayParser, halfDayTypeParser, officeParser)
+import           Parsers 
+    ( customDayParser
+    , halfDayTypeParser
+    , officeParser
+    , timeOfDayParser
+    )
 import           TimeInDay (TimeInDay(..))
 
 data Options = Options { optVerbose :: !Bool,
@@ -101,8 +104,7 @@ readOffice :: ReadM Office
 readOffice = attoReadM officeParser
 
 readTimeOfDay :: ReadM Time.TimeOfDay
-readTimeOfDay = attoReadM parser
-  where parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
+readTimeOfDay = attoReadM timeOfDayParser
 
 readCustomDay :: ReadM CustomDay
 readCustomDay = attoReadM customDayParser

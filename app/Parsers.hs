@@ -2,11 +2,12 @@ module Parsers
     ( customDayParser
     , officeParser
     , halfDayTypeParser
+    , timeOfDayParser
     )
 where
 
 import           RIO
-import qualified RIO.Time as Time (fromGregorian)
+import qualified RIO.Time as Time (TimeOfDay(..), fromGregorian)
 
 import           Data.Attoparsec.Text
     ( Parser
@@ -44,3 +45,6 @@ halfDayTypeParser = string "pl"   $> PayedLeave
                 <|> string "ul"   $> UnpayedLeave
                 <|> string "ph"   $> PublicHoliday
                 <|> string "pt"   $> PartTime
+
+timeOfDayParser :: Parser Time.TimeOfDay
+timeOfDayParser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
