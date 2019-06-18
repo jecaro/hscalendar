@@ -12,7 +12,7 @@ module CommandLine
 
 import           RIO
 import qualified RIO.Text as Text (pack)
-import qualified RIO.Time as Time (TimeOfDay(..), fromGregorian)
+import qualified RIO.Time as Time (TimeOfDay(..))
 
 import           Data.Attoparsec.Text as Atto
     ( Parser
@@ -54,6 +54,7 @@ import           CustomDay (CustomDay(..))
 import           HalfDayType (HalfDayType(..))
 import           Model (Project, NotesText, mkProject, mkNotes)
 import           Office (Office(..))
+import           Parsers (customDayParser, halfDayTypeParser, officeParser)
 import           TimeInDay (TimeInDay(..))
 
 data Options = Options { optVerbose :: !Bool,
@@ -96,28 +97,15 @@ data WorkOption = MkSetArrived SetArrived |
 attoReadM :: Atto.Parser a -> ReadM a
 attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 
-parseOffice :: ReadM Office
-parseOffice = attoReadM parser
-  where parser =   string "home"   $> Home
-               <|> string "out"    $> OutOfOffice
-               <|> string "poool"  $> Poool
-               <|> string "rennes" $> Rennes
+readOffice :: ReadM Office
+readOffice = attoReadM officeParser
 
 parseTimeOfDay :: ReadM Time.TimeOfDay
 parseTimeOfDay = attoReadM parser
   where parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
-parseCustomDay :: ReadM CustomDay
-parseCustomDay = attoReadM parser
-  where parser =   string "today"     $> Today
-               <|> string "yesterday" $> Yesterday
-               <|> string "tomorrow"  $> Tomorrow
-               <|> mkDayFromGregorian <$> decimal
-                                      <*> (char '-' *> decimal)
-                                      <*> (char '-' *> decimal)
-               <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
-               <|> MkDayNum <$> decimal
-        mkDayFromGregorian d m y = MkDay $ Time.fromGregorian y m d
+readCustomDay :: ReadM CustomDay
+readCustomDay = attoReadM customDayParser
 
 parseProject :: ReadM Project
 parseProject = maybeReader $ mkProject . Text.pack
@@ -129,15 +117,8 @@ parseLevel = attoReadM parser
                <|> string "warn"  $> LevelWarn
                <|> string "error" $> LevelError
 
-parseHalfDayType :: ReadM HalfDayType
-parseHalfDayType = attoReadM parser
-  where parser =   string "pl"   $> PayedLeave
-               <|> string "fe"   $> FamilyEvent
-               <|> string "rtte" $> RTTE
-               <|> string "rtts" $> RTTS
-               <|> string "ul"   $> UnpayedLeave
-               <|> string "ph"   $> PublicHoliday
-               <|> string "pt"   $> PartTime
+readHalfDayType :: ReadM HalfDayType
+readHalfDayType = attoReadM halfDayTypeParser
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument parseProject (metavar "PROJECT...")
@@ -160,28 +141,28 @@ projCmd = subparser
 
 diaryDisplay :: Opt.Parser Cmd
 diaryDisplay = DiaryDisplay
-    <$> argument parseCustomDay (metavar "DAY")
+    <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm
-    <$> argument parseCustomDay (metavar "DAY")
+    <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
 
 diaryEdit :: Opt.Parser Cmd
 diaryEdit = DiaryEdit
-    <$> argument parseCustomDay (metavar "DAY")
+    <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
 
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday
-    <$> argument parseCustomDay (metavar "DAY")
+    <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
-    <*> argument parseHalfDayType (metavar "HALF-DAY TYPE")
+    <*> argument readHalfDayType (metavar "HALF-DAY TYPE")
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork
-    <$> argument parseCustomDay (metavar "DAY")
+    <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
     <*> some workOption
 
@@ -237,7 +218,7 @@ workOptionSetLeft = MkSetLeft . SetLeft <$> option parseTimeOfDay
     <> help "Time of leaving" )
 
 workOptionSetOffice :: Opt.Parser WorkOption
-workOptionSetOffice = MkSetOffice . SetOffice <$> option parseOffice
+workOptionSetOffice = MkSetOffice . SetOffice <$> option readOffice
     (  long "office"
     <> short 'o'
     <> metavar "OFFICE"
