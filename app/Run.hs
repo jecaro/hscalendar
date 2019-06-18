@@ -22,7 +22,9 @@ import           Database.Persist.Sqlite
 import           Data.Text.IO (putStrLn) 
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
+import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
+import           System.IO.Temp (emptySystemTempFile)
 
 
 import           App 
@@ -181,14 +183,16 @@ run (DiaryDisplay cd tid) = do
 run (DiaryEdit _ _) = do
     -- Find an editor
     editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
+    -- Create a temporary file
+    fileName <- liftIO $ emptySystemTempFile "hscalendar"
     -- Launch process
-    exitCode <- proc editor [] runProcess
+    exitCode <- proc editor [fileName] runProcess
     -- Handle error code
     when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
     -- Parse result
     -- Delete tmp file
+    liftIO $ removeFile fileName
     -- Commit to database
-    return ()
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
