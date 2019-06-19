@@ -5,10 +5,19 @@ import           RIO
 import           RIO.Text as Text(pack)
 import           RIO.Time as Time(TimeOfDay)
 
-import           Data.Attoparsec.Text
+import           Data.Attoparsec.Text 
+    ( Parser
+    , endOfLine
+    , isHorizontalSpace
+    , letter
+    , many1
+    , skipWhile
+    , string
+    , takeText
+    )
 
 import           CustomDay(CustomDay(..))
-import           HalfDayType(HalfDayType(..))
+import qualified HalfDayType as HDT(HalfDayType(..))
 import           Model (NotesText, Project, mkNotes, mkProject) 
 import           Parsers 
     ( customDayParser
@@ -22,25 +31,35 @@ import           TimeInDay(TimeInDay(..))
 -- Example of data
 -- 
 -- # Worked day -> create half-day half-day worked
--- 22/03/1979 morning COMAREM
+-- worked 22/03/1979 morning COMAREM
 -- rennes 9:00 12:00
 -- these are the notes
 -- 
 -- # Holiday -> create half-day
--- 22/03/1979 morning ph
+-- holiday 22/03/1979 morning ph
 
-data FirstLine = FirstLine
-    { day                  :: !CustomDay
-    , tid                  :: !TimeInDay
-    , halfDayTypeOrProject :: !(Either HalfDayType Project)}
-  deriving Show
-
-data OfficeAndTime = OfficeAndTime
-    { office  :: !Office
-    , arrived :: !Time.TimeOfDay
-    , left    :: !Time.TimeOfDay
+data FileWorked = FileWorked
+    { _fileWorkedDay     :: !CustomDay
+    , _fileWorkedTid     :: !TimeInDay
+    , _fileWorkedProject :: !Project
+    , _fileWorkedOffice  :: !Office
+    , _fileWorkedArrived :: !Time.TimeOfDay
+    , _fileWorkedLeft    :: !Time.TimeOfDay
+    , _fileWorkedNotes   :: !NotesText
     }
   deriving Show
+
+data FileHoliday = FileHoliday
+    { _fileHolidayDay         :: !CustomDay
+    , _fileHolidayTid         :: !TimeInDay
+    , _fileHolidayHalfDayType :: !HDT.HalfDayType
+    }
+  deriving Show
+
+data FileContent = FileContentWorked FileWorked | FileContentHoliday FileHoliday
+  deriving Show
+
+data Occupation = Worked | Holiday
 
 skipHorizontalSpaces :: Parser ()
 skipHorizontalSpaces = skipWhile isHorizontalSpace
@@ -63,15 +82,30 @@ notesTextParser = do
       Nothing -> fail "Unable to parse notes"
       Just p  -> return p
 
-firstLine :: Parser FirstLine
-firstLine = FirstLine 
-    <$> (customDayParser <* skipHorizontalSpaces)
-    <*> (timeInDayParser <* skipHorizontalSpaces)
-    <*> (eitherP halfDayTypeParser projectParser) 
+fileWorkedParser :: Parser FileWorked
+fileWorkedParser = FileWorked
+    <$> customDayParser <* skipHorizontalSpaces
+    <*> timeInDayParser <* skipHorizontalSpaces
+    <*> projectParser   <* skipHorizontalSpaces <* endOfLine
+    <*> officeParser    <* skipHorizontalSpaces 
+    <*> timeOfDayParser <* skipHorizontalSpaces 
+    <*> timeOfDayParser <* skipHorizontalSpaces <* endOfLine
+    <*> notesTextParser
 
-officeAndTime :: Parser OfficeAndTime
-officeAndTime = OfficeAndTime 
-    <$> (officeParser <* skipHorizontalSpaces)
-    <*> (timeOfDayParser <* skipHorizontalSpaces)
-    <*> (timeOfDayParser <* skipHorizontalSpaces)
+fileHolidayParser :: Parser FileHoliday
+fileHolidayParser = FileHoliday
+    <$> customDayParser <* skipHorizontalSpaces
+    <*> timeInDayParser <* skipHorizontalSpaces
+    <*> halfDayTypeParser
+
+occupationParser :: Parser Occupation
+occupationParser = "worked" $> Worked <|> "holiday" $> Holiday
+
+fileParser :: Parser FileContent
+fileParser = do
+    occupation <- occupationParser
+    skipHorizontalSpaces
+    case occupation of
+        Worked  -> FileContentWorked  <$> fileWorkedParser
+        Holiday -> FileContentHoliday <$> fileHolidayParser
 

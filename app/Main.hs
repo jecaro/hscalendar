@@ -47,6 +47,7 @@ import           Run (App(..), run)
 -- - Put defaults values in config file
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
+-- - Add comments in input file
 
 -- | Main function
 main :: IO ()
