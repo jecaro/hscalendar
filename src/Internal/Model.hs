@@ -128,7 +128,7 @@ mkProject :: Text -> Maybe Project
 mkProject name = Project . (unrefine :: ProjNameText -> Text) <$>
     rightToMaybe (refine name)
 
--- | Simple type to refine Text for project names
+-- | Simple type to refine Text for notes
 data Notes
 
 -- | The actual refined type
