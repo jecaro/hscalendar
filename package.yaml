@@ -81,8 +81,10 @@ tests:
 default-extensions:
   - DeriveGeneric
   - FlexibleInstances
+  - FunctionalDependencies
   - GADTs
   - LambdaCase
+  - MultiParamTypeClasses
   - NamedFieldPuns
   - NoImplicitPrelude
   - OverloadedStrings
