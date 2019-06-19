@@ -1,4 +1,5 @@
 module Editor
+
 where
 
 import           RIO
@@ -77,10 +78,10 @@ projectParser = do
 
 notesTextParser :: Parser NotesText
 notesTextParser = do
-  str <- takeText
-  case mkNotes str of
-      Nothing -> fail "Unable to parse notes"
-      Just p  -> return p
+    str <- takeText
+    case mkNotes str of
+        Nothing -> fail "Unable to parse notes"
+        Just p  -> return p
 
 fileWorkedParser :: Parser FileWorked
 fileWorkedParser = FileWorked
