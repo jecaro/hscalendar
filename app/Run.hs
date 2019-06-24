@@ -8,7 +8,7 @@ where
 import           RIO
 import           RIO.Orphans()
 import           RIO.Process (proc, runProcess)
-import qualified RIO.Text as Text (intercalate, pack)
+import qualified RIO.Text as Text (intercalate, null, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay(..))
 
 import           Control.Monad (void)
@@ -19,7 +19,8 @@ import           Database.Persist.Sqlite
     , runMigration
     , runSqlPersistMPool
     )
-import           Data.Text.IO (putStrLn) 
+import           Data.Attoparsec.Text (endOfInput, parseOnly)
+import           Data.Text.IO (putStrLn, readFile) 
 import qualified Formatting as F (int, left, sformat)
 import           Formatting ((%.))
 import           System.Directory (removeFile)
@@ -48,7 +49,7 @@ import           CommandLine
     , WorkOption(..)
     )
 import           CustomDay(toDay)
-
+import           Editor(fileParser)
 import           Model
     ( HalfDay(..)
     , HalfDayWorked(..)
@@ -84,6 +85,13 @@ instance Exception ProcessReturnsError
 
 instance Show ProcessReturnsError where
     show (ProcessReturnsError cmd) = "The process " <> cmd <> " returns an error"
+
+newtype EditParseError = EditParseError String
+
+instance Exception EditParseError
+
+instance Show EditParseError where
+    show (EditParseError parseError) = "Parse error: " <> parseError
 
 errProjCmdIsMandatory :: Text
 errProjCmdIsMandatory = "There should be one project command"
@@ -185,14 +193,24 @@ run (DiaryEdit _ _) = do
     editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
     -- Create a temporary file
     fileName <- liftIO $ emptySystemTempFile "hscalendar"
+    -- Write header
     -- Launch process
     exitCode <- proc editor [fileName] runProcess
     -- Handle error code
     when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
-    -- Parse result
+    -- Read file content
+    fileContent <- liftIO $ readFile fileName
+    -- Needs to remove comments and empty lines here
+    if Text.null fileContent
+        then logInfo "Nothing to do"
+        else do 
+            let eiFile = parseOnly (fileParser <* endOfInput) fileContent
+            case eiFile of 
+                Left parseError -> throwIO $ EditParseError parseError
+                Right _ -> undefined
+
     -- Delete tmp file
     liftIO $ removeFile fileName
-    -- Commit to database
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do

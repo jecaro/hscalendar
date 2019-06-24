@@ -13,36 +13,26 @@ import           Data.Attoparsec.Text
     , letter
     , many1
     , skipWhile
-    , string
     , takeText
     )
 
-import           CustomDay(CustomDay(..))
-import qualified HalfDayType as HDT(HalfDayType(..))
 import           Model (NotesText, Project, mkNotes, mkProject) 
 import           Parsers 
-    ( customDayParser
-    , halfDayTypeParser
-    , officeParser
+    ( officeParser
     , timeOfDayParser
     )
 import           Office (Office(..)) 
-import           TimeInDay(TimeInDay(..))
 
 -- Example of data
 -- 
 -- # Worked day -> create half-day half-day worked
--- worked 22/03/1979 morning COMAREM
+-- # 22/03/1979 morning 
+-- COMAREM
 -- rennes 9:00 12:00
 -- these are the notes
--- 
--- # Holiday -> create half-day
--- holiday 22/03/1979 morning ph
 
 data FileWorked = FileWorked
-    { _fileWorkedDay     :: !CustomDay
-    , _fileWorkedTid     :: !TimeInDay
-    , _fileWorkedProject :: !Project
+    { _fileWorkedProject :: !Project
     , _fileWorkedOffice  :: !Office
     , _fileWorkedArrived :: !Time.TimeOfDay
     , _fileWorkedLeft    :: !Time.TimeOfDay
@@ -50,24 +40,8 @@ data FileWorked = FileWorked
     }
   deriving Show
 
-data FileHoliday = FileHoliday
-    { _fileHolidayDay         :: !CustomDay
-    , _fileHolidayTid         :: !TimeInDay
-    , _fileHolidayHalfDayType :: !HDT.HalfDayType
-    }
-  deriving Show
-
-data FileContent = FileContentWorked FileWorked | FileContentHoliday FileHoliday
-  deriving Show
-
-data Occupation = Worked | Holiday
-
 skipHorizontalSpaces :: Parser ()
 skipHorizontalSpaces = skipWhile isHorizontalSpace
-
-timeInDayParser :: Parser TimeInDay
-timeInDayParser = string "morning"   $> Morning
-              <|> string "afternoon" $> Afternoon
 
 projectParser :: Parser Project
 projectParser = do
@@ -83,30 +57,12 @@ notesTextParser = do
         Nothing -> fail "Unable to parse notes"
         Just p  -> return p
 
-fileWorkedParser :: Parser FileWorked
-fileWorkedParser = FileWorked
-    <$> customDayParser <* skipHorizontalSpaces
-    <*> timeInDayParser <* skipHorizontalSpaces
-    <*> projectParser   <* skipHorizontalSpaces <* endOfLine
+fileParser :: Parser FileWorked
+fileParser = FileWorked
+    <$> projectParser   <* skipHorizontalSpaces <* endOfLine
     <*> officeParser    <* skipHorizontalSpaces 
     <*> timeOfDayParser <* skipHorizontalSpaces 
     <*> timeOfDayParser <* skipHorizontalSpaces <* endOfLine
     <*> notesTextParser
 
-fileHolidayParser :: Parser FileHoliday
-fileHolidayParser = FileHoliday
-    <$> customDayParser <* skipHorizontalSpaces
-    <*> timeInDayParser <* skipHorizontalSpaces
-    <*> halfDayTypeParser
-
-occupationParser :: Parser Occupation
-occupationParser = "worked" $> Worked <|> "holiday" $> Holiday
-
-fileParser :: Parser FileContent
-fileParser = do
-    occupation <- occupationParser
-    skipHorizontalSpaces
-    case occupation of
-        Worked  -> FileContentWorked  <$> fileWorkedParser
-        Holiday -> FileContentHoliday <$> fileHolidayParser
 
