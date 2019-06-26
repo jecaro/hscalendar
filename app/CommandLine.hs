@@ -48,14 +48,12 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 
-import           CustomDay (CustomDay(..))
+import qualified CustomDay as CD (CustomDay(..), parser)
 import           HalfDayType (HalfDayType(..))
 import           Model (Project, NotesText, mkProject, mkNotes)
-import           Office (Office(..))
+import           Office as Office (Office(..), parser)
 import           Parsers 
-    ( customDayParser
-    , halfDayTypeParser
-    , officeParser
+    ( halfDayTypeParser
     , timeOfDayParser
     )
 import           TimeInDay (TimeInDay(..))
@@ -63,15 +61,15 @@ import           TimeInDay (TimeInDay(..))
 data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
-data Cmd = Migrate                                      |
-           DiaryDisplay CustomDay TimeInDay             |
-           DiaryEdit CustomDay TimeInDay                |
-           DiaryHoliday CustomDay TimeInDay HalfDayType |
-           DiaryRm CustomDay TimeInDay                  |
-           DiaryWork CustomDay TimeInDay [WorkOption]   |
-           ProjAdd Project                              |
-           ProjList                                     |
-           ProjRename Project Project                   |
+data Cmd = Migrate                                         |
+           DiaryDisplay CD.CustomDay TimeInDay             |
+           DiaryEdit CD.CustomDay TimeInDay                |
+           DiaryHoliday CD.CustomDay TimeInDay HalfDayType |
+           DiaryRm CD.CustomDay TimeInDay                  |
+           DiaryWork CD.CustomDay TimeInDay [WorkOption]   |
+           ProjAdd Project                                 |
+           ProjList                                        |
+           ProjRename Project Project                      |
            ProjRm Project
     deriving (Eq, Show)
 
@@ -100,14 +98,14 @@ data WorkOption = MkSetArrived SetArrived |
 attoReadM :: Atto.Parser a -> ReadM a
 attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 
-readOffice :: ReadM Office
-readOffice = attoReadM officeParser
+readOffice :: ReadM Office.Office
+readOffice = attoReadM Office.parser
 
 readTimeOfDay :: ReadM Time.TimeOfDay
 readTimeOfDay = attoReadM timeOfDayParser
 
-readCustomDay :: ReadM CustomDay
-readCustomDay = attoReadM customDayParser
+readCustomDay :: ReadM CD.CustomDay
+readCustomDay = attoReadM CD.parser
 
 readProject :: ReadM Project
 readProject = maybeReader $ mkProject . Text.pack

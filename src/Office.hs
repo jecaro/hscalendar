@@ -1,10 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Office where
-
+module Office 
+    ( Office(..)
+    , parser 
+    ) where
 import           RIO
+import           Data.Attoparsec.Text
+    ( Parser
+    , asciiCI 
+    )
 import           Data.Yaml 
     ( FromJSON
-    , ToJSON)
+    , ToJSON
+    )
 
 import           Database.Persist.TH (derivePersistField)
 
@@ -21,3 +28,10 @@ instance ToJSON Office
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Office where
     arbitrary = arbitraryBoundedEnum
+
+parser :: Parser Office
+parser =   asciiCI "home"   $> Home
+       <|> asciiCI "out"    $> OutOfOffice
+       <|> asciiCI "poool"  $> Poool
+       <|> asciiCI "rennes" $> Rennes
+

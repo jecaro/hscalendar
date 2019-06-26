@@ -1,5 +1,6 @@
 module CustomDay
     ( CustomDay(..)
+    , parser
     , toDay
     ) where
 
@@ -14,6 +15,12 @@ import qualified RIO.Time as Time
     , zonedTimeToLocalTime
     )
 
+import           Data.Attoparsec.Text
+    ( Parser
+    , asciiCI 
+    , decimal
+    , char
+    )
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 
 data CustomDay = MkDay Time.Day        |
@@ -40,3 +47,15 @@ toDay (MkDayNum d) = do
 toDay (MkDayMonthNum d m) = do
     (y, _, _) <- Time.toGregorian <$> today
     return $ Time.fromGregorian y m d
+
+parser :: Parser CustomDay
+parser =   asciiCI "today"     $> Today
+       <|> asciiCI "yesterday" $> Yesterday
+       <|> asciiCI "tomorrow"  $> Tomorrow
+       <|> mkDayFromGregorian <$> decimal
+                              <*> (char '-' *> decimal)
+                              <*> (char '-' *> decimal)
+       <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
+       <|> MkDayNum <$> decimal
+  where mkDayFromGregorian d m y = MkDay $ Time.fromGregorian y m d
+

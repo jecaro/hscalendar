@@ -33,10 +33,9 @@ import           CommandLine
     )
 import           Model (NotesText, Project, mkNotes, mkProject) 
 import           Parsers 
-    ( officeParser
-    , timeOfDayParser
+    ( timeOfDayParser
     )
-import           Office (Office(..)) 
+import qualified Office as Office (Office(..), parser) 
 
 -- Example of data
 -- 
@@ -48,7 +47,7 @@ import           Office (Office(..))
 
 data FileWorked = FileWorked
     { _fileWorkedProject :: !Project
-    , _fileWorkedOffice  :: !Office
+    , _fileWorkedOffice  :: !Office.Office
     , _fileWorkedArrived :: !Time.TimeOfDay
     , _fileWorkedLeft    :: !Time.TimeOfDay
     , _fileWorkedNotes   :: !NotesText
@@ -85,7 +84,7 @@ notesTextParser = do
 fileParser :: Parser FileWorked
 fileParser = FileWorked
     <$> projectParser   <* skipHorizontalSpaces <* endOfLine
-    <*> officeParser    <* skipHorizontalSpaces 
+    <*> Office.parser   <* skipHorizontalSpaces 
     <*> timeOfDayParser <* skipHorizontalSpaces 
     <*> timeOfDayParser <* skipHorizontalSpaces <* endOfLine
     <*> notesTextParser

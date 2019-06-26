@@ -1,13 +1,11 @@
 module Parsers
-    ( customDayParser
-    , officeParser
-    , halfDayTypeParser
+    ( halfDayTypeParser
     , timeOfDayParser
     )
 where
 
 import           RIO
-import qualified RIO.Time as Time (TimeOfDay(..), fromGregorian)
+import qualified RIO.Time as Time (TimeOfDay(..))
 
 import           Data.Attoparsec.Text
     ( Parser
@@ -16,26 +14,7 @@ import           Data.Attoparsec.Text
     , char
     )
 
-import           CustomDay (CustomDay(..))
 import           HalfDayType (HalfDayType(..))
-import           Office (Office(..))
-
-customDayParser :: Parser CustomDay
-customDayParser = asciiCI "today"     $> Today
-              <|> asciiCI "yesterday" $> Yesterday
-              <|> asciiCI "tomorrow"  $> Tomorrow
-              <|> mkDayFromGregorian <$> decimal
-                                     <*> (char '-' *> decimal)
-                                     <*> (char '-' *> decimal)
-              <|> MkDayMonthNum <$> decimal <*> (char '-' *> decimal)
-              <|> MkDayNum <$> decimal
-  where mkDayFromGregorian d m y = MkDay $ Time.fromGregorian y m d
-
-officeParser :: Parser Office
-officeParser = asciiCI "home"   $> Home
-           <|> asciiCI "out"    $> OutOfOffice
-           <|> asciiCI "poool"  $> Poool
-           <|> asciiCI "rennes" $> Rennes
 
 halfDayTypeParser :: Parser HalfDayType
 halfDayTypeParser = asciiCI "pl"   $> PayedLeave
