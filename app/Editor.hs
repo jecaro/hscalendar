@@ -8,6 +8,7 @@ where
 import           RIO
 import qualified RIO.Text as Text(isPrefixOf, lines, null, pack, unlines, unpack)
 import qualified RIO.Time as Time(TimeOfDay)
+import qualified RIO.Time.Extended as Time(parser)
 
 import           Lens.Micro.Platform (makeFields)
 
@@ -32,9 +33,6 @@ import           CommandLine
     , WorkOption(..)
     )
 import           Model (NotesText, Project, mkNotes, mkProject) 
-import           Parsers 
-    ( timeOfDayParser
-    )
 import qualified Office as Office (Office(..), parser) 
 
 -- Example of data
@@ -83,10 +81,10 @@ notesTextParser = do
 
 fileParser :: Parser FileWorked
 fileParser = FileWorked
-    <$> projectParser   <* skipHorizontalSpaces <* endOfLine
-    <*> Office.parser   <* skipHorizontalSpaces 
-    <*> timeOfDayParser <* skipHorizontalSpaces 
-    <*> timeOfDayParser <* skipHorizontalSpaces <* endOfLine
+    <$> projectParser <* skipHorizontalSpaces <* endOfLine
+    <*> Office.parser <* skipHorizontalSpaces 
+    <*> Time.parser   <* skipHorizontalSpaces 
+    <*> Time.parser   <* skipHorizontalSpaces <* endOfLine
     <*> notesTextParser
 
 parse :: Text -> Either ParseError [WorkOption]

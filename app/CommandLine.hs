@@ -13,6 +13,7 @@ module CommandLine
 import           RIO
 import qualified RIO.Text as Text (pack)
 import qualified RIO.Time as Time (TimeOfDay(..))
+import qualified RIO.Time.Extended as Time (parser)
 
 import           Data.Attoparsec.Text as Atto
     ( Parser
@@ -49,27 +50,23 @@ import           Options.Applicative as Opt
     )
 
 import qualified CustomDay as CD (CustomDay(..), parser)
-import           HalfDayType (HalfDayType(..))
+import qualified HalfDayType as HDT (HalfDayType(..), parser)
 import           Model (Project, NotesText, mkProject, mkNotes)
-import           Office as Office (Office(..), parser)
-import           Parsers 
-    ( halfDayTypeParser
-    , timeOfDayParser
-    )
+import qualified Office as Office (Office(..), parser)
 import           TimeInDay (TimeInDay(..))
 
 data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
-data Cmd = Migrate                                         |
-           DiaryDisplay CD.CustomDay TimeInDay             |
-           DiaryEdit CD.CustomDay TimeInDay                |
-           DiaryHoliday CD.CustomDay TimeInDay HalfDayType |
-           DiaryRm CD.CustomDay TimeInDay                  |
-           DiaryWork CD.CustomDay TimeInDay [WorkOption]   |
-           ProjAdd Project                                 |
-           ProjList                                        |
-           ProjRename Project Project                      |
+data Cmd = Migrate                                             |
+           DiaryDisplay CD.CustomDay TimeInDay                 |
+           DiaryEdit CD.CustomDay TimeInDay                    |
+           DiaryHoliday CD.CustomDay TimeInDay HDT.HalfDayType |
+           DiaryRm CD.CustomDay TimeInDay                      |
+           DiaryWork CD.CustomDay TimeInDay [WorkOption]       |
+           ProjAdd Project                                     |
+           ProjList                                            |
+           ProjRename Project Project                          |
            ProjRm Project
     deriving (Eq, Show)
 
@@ -85,7 +82,7 @@ newtype SetArrived = SetArrived Time.TimeOfDay
 newtype SetLeft = SetLeft Time.TimeOfDay
     deriving (Eq, Show)
 
-newtype SetOffice = SetOffice Office
+newtype SetOffice = SetOffice Office.Office
     deriving (Eq, Show)
 
 data WorkOption = MkSetArrived SetArrived |
@@ -102,7 +99,7 @@ readOffice :: ReadM Office.Office
 readOffice = attoReadM Office.parser
 
 readTimeOfDay :: ReadM Time.TimeOfDay
-readTimeOfDay = attoReadM timeOfDayParser
+readTimeOfDay = attoReadM Time.parser
 
 readCustomDay :: ReadM CD.CustomDay
 readCustomDay = attoReadM CD.parser
@@ -117,8 +114,8 @@ readLevel = attoReadM parser
                <|> string "warn"  $> LevelWarn
                <|> string "error" $> LevelError
 
-readHalfDayType :: ReadM HalfDayType
-readHalfDayType = attoReadM halfDayTypeParser
+readHalfDayType :: ReadM HDT.HalfDayType
+readHalfDayType = attoReadM HDT.parser
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument readProject (metavar "PROJECT...")
