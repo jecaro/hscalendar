@@ -4,7 +4,7 @@ module Editor
 where
 
 import           RIO
-import qualified RIO.Text as Text(isPrefixOf, lines, null, pack, unlines)
+import qualified RIO.Text as Text(isPrefixOf, lines, null, pack, unlines, unpack)
 import qualified RIO.Time as Time(TimeOfDay)
 
 import           Lens.Micro.Platform (makeFields)
@@ -54,19 +54,14 @@ data FileWorked = FileWorked
   deriving Show
 makeFields ''FileWorked
 
-newtype EditParseError = EditParseError String
+data ParseError = EmptyFileError | ParserError Text
+    deriving Typeable
 
-instance Exception EditParseError
+instance Exception ParseError
 
-instance Show EditParseError where
-    show (EditParseError parseError) = "Parse error: " <> parseError
-
-data EmptyFileError = EmptyFileError
-
-instance Exception EmptyFileError
-
-instance Show EmptyFileError where
-    show _ = "The file is empty"
+instance Show ParseError where
+    show (EmptyFileError) = "The file is empty"
+    show (ParserError msg) = "Parse error: " <> Text.unpack msg
 
 skipHorizontalSpaces :: Parser ()
 skipHorizontalSpaces = skipWhile isHorizontalSpace
@@ -93,17 +88,18 @@ fileParser = FileWorked
     <*> timeOfDayParser <* skipHorizontalSpaces <* endOfLine
     <*> notesTextParser
 
-parse :: Text -> RIO env [WorkOption]
+parse :: Text -> Either ParseError [WorkOption]
 parse fileContent = do
     -- Remove comments
     let prunedContent = Text.unlines $ filter notComment $ Text.lines fileContent
     -- Remaining file is empty
-    when (Text.null prunedContent) (throwIO EmptyFileError)
-    -- Parse the lines
-    let eiFile = parseOnly (fileParser <* endOfInput) prunedContent
-    case eiFile of 
-        Left parseError -> throwIO $ EditParseError parseError
-        Right fileWorked -> return $ toOptions fileWorked
+    if Text.null prunedContent
+        then Left EmptyFileError
+        else do
+            -- Parse the lines
+            case parseOnly (fileParser <* endOfInput) prunedContent of 
+                Left msg -> Left $ ParserError $ Text.pack msg
+                Right fileWorked -> Right $ toOptions fileWorked
   where notComment text = not $ Text.isPrefixOf "#" text
 
 toOptions :: FileWorked -> [WorkOption]

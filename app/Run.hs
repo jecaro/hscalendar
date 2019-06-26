@@ -193,8 +193,9 @@ run (DiaryEdit cd tid) = do
             -- Read file content
             liftIO $ readFile filename
         )
-    options <- parse fileContent
-    run $ DiaryWork cd tid options
+    case parse fileContent of
+        Left error'   -> throwIO $ error'
+        Right options -> run $ DiaryWork cd tid options
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
