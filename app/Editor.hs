@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Editor
-
+    ( ParseError(..)
+    , parse
+    )
 where
 
 import           RIO

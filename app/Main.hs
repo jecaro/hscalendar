@@ -47,8 +47,8 @@ import           Run (App(..), run)
 -- - Put defaults values in config file
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
--- - Add comments in input file if not entry
--- - Add contents to the file if there is an entry
+-- - Ignore case for office
+-- - Put hdHdwProjAsText in Editor
 
 -- | Main function
 main :: IO ()

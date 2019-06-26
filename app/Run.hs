@@ -48,7 +48,7 @@ import           CommandLine
     , WorkOption(..)
     )
 import           CustomDay(toDay)
-import           Editor(parse)
+import           Editor(ParseError(..), parse)
 import           Model
     ( HalfDay(..)
     , HalfDayWorked(..)
@@ -130,6 +130,29 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
+-- | Print time in a friendly format ex 9:00
+showTime :: Time.TimeOfDay -> Text
+showTime (Time.TimeOfDay h m _) = 
+            Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
+
+hdHdwProjAsText :: (HasConnPool env) 
+    => Time.Day 
+    -> TimeInDay 
+    -> RIO env Text
+hdHdwProjAsText day tid = do
+    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
+    case eiHdHdwProj of
+        (Left (HdNotFound _ _)) -> return $ header <> " Nothing\n"
+        (Right (HalfDay _ _ hdt, Nothing)) -> return $ headerWithHdt hdt <> "\n"
+        (Right (HalfDay _ _ hdt, Just (HalfDayWorked notes tArrived tLeft office _ _, project))) -> return $
+            headerWithHdt hdt <> "\n"
+            <> projectName project <> "\n"
+            <> packShow office <> " " <> showTime tArrived <> " " <> showTime tLeft <> "\n"
+            <> notes
+  where header = "# " <> showDay day <> " " <> packShow tid
+        headerWithHdt hdt = header <> " " <> packShow hdt 
+        packShow x = (Text.pack . show) x
+
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
     => Cmd 
@@ -176,15 +199,19 @@ run (DiaryDisplay cd tid) = do
                ]
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
-  where showTime (Time.TimeOfDay h m _) = 
-            Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
-    -- Read file content
+    -- Get the old record to put as default in the file
+    day <- toDay cd
+    oldRecord <- hdHdwProjAsText day tid
+    -- Bracket to make sure the temporary file will be deleted no matter what
     fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar") 
         (liftIO . removeFile) 
         (\filename -> do
+            -- Write old record
+            writeFileUtf8 filename oldRecord
+            -- Find an editor
             editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
             -- Launch process
             exitCode <- proc editor [filename] runProcess
@@ -193,9 +220,13 @@ run (DiaryEdit cd tid) = do
             -- Read file content
             liftIO $ readFile filename
         )
-    case parse fileContent of
-        Left error'   -> throwIO $ error'
-        Right options -> run $ DiaryWork cd tid options
+    if fileContent == oldRecord 
+        then nothingToDo
+        else case parse fileContent of
+            Left e@(ParserError _) -> throwIO e
+            Left (EmptyFileError)  -> nothingToDo
+            Right options          -> run $ DiaryWork cd tid options
+  where nothingToDo = liftIO $ putStrLn "Nothing to do"
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
