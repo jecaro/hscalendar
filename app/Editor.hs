@@ -59,7 +59,7 @@ data ParseError = EmptyFileError | ParserError Text
 instance Exception ParseError
 
 instance Show ParseError where
-    show (EmptyFileError) = "The file is empty"
+    show EmptyFileError = "The file is empty"
     show (ParserError msg) = "Parse error: " <> Text.unpack msg
 
 skipHorizontalSpaces :: Parser ()
@@ -94,11 +94,10 @@ parse fileContent = do
     -- Remaining file is empty
     if Text.null prunedContent
         then Left EmptyFileError
-        else do
-            -- Parse the lines
-            case parseOnly (fileParser <* endOfInput) prunedContent of 
-                Left msg -> Left $ ParserError $ Text.pack msg
-                Right fileWorked -> Right $ toOptions fileWorked
+        -- Parse the lines
+        else case parseOnly (fileParser <* endOfInput) prunedContent of 
+            Left msg         -> Left  $ ParserError $ Text.pack msg
+            Right fileWorked -> Right $ toOptions fileWorked
   where notComment text = not $ Text.isPrefixOf "#" text
 
 toOptions :: FileWorked -> [WorkOption]

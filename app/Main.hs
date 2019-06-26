@@ -48,7 +48,6 @@ import           Run (App(..), run)
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
--- - Put parsers close to their types
 
 -- | Main function
 main :: IO ()
