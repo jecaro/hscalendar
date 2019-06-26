@@ -47,8 +47,8 @@ import           Run (App(..), run)
 -- - Put defaults values in config file
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
--- - Ignore case for office
 -- - Put hdHdwProjAsText in Editor
+-- - Put parsers close to their types
 
 -- | Main function
 main :: IO ()
