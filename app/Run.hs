@@ -181,21 +181,20 @@ run (DiaryDisplay cd tid) = do
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
-    -- Find an editor
-    editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
-    -- Create a temporary file
-    fileName <- liftIO $ emptySystemTempFile "hscalendar"
-    -- Write header
-    -- Launch process
-    exitCode <- proc editor [fileName] runProcess
-    -- Handle error code
-    when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
     -- Read file content
-    fileContent <- liftIO $ readFile fileName
+    fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar") 
+        (liftIO . removeFile) 
+        (\filename -> do
+            editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
+            -- Launch process
+            exitCode <- proc editor [filename] runProcess
+            -- Handle error code
+            when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
+            -- Read file content
+            liftIO $ readFile filename
+        )
     options <- parse fileContent
     run $ DiaryWork cd tid options
-    -- Delete tmp file
-    liftIO $ removeFile fileName
 
     -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
