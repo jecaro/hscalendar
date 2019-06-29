@@ -149,9 +149,11 @@ hdHdwProjAsText day tid = do
             <> projectName project <> "\n"
             <> packShow office <> " " <> showTime tArrived <> " " <> showTime tLeft <> "\n"
             <> notes
+            
   where header = "# " <> showDay day <> " " <> packShow tid
         headerWithHdt hdt = header <> " " <> packShow hdt 
-        packShow x = (Text.pack . show) x
+        packShow :: Show a => a -> Text
+        packShow = Text.pack . show
 
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
@@ -191,7 +193,7 @@ run (DiaryDisplay cd tid) = do
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
            Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
-           Right ((HalfDay _ _ hdt), Nothing) -> [ (Text.pack . show) hdt ]
+           Right (HalfDay _ _ hdt, Nothing) -> [ (Text.pack . show) hdt ]
            Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> projectName project
@@ -224,7 +226,7 @@ run (DiaryEdit cd tid) = do
         then nothingToDo
         else case parse fileContent of
             Left e@(ParserError _) -> throwIO e
-            Left (EmptyFileError)  -> nothingToDo
+            Left EmptyFileError    -> nothingToDo
             Right options          -> run $ DiaryWork cd tid options
   where nothingToDo = liftIO $ putStrLn "Nothing to do"
 
