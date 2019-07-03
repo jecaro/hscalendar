@@ -32,8 +32,8 @@ import           CommandLine
     , SetProj(..)
     , WorkOption(..)
     )
-import           Model (NotesText, Project, mkNotes, mkProject) 
-import qualified Office as Office (Office(..), parser) 
+import           Model (Notes, Project, mkNotes, mkProject) 
+import qualified Office (Office(..), parser) 
 
 -- Example of data
 -- 
@@ -48,7 +48,7 @@ data FileWorked = FileWorked
     , _fileWorkedOffice  :: !Office.Office
     , _fileWorkedArrived :: !Time.TimeOfDay
     , _fileWorkedLeft    :: !Time.TimeOfDay
-    , _fileWorkedNotes   :: !NotesText
+    , _fileWorkedNotes   :: !Notes
     }
   deriving Show
 makeFields ''FileWorked
@@ -72,7 +72,7 @@ projectParser = do
         Nothing -> fail "Unable to parse project"
         Just p  -> return p
 
-notesTextParser :: Parser NotesText
+notesTextParser :: Parser Notes
 notesTextParser = do
     str <- takeText
     case mkNotes str of

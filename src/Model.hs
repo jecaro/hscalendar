@@ -17,17 +17,18 @@ module Model
     , HalfDay(..)
     , HalfDayId
     , HalfDayWorked(..)
+    , NewModel.Notes
     , NewModel.ProjName
     , NewModel.Project
+    , NewModel.mkNotes
+    , NewModel.mkNotesLit
     , NewModel.mkProject
     , NewModel.mkProjectLit
+    , NewModel.unNotes
     , NewModel.unProject
-    , NotesText
     , ProjectId
     , Unique(DayAndTimeInDay, UniqueHalfDayId, UniqueName)
     , migrateAll
-    , mkNotes
-    -- * Types
     , BadArgument(..)
     , ProjExists(..)
     , ProjHasHDW(..)
@@ -68,8 +69,6 @@ import qualified RIO.Time as Time
     , formatTime
     , toGregorian
     )
-
-import           Refined (unrefine)
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
@@ -279,10 +278,10 @@ hdwSetOffice day tid office = do
     update hdwId [HalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
-hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> NotesText -> SqlPersistT m ()
+hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> NewModel.Notes -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [HalfDayWorkedNotes =. (unrefine notes)]
+    update hdwId [HalfDayWorkedNotes =. NewModel.unNotes notes]
 
 -- | Set a work half-day with a project
 hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> NewModel.Project -> SqlPersistT m () 
@@ -299,7 +298,7 @@ hdwSetArrived
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrived day tid tod = do
-    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { halfDayWorkedArrived = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'

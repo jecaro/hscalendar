@@ -18,7 +18,7 @@ import           Database.Persist.Sqlite
     , SqlPersistM
     , SqlPersistT
     )
-import           Refined (refineTH, unrefine)
+import           Refined (refineTH)
 import           Test.Hspec
     ( after_
     , before_
@@ -53,7 +53,7 @@ import           Model
     , HalfDayWorked(..)
     , HdNotFound(..)
     , HdwNotFound(..)
-    , NotesText
+    , Notes
     , Project
     , ProjExists(..)
     , ProjHasHDW(..)
@@ -70,12 +70,14 @@ import           Model
     , hdwSetOffice
     , hdwSetProject
     , migrateAll
+    , mkNotesLit
     , mkProjectLit
     , projAdd
     , projExists
     , projList
     , projRename
     , projRm
+    , unNotes
     )
 import          Office (Office(..))
 import          TimeInDay (TimeInDay(..), other)
@@ -126,8 +128,8 @@ badArgumentException = const True
 -- Some constants for the specs
 
 project1, project2 :: Project
-project1 = mkProjectLit $$(refineTH "TestProject1") 
-project2 = mkProjectLit $$(refineTH "TestProject2") 
+project1 = mkProjectLit $$(refineTH "TestProject1")
+project2 = mkProjectLit $$(refineTH "TestProject2")
 
 day1 :: Time.Day
 day1 = Time.fromGregorian 1979 03 22
@@ -141,8 +143,8 @@ arrived1 = Time.TimeOfDay 9 0 0
 left1 :: Time.TimeOfDay
 left1 = Time.TimeOfDay 12 0 0
 
-notes1 :: NotesText
-notes1 = $$(refineTH "some notes")
+notes1 :: Notes
+notes1 = mkNotesLit $$(refineTH "some notes")
 
 office1 :: Office
 office1 = Home
@@ -378,7 +380,7 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
     Q.run $ cleanDB
 
 -- | Test setting the notes
-prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> NotesText-> Property
+prop_hdSetNotes :: RunDB -> Time.Day -> TimeInDay -> Project -> Notes -> Property
 prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ do
     -- Initialize the hdw and set the notes
     (_, mbHdwProj) <- Q.run $ do
@@ -389,7 +391,7 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
         cleanDB
         return res
 
-    Q.assert $ testHdw ((==) (unrefine notes) . halfDayWorkedNotes) mbHdwProj
+    Q.assert $ testHdw ((==) (unNotes notes) . halfDayWorkedNotes) mbHdwProj
 
 -- | Test setting the office
 prop_hdSetOffice :: RunDB -> Time.Day -> TimeInDay -> Project -> Office-> Property
@@ -544,7 +546,7 @@ testHdAPI runDB =
             it "tests setting notes" $ do
                 runDB (hdwSetNotes day1 tid1 notes1)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)
-                mbHdwProj `hdwShouldSatisfy` ((==) (unrefine notes1) . halfDayWorkedNotes)
+                mbHdwProj `hdwShouldSatisfy` ((==) (unNotes notes1) . halfDayWorkedNotes)
             it "tests setting office" $ do
                 runDB (hdwSetOffice day1 tid1 office1)
                 (_, mbHdwProj) <- runDB (hdHdwProjGet day1 tid1)

@@ -12,32 +12,7 @@ where
 
 import           RIO
 import qualified RIO.Text ()
-import qualified RIO.Text as Text (all, length, pack)
 import qualified RIO.Time as Time (Day, TimeOfDay)
-
-import           Data.Char (isPrint)
-
-import           Data.Either.Combinators (rightToMaybe)
-import           Data.Maybe (Maybe(..))
-import           Data.Typeable (typeOf)
-
-import           Refined
-    ( Predicate
-    , Refined
-    , refine
-    , throwRefineOtherException
-    , validate
-    )
-
-import           Test.QuickCheck 
-    ( Arbitrary
-    , arbitrary
-    , choose
-    , suchThat
-    , vectorOf
-    , sized
-    )
-import           Test.QuickCheck.Instances.Text()
 
 import           Database.Persist.TH
    ( mkMigrate
@@ -85,43 +60,6 @@ HalfDayWorked -- Only for WorkedOpenDay
     deriving Show
     deriving Eq
 |]
-
--- | Simple type to refine Text for notes
-data Notes
-
--- | The actual refined type
-type NotesText = Refined Notes Text
-
--- | Predicate instance to validate what is allowable for a project name
-instance Predicate Notes Text where
-    validate p name = unless (notesValid name) $
-            throwRefineOtherException (typeOf p) "Not alpha num text"
-
--- | Arbitrary instance for QuickCheck
-instance Arbitrary NotesText where
-    arbitrary = sized $ \s -> do
-        n <- choose (0, s `min` notesMaxLength)
-        xs <- vectorOf n (arbitrary `suchThat` printableOrEOLOrTab)
-        case mkNotes $ Text.pack xs of
-            Nothing -> undefined
-            Just notes -> return notes
-
--- | Maximum length of a note
-notesMaxLength :: Int
-notesMaxLength = 500
-
--- | Allowed characters for a note: a printable char, eol or tabulation
-printableOrEOLOrTab :: Char -> Bool
-printableOrEOLOrTab x = isPrint x || elem x ['\n', '\t']
-
--- | Check the validity of a note
-notesValid :: Text -> Bool
-notesValid name = Text.length name <= notesMaxLength &&
-    Text.all printableOrEOLOrTab name 
-
--- | Smart constructor which can fail
-mkNotes :: Text -> Maybe NotesText
-mkNotes name = rightToMaybe (refine name)
 
 -- Conversion functions
 

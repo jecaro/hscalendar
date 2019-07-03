@@ -49,6 +49,7 @@ import           Run (App(..), run)
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
 -- - Add a cleanUp function
+-- - Check if we can simplifie Project and Notes
 
 -- | Main function
 main :: IO ()
