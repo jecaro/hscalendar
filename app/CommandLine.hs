@@ -51,8 +51,9 @@ import           Options.Applicative as Opt
 
 import qualified CustomDay as CD (CustomDay(..), parser)
 import qualified HalfDayType as HDT (HalfDayType(..), parser)
-import           Model (Project, NotesText, mkProject, mkNotes)
-import qualified Office as Office (Office(..), parser)
+import           Model (NotesText, mkNotes)
+import           NewModel (Project, mkProject)
+import qualified Office (Office(..), parser)
 import           TimeInDay (TimeInDay(..))
 
 data Options = Options { optVerbose :: !Bool,
@@ -64,9 +65,9 @@ data Cmd = Migrate                                             |
            DiaryHoliday CD.CustomDay TimeInDay HDT.HalfDayType |
            DiaryRm CD.CustomDay TimeInDay                      |
            DiaryWork CD.CustomDay TimeInDay [WorkOption]       |
-           ProjAdd Project                                     |
+           ProjAdd NewModel.Project                            |
            ProjList                                            |
-           ProjRename Project Project                          |
+           ProjRename NewModel.Project NewModel.Project        |
            ProjRm Project
     deriving (Eq, Show)
 
@@ -105,7 +106,7 @@ readCustomDay :: ReadM CD.CustomDay
 readCustomDay = attoReadM CD.parser
 
 readProject :: ReadM Project
-readProject = maybeReader $ mkProject . Text.pack
+readProject = maybeReader $ NewModel.mkProject . Text.pack
 
 readLevel :: ReadM LogLevel
 readLevel = attoReadM parser

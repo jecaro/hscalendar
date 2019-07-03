@@ -46,6 +46,7 @@ import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
 import           HalfDayType (HalfDayType(..))
+import qualified Internal.Model as IM (Project) 
 import           Model 
     ( BadArgument(..)
     , HalfDay(..)
@@ -53,7 +54,7 @@ import           Model
     , HdNotFound(..)
     , HdwNotFound(..)
     , NotesText
-    , Project(..)
+    , Project
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
@@ -96,7 +97,7 @@ cleanDB :: (MonadIO m) => SqlPersistT m ()
 cleanDB = do
     deleteWhere ([] :: [Filter HalfDayWorked])
     deleteWhere ([] :: [Filter HalfDay])
-    deleteWhere ([] :: [Filter Project])
+    deleteWhere ([] :: [Filter IM.Project])
 
 -- | hspec selector for ProjExists exception
 projExistsException :: Selector ProjExists

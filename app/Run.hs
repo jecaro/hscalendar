@@ -53,6 +53,7 @@ import           Model
     ( HalfDay(..)
     , HalfDayWorked(..)
     , HdNotFound(..)
+    , Project(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
@@ -69,7 +70,6 @@ import           Model
     , hdwSetProject
     , migrateAll
     , projAdd
-    , projectName 
     , projList
     , projRename
     , projRm
@@ -146,7 +146,7 @@ hdHdwProjAsText day tid = do
         (Right (HalfDay _ _ hdt, Nothing)) -> return $ headerWithHdt hdt <> "\n"
         (Right (HalfDay _ _ hdt, Just (HalfDayWorked notes tArrived tLeft office _ _, project))) -> return $
             headerWithHdt hdt <> "\n"
-            <> projectName project <> "\n"
+            <> unProject project <> "\n"
             <> packShow office <> " " <> showTime tArrived <> " " <> showTime tLeft <> "\n"
             <> notes
             
@@ -164,7 +164,7 @@ run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env)
 run Migrate = runDB $ runMigration migrateAll
 
 -- List the projects
-run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . projectName) 
+run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . unProject) 
 
 -- Add a project
 run (ProjAdd project) = catch (void $ runDB $ projAdd project) 
@@ -196,7 +196,7 @@ run (DiaryDisplay cd tid) = do
            Right (HalfDay _ _ hdt, Nothing) -> [ (Text.pack . show) hdt ]
            Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
-               , "Project: " <> projectName project
+               , "Project: " <> unProject project
                , "Notes:   " <> notes
                ]
     -- Print it

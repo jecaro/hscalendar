@@ -26,14 +26,12 @@ import           Refined
     , Refined
     , refine
     , throwRefineOtherException
-    , unrefine
     , validate
     )
 
 import           Test.QuickCheck 
     ( Arbitrary
     , arbitrary
-    , elements
     , choose
     , suchThat
     , vectorOf
@@ -50,8 +48,9 @@ import           Database.Persist.TH
    )
 
 import           HalfDayType (HalfDayType)
-import           TimeInDay (TimeInDay)
+import qualified NewModel
 import           Office (Office)
+import           TimeInDay (TimeInDay)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Project
@@ -86,47 +85,6 @@ HalfDayWorked -- Only for WorkedOpenDay
     deriving Show
     deriving Eq
 |]
-
--- | Max length of project name
-projNameMaxLength :: Int
-projNameMaxLength = 20
-
--- | Allowed chars for project name
-projNameAllowedChars :: String
-projNameAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
-
--- | Predicate to check if the project is valid
-projNameValid :: Text -> Bool
-projNameValid name =  Text.length name > 0 
-                   && Text.length name <= projNameMaxLength 
-                   && Text.all (`elem` projNameAllowedChars) name
-
--- | Arbitrary instance for project. Only project with allowed characters
-instance Arbitrary Project where
-    arbitrary = sized $ \s -> do
-        n <- choose (1, s `min` projNameMaxLength)
-        xs <- vectorOf n (elements projNameAllowedChars)
-        return (Project (Text.pack xs))
-
--- | Simple type to refine Text for project names
-data ProjName
-
--- | The actual refined type
-type ProjNameText = Refined ProjName Text
-
--- | Predicate instance to validate what is allowable for a project name
-instance Predicate ProjName Text where
-    validate p name = unless (projNameValid name) $
-            throwRefineOtherException (typeOf p) "Not alpha num text"
-
--- | Smart constructor which cannot fail
-mkProjectLit :: ProjNameText -> Project
-mkProjectLit = Project . unrefine
-
--- | Smart constructor which can fail
-mkProject :: Text -> Maybe Project
-mkProject name = Project . (unrefine :: ProjNameText -> Text) <$>
-    rightToMaybe (refine name)
 
 -- | Simple type to refine Text for notes
 data Notes
@@ -165,3 +123,10 @@ notesValid name = Text.length name <= notesMaxLength &&
 mkNotes :: Text -> Maybe NotesText
 mkNotes name = rightToMaybe (refine name)
 
+-- Conversion functions
+
+projectToDb :: NewModel.Project -> Project
+projectToDb project = Project $ NewModel.unProject project
+
+dbToProject :: Project -> NewModel.Project
+dbToProject project = NewModel.MkProject $ projectName project
