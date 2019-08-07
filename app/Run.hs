@@ -51,13 +51,14 @@ import           CustomDay(toDay)
 import           Editor(ParseError(..), parse)
 import           Model
     ( HalfDay(..)
-    , HalfDayWorked(..)
     , HdNotFound(..)
+    , Idle(..)
     , Project(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
+    , Worked(..)
     , hdHdwProjGet
     , hdRm
     , hdSetHoliday
@@ -74,6 +75,7 @@ import           Model
     , projRename
     , projRm
     , showDay
+    , unNotes
     )
 import           TimeInDay (TimeInDay(..))
 
@@ -143,12 +145,12 @@ hdHdwProjAsText day tid = do
     eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
     case eiHdHdwProj of
         (Left (HdNotFound _ _)) -> return $ header <> " Nothing\n"
-        (Right (HalfDay _ _ hdt, Nothing)) -> return $ headerWithHdt hdt <> "\n"
-        (Right (HalfDay _ _ hdt, Just (HalfDayWorked notes tArrived tLeft office _ _, project))) -> return $
-            headerWithHdt hdt <> "\n"
+        (Right (MkHalfDayIdle (MkIdle _ _ hdt))) -> return $ headerWithHdt hdt <> "\n"
+        (Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project))) -> return $
+            header <> "\n"
             <> unProject project <> "\n"
             <> packShow office <> " " <> showTime tArrived <> " " <> showTime tLeft <> "\n"
-            <> notes
+            <> unNotes notes
             
   where header = "# " <> showDay day <> " " <> packShow tid
         headerWithHdt hdt = header <> " " <> packShow hdt 
@@ -193,11 +195,11 @@ run (DiaryDisplay cd tid) = do
     -- Analyse output to produce lines of text
     let hdStr = case eiHdHdwProj of
            Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
-           Right (HalfDay _ _ hdt, Nothing) -> [ (Text.pack . show) hdt ]
-           Right (_, Just (HalfDayWorked notes tArrived tLeft office _ _, project)) ->
+           Right (MkHalfDayIdle (MkIdle _ _ hdt)) -> [ (Text.pack . show) hdt ]
+           Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> unProject project
-               , "Notes:   " <> notes
+               , "Notes:   " <> unNotes notes
                ]
     -- Print it
     liftIO $ mapM_ putStrLn hdStr
@@ -242,7 +244,7 @@ run (DiaryWork cd tid wopts) = do
     -- Create it with a project if needed
     eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
         -- Everything is there
-        (Right (_, Just (_, _)), _) -> return $ Right wopts 
+        (Right (MkHalfDayWorked _), _) -> return $ Right wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
@@ -263,7 +265,7 @@ run (DiaryWork cd tid wopts) = do
                 Right _ -> return $ Right otherOpts''
                 Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
         -- Holiday but no project
-        (Right (_, Nothing), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+        (Right (MkHalfDayIdle _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
         -- No hd, but no project either
         (Left (HdNotFound _ _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
     

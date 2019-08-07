@@ -40,12 +40,14 @@ data IdleDayType = PayedLeave
                  | UnpayedLeave
                  | PublicHoliday 
                  | PartTime
+    deriving (Show, Eq)
 
 data Idle = MkIdle
     { _idleDay       :: Time.Day
     , _idleTimeInDay :: TimeInDay
     , _idleDayType   :: IdleDayType
     }
+    deriving (Show, Eq)
 makeFields ''Idle
 
 newtype Notes = MkNotes { unNotes :: Text.Text }
@@ -63,10 +65,11 @@ data Worked = MkWorked
     , _workedNotes     :: Notes
     , _workedProject   :: Project
     }
+    deriving (Show, Eq)
 makeFields ''Worked
 
-data HalfDay = HalfDayWorked Worked | HalfDayIdle Idle
-
+data HalfDay = MkHalfDayWorked Worked | MkHalfDayIdle Idle
+    deriving (Show, Eq)
 
 -- | Max length of project name
 projNameMaxLength :: Int

@@ -50,6 +50,7 @@ import           Run (App(..), run)
 -- - Put hdHdwProjAsText in Editor
 -- - Add a cleanUp function
 -- - Check if we can simplifie Project and Notes
+-- - Remove halfdaytype from Model
 
 -- | Main function
 main :: IO ()

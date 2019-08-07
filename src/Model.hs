@@ -14,12 +14,15 @@ module Model
         , ProjectId
         , ProjectName
         )
-    , HalfDay(..)
     , HalfDayId
     , HalfDayWorked(..)
+    , NewModel.HalfDay(..)
+    , NewModel.Idle(..)
+    , NewModel.IdleDayType(..)
     , NewModel.Notes
     , NewModel.ProjName
     , NewModel.Project
+    , NewModel.Worked(..)
     , NewModel.mkNotes
     , NewModel.mkNotesLit
     , NewModel.mkProject
@@ -54,6 +57,8 @@ module Model
     , projRename
     , projRm
     -- * Misc
+    , cleanDB
+    , dbToIdleDayType
     , showDay
     )
 
@@ -87,6 +92,7 @@ import           Database.Esqueleto
     )
 import           Database.Persist.Sqlite 
     ( Entity(..)
+    , Filter
     , SelectOpt(Asc)
     , SqlPersistT
     , Key
@@ -196,6 +202,13 @@ showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY])
         printNum = sformat (left 2 '0' %. int) 
         weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
 
+-- | Clean up the db
+cleanDB :: (MonadIO m) => SqlPersistT m ()
+cleanDB = do
+    deleteWhere ([] :: [Filter HalfDayWorked])
+    deleteWhere ([] :: [Filter HalfDay])
+    deleteWhere ([] :: [Filter Project])
+
 -- Exported project functions 
 
 -- | Check if a project exists 
@@ -255,7 +268,7 @@ hdHdwProjGet
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day
     -> TimeInDay 
-    -> SqlPersistT m (HalfDay, Maybe (HalfDayWorked, NewModel.Project))
+    -> SqlPersistT m NewModel.HalfDay
 hdHdwProjGet day tid = 
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. HalfDayDay        ==. val day &&.
@@ -266,10 +279,15 @@ hdHdwProjGet day tid =
     \case
         []    -> throwIO $ HdNotFound day tid
         (x:_) -> case x of
-            (Entity _ hd, Nothing, Nothing) -> return (hd, Nothing)
-            (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) 
-                -> return (hd, Just (hdw, dbToProject proj))
-            _ -> throwIO DbInconsistency
+            (Entity _ hd, Nothing, Nothing) -> 
+                case dbToIdle hd of
+                    Nothing -> throwIO DbInconsistency
+                    Just idle -> return $ NewModel.MkHalfDayIdle idle
+            (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) -> 
+                case dbToWorked hd hdw proj of
+                    Nothing -> throwIO BadArgument
+                    Just worked -> return $ NewModel.MkHalfDayWorked worked
+            _ -> throwIO $ HdNotFound day tid
 
 -- | Set the office for a day-time in day
 hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
