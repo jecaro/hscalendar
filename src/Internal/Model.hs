@@ -23,6 +23,7 @@ import           Database.Persist.TH
    )
 
 import           HalfDayType (HalfDayType(..))
+import qualified IdleDayType as IDT
 import qualified NewModel
 import           Office (Office)
 import           TimeInDay (TimeInDay)
@@ -77,14 +78,23 @@ dbToIdle (HalfDay day timeInDay halfDayType) =
           , NewModel._idleTimeInDay = timeInDay
           , NewModel._idleDayType   = halfDayType' }
 
-dbToIdleDayType :: HalfDayType -> Maybe NewModel.IdleDayType
-dbToIdleDayType PayedLeave    = Just NewModel.PayedLeave
-dbToIdleDayType FamilyEvent   = Just NewModel.FamilyEvent
-dbToIdleDayType RTTE          = Just NewModel.RTTE
-dbToIdleDayType RTTS          = Just NewModel.RTTS
-dbToIdleDayType UnpayedLeave  = Just NewModel.UnpayedLeave
-dbToIdleDayType PublicHoliday = Just NewModel.PublicHoliday
-dbToIdleDayType PartTime      = Just NewModel.PartTime
+idleDayTypeToDb :: IDT.IdleDayType -> HalfDayType
+idleDayTypeToDb IDT.PayedLeave    = PayedLeave
+idleDayTypeToDb IDT.FamilyEvent   = FamilyEvent
+idleDayTypeToDb IDT.RTTE          = RTTE
+idleDayTypeToDb IDT.RTTS          = RTTS
+idleDayTypeToDb IDT.UnpayedLeave  = UnpayedLeave
+idleDayTypeToDb IDT.PublicHoliday = PublicHoliday
+idleDayTypeToDb IDT.PartTime      = PartTime
+
+dbToIdleDayType :: HalfDayType -> Maybe IDT.IdleDayType
+dbToIdleDayType PayedLeave    = Just IDT.PayedLeave
+dbToIdleDayType FamilyEvent   = Just IDT.FamilyEvent
+dbToIdleDayType RTTE          = Just IDT.RTTE
+dbToIdleDayType RTTS          = Just IDT.RTTS
+dbToIdleDayType UnpayedLeave  = Just IDT.UnpayedLeave
+dbToIdleDayType PublicHoliday = Just IDT.PublicHoliday
+dbToIdleDayType PartTime      = Just IDT.PartTime
 dbToIdleDayType Worked        = Nothing
 
 dbToWorked :: HalfDay -> HalfDayWorked -> Project -> Maybe NewModel.Worked

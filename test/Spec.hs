@@ -43,8 +43,7 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
-import           HalfDayType (HalfDayType(..))
-import qualified Model as NewModel (IdleDayType(..))
+import qualified IdleDayType as IDT (IdleDayType(..))
 import           Model 
     ( BadArgument(..)
     , HalfDay(..)
@@ -58,7 +57,6 @@ import           Model
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , Worked(..)
-    , dbToIdleDayType
     , cleanDB
     , hdHdwProjGet
     , hdRm
@@ -136,11 +134,11 @@ notes1 = mkNotesLit $$(refineTH "some notes")
 office1 :: Office
 office1 = Home
 
-hdt1 :: HalfDayType
-hdt1 = PayedLeave
+hdt1 :: IDT.IdleDayType
+hdt1 = IDT.PayedLeave
 
-hdt1' :: NewModel.IdleDayType
-hdt1' = NewModel.PayedLeave
+hdt1' :: IDT.IdleDayType
+hdt1' = IDT.PayedLeave
 
 arrived1 :: TimeInDay -> Time.TimeOfDay
 arrived1 Morning   = Time.TimeOfDay 8 30 0
@@ -207,14 +205,11 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
     Q.assert $ dbProjects == sort projects
 
 -- | Test the presence of a holiday entry
-prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> HalfDayType -> Property
+prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> IDT.IdleDayType -> Property
 prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
     exceptionRaised <- Q.run $ catch (hdSetHoliday day tid hdt >> return False) 
         (\BadArgument -> return True)
-
-    -- Impossible to set a holiday worked
-    Q.assert $ exceptionRaised == (hdt == Worked)
 
     -- Check if the value in the database is right
     unless exceptionRaised $ do
@@ -222,7 +217,7 @@ prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
         case hdHdwProj of
           MkHalfDayWorked _ -> Q.assert False
-          MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ dbToIdleDayType hdt == Just hdt'
+          MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ hdt == hdt'
 
     Q.run cleanDB
 
@@ -493,8 +488,6 @@ testHdAPI runDB =
         context "When the DB is empty" $ do
             it "tests adding a holiday entry" $
                 runDB (hdSetHoliday day1 tid1 hdt1) 
-            it "tests adding a holiday entry bad argument" $
-                runDB (hdSetHoliday day1 tid1 Worked) `shouldThrow` badArgumentException
             it "tests adding a work entry" $ 
                 runDB $  projAdd project1 
                       >> hdSetWorkDefault day1 tid1 project1

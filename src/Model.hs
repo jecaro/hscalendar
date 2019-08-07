@@ -6,7 +6,6 @@ module Model
         ( HalfDayDay
         , HalfDayId
         , HalfDayTimeInDay
-        , HalfDayType
         , HalfDayWorkedHalfDayId
         , HalfDayWorkedNotes 
         , HalfDayWorkedOffice
@@ -18,7 +17,6 @@ module Model
     , HalfDayWorked(..)
     , NewModel.HalfDay(..)
     , NewModel.Idle(..)
-    , NewModel.IdleDayType(..)
     , NewModel.Notes
     , NewModel.ProjName
     , NewModel.Project
@@ -112,6 +110,7 @@ import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
 import           HalfDayType(HalfDayType(..))
+import           IdleDayType
 import qualified NewModel
 import           Office (Office(..))
 import           TimeInDay(TimeInDay(..), other)
@@ -354,19 +353,19 @@ hdSetHoliday
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
-    -> HalfDayType
+    -> IdleDayType
     -> SqlPersistT m () 
-hdSetHoliday _ _ Worked = throwIO BadArgument
 hdSetHoliday day tid hdt = try (hdGetInt day tid) >>=
     \case 
         -- Create a new entry
-        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid hdt
+        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid dbHdt
         -- Edit existing entry
         Right (Entity hdId _)   -> do
             -- Delete entry from HalfDayWorked if it exists
             deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
             -- Update entry
-            update hdId [HalfDayType =. hdt]
+            update hdId [HalfDayType =. dbHdt]
+  where dbHdt = idleDayTypeToDb hdt
 
 -- | Set a half-day as working on a project. 
 hdSetWork 

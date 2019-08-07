@@ -30,17 +30,9 @@ import           Test.QuickCheck
     )
 import           Test.QuickCheck.Instances.Text()
 
+import           IdleDayType
 import           Office (Office)
 import           TimeInDay (TimeInDay)
-
-data IdleDayType = PayedLeave
-                 | FamilyEvent
-                 | RTTE
-                 | RTTS
-                 | UnpayedLeave
-                 | PublicHoliday 
-                 | PartTime
-    deriving (Show, Eq)
 
 data Idle = MkIdle
     { _idleDay       :: Time.Day
