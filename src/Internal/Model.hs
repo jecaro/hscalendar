@@ -22,7 +22,7 @@ import           Database.Persist.TH
    , sqlSettings
    )
 
-import           HalfDayType (HalfDayType(..))
+import           Internal.HalfDayType (HalfDayType(..))
 import qualified IdleDayType as IDT
 import           Idle(Idle(..))
 import           Notes(Notes(..))

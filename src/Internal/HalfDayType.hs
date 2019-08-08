@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module HalfDayType 
+module Internal.HalfDayType 
     ( HalfDayType(..)
     ) where
 

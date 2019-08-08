@@ -109,7 +109,6 @@ import qualified Database.Persist.Sqlite as P ((==.))
 import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
-import           HalfDayType (HalfDayType(..))
 import qualified HalfDay as HD (HalfDay(..))
 import           Idle (Idle(..))
 import           IdleDayType
@@ -119,6 +118,7 @@ import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
 import           Worked (Worked(..))
 
+import           Internal.HalfDayType (HalfDayType(..))
 import           Internal.Model
 
 -- Exceptions that are likely to occure
