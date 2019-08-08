@@ -1,34 +1,20 @@
 -- | This module reexport the public functions from "Internal.Model"
 module Model
     ( 
-    -- * Rexexported from Internal.Model
-      EntityField
-        ( HalfDayDay
-        , HalfDayId
-        , HalfDayTimeInDay
-        , HalfDayWorkedHalfDayId
-        , HalfDayWorkedNotes 
-        , HalfDayWorkedOffice
-        , HalfDayWorkedProjectId
-        , ProjectId
-        , ProjectName
-        )
-    , HalfDayId
-    , HalfDayWorked(..)
+    -- * Types and accessors
+      HalfDayWorked(..)
     , HD.HalfDay(..)
     , Idle(..)
     , Notes
-    , mkNotes
-    , mkNotesLit
-    , unNotes
     , P.Project
     , P.mkProject
     , P.mkProjectLit
     , P.unProject
     , Worked(..)
-    , ProjectId
-    , Unique(DayAndTimeInDay, UniqueHalfDayId, UniqueName)
-    , migrateAll
+    , mkNotes
+    , mkNotesLit
+    , unNotes
+    -- * Exceptions
     , BadArgument(..)
     , ProjExists(..)
     , ProjHasHDW(..)
@@ -56,6 +42,7 @@ module Model
     -- * Misc
     , cleanDB
     , dbToIdleDayType
+    , migrateAll
     , showDay
     )
 
