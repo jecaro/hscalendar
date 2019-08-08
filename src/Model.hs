@@ -101,6 +101,7 @@ import           Database.Persist.Sqlite
     , replace
     , selectList
     , selectFirst
+    , toSqlKey
     , update
     , (=.)
     )
@@ -378,7 +379,10 @@ hdSetWork
     -> Time.TimeOfDay
     -> SqlPersistT m () 
 hdSetWork day tid project office tArrived tLeft = do 
+    -- Get the proj entry if it exists
     projId <- projGetInt project
+    let hdw = HalfDayWorked "" tArrived tLeft office (toSqlKey 0) (toSqlKey 0)
+    guardNewTimesAreOk day tid hdw
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
         -- Create a new entry
@@ -388,9 +392,8 @@ hdSetWork day tid project office tArrived tLeft = do
           -- Update entry
           update hdId [HalfDayType =. Worked]
           return hdId
-    let hdw = HalfDayWorked "" tArrived tLeft office projId hdId
-    guardNewTimesAreOk day tid hdw
-    void $ insert hdw
+    let hdw' = HalfDayWorked "" tArrived tLeft office projId hdId
+    void $ insert hdw'
    
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
