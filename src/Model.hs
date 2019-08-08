@@ -15,18 +15,17 @@ module Model
         )
     , HalfDayId
     , HalfDayWorked(..)
-    , NewModel.HalfDay(..)
-    , NewModel.Idle(..)
-    , NewModel.Notes
-    , NewModel.ProjName
-    , NewModel.Project
-    , NewModel.Worked(..)
-    , NewModel.mkNotes
-    , NewModel.mkNotesLit
-    , NewModel.mkProject
-    , NewModel.mkProjectLit
-    , NewModel.unNotes
-    , NewModel.unProject
+    , HD.HalfDay(..)
+    , Idle(..)
+    , Notes
+    , mkNotes
+    , mkNotesLit
+    , unNotes
+    , P.Project
+    , P.mkProject
+    , P.mkProjectLit
+    , P.unProject
+    , Worked(..)
     , ProjectId
     , Unique(DayAndTimeInDay, UniqueHalfDayId, UniqueName)
     , migrateAll
@@ -110,42 +109,46 @@ import qualified Database.Persist.Sqlite as P ((==.))
 import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
-import           HalfDayType(HalfDayType(..))
+import           HalfDayType (HalfDayType(..))
+import qualified HalfDay as HD (HalfDay(..))
+import           Idle (Idle(..))
 import           IdleDayType
-import qualified NewModel
+import qualified Project as P(Project, mkProject, mkProjectLit, unProject)
+import           Notes (Notes, mkNotes, mkNotesLit, unNotes)
 import           Office (Office(..))
-import           TimeInDay(TimeInDay(..), other)
+import           TimeInDay (TimeInDay(..), other)
+import           Worked (Worked(..))
 
 import           Internal.Model
 
 -- Exceptions that are likely to occure
 
 -- | The requested project has not been found
-newtype ProjNotFound = ProjNotFound NewModel.Project
+newtype ProjNotFound = ProjNotFound P.Project
 
 instance Exception ProjNotFound
 
 instance Show ProjNotFound where
     show (ProjNotFound project) = "The project " <> name <> " is not in the database"
-      where name = Text.unpack (NewModel.unProject project)
+      where name = Text.unpack (P.unProject project)
 
 -- | A project with the same name allready exists in the db
-newtype ProjExists = ProjExists NewModel.Project
+newtype ProjExists = ProjExists P.Project
 
 instance Exception ProjExists
 
 instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
-      where name = Text.unpack (NewModel.unProject project)
+      where name = Text.unpack (P.unProject project)
 
 -- | The project has associated hdw
-newtype ProjHasHDW = ProjHasHDW NewModel.Project
+newtype ProjHasHDW = ProjHasHDW P.Project
 
 instance Exception ProjHasHDW
 
 instance Show ProjHasHDW where
     show (ProjHasHDW project) = "The project " <> name <> " has associated half-day work"
-      where name = Text.unpack (NewModel.unProject project)
+      where name = Text.unpack (P.unProject project)
 
 -- | There is no record for specified HD
 data HdNotFound = HdNotFound Time.Day TimeInDay
@@ -212,22 +215,22 @@ cleanDB = do
 -- Exported project functions 
 
 -- | Check if a project exists 
-projExists :: MonadIO m => NewModel.Project -> SqlPersistT m Bool
-projExists project = isJust <$> getBy (UniqueName $ NewModel.unProject project)
+projExists :: MonadIO m => P.Project -> SqlPersistT m Bool
+projExists project = isJust <$> getBy (UniqueName $ P.unProject project)
 
 
 -- | Add a project 
-projAdd :: (MonadIO m) => NewModel.Project -> SqlPersistT m ()
+projAdd :: (MonadIO m) => P.Project -> SqlPersistT m ()
 projAdd project = do
     guardProjNotExistsInt project
     void $ insert $ projectToDb project
 
 -- | Get the list of the projects present in the database
-projList :: MonadIO m => SqlPersistT m [NewModel.Project]
+projList :: MonadIO m => SqlPersistT m [P.Project]
 projList = map (dbToProject . entityVal) <$> selectList [] [Asc ProjectName] 
 
 -- | Delete a project 
-projRm :: (MonadIO m) => NewModel.Project -> SqlPersistT m ()
+projRm :: (MonadIO m) => P.Project -> SqlPersistT m ()
 projRm project = do
     -- The following can throw exception same exception apply to this function
     -- so we dont catch it here
@@ -239,7 +242,7 @@ projRm project = do
             Just _  -> throwIO $ ProjHasHDW project
 
 -- | Rename a project 
-projRename :: (MonadIO m) => NewModel.Project -> NewModel.Project -> SqlPersistT m ()
+projRename :: (MonadIO m) => P.Project -> P.Project -> SqlPersistT m ()
 projRename p1 p2 = do
     pId <- projGetInt p1
     guardProjNotExistsInt p2
@@ -248,15 +251,15 @@ projRename p1 p2 = do
 -- Internal project functions
 
 -- | Get a project with error handling
-projGetInt :: (MonadIO m) => NewModel.Project -> SqlPersistT m (Key Project)
-projGetInt project = getBy (UniqueName $ NewModel.unProject project) >>= 
+projGetInt :: (MonadIO m) => P.Project -> SqlPersistT m (Key Project)
+projGetInt project = getBy (UniqueName $ P.unProject project) >>= 
     \case
         Nothing             -> throwIO $ ProjNotFound project
         Just (Entity pId _) -> return pId
 
 -- | Guard to check if a project is allready present in the db. If so, raise an
 -- exception
-guardProjNotExistsInt :: (MonadIO m) => NewModel.Project -> SqlPersistT m ()
+guardProjNotExistsInt :: (MonadIO m) => P.Project -> SqlPersistT m ()
 guardProjNotExistsInt project = do
     exists <- projExists project
     when exists (throwIO $ ProjExists project)
@@ -268,7 +271,7 @@ hdHdwProjGet
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day
     -> TimeInDay 
-    -> SqlPersistT m NewModel.HalfDay
+    -> SqlPersistT m HD.HalfDay
 hdHdwProjGet day tid = 
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. HalfDayDay        ==. val day &&.
@@ -282,11 +285,11 @@ hdHdwProjGet day tid =
             (Entity _ hd, Nothing, Nothing) -> 
                 case dbToIdle hd of
                     Nothing -> throwIO DbInconsistency
-                    Just idle -> return $ NewModel.MkHalfDayIdle idle
+                    Just idle -> return $ HD.MkHalfDayIdle idle
             (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) -> 
                 case dbToWorked hd hdw proj of
                     Nothing -> throwIO BadArgument
-                    Just worked -> return $ NewModel.MkHalfDayWorked worked
+                    Just worked -> return $ HD.MkHalfDayWorked worked
             _ -> throwIO $ HdNotFound day tid
 
 -- | Set the office for a day-time in day
@@ -296,13 +299,13 @@ hdwSetOffice day tid office = do
     update hdwId [HalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
-hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> NewModel.Notes -> SqlPersistT m ()
+hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [HalfDayWorkedNotes =. NewModel.unNotes notes]
+    update hdwId [HalfDayWorkedNotes =. unNotes notes]
 
 -- | Set a work half-day with a project
-hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> NewModel.Project -> SqlPersistT m () 
+hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> P.Project -> SqlPersistT m () 
 hdwSetProject day tid project = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     pId <- projGetInt project
@@ -373,7 +376,7 @@ hdSetWork
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
-    -> NewModel.Project 
+    -> P.Project 
     -> Office
     -> Time.TimeOfDay
     -> Time.TimeOfDay

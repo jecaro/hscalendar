@@ -267,7 +267,7 @@ testDBAndTimes day tid arrived left exceptionRaised = do
     (mbWorked, mbOWorked) <- Q.run $ do
         -- current is not necessary present in the DB, especially if there is 
         -- something wrong with the times
-        eiHd <- try $ hdHdwProjGet day tid
+        eiHd <- try (hdHdwProjGet day tid)
         let mbWorked = case eiHd of
                            Left (HdNotFound _ _) -> Nothing
                            Right entity -> toMbWorked entity

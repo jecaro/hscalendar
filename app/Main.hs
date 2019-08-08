@@ -51,6 +51,7 @@ import           Run (App(..), run)
 -- - Add a cleanUp function
 -- - Check if we can simplifie Project and Notes
 -- - bug hdSetWork twice
+-- - move convert functions
 
 -- | Main function
 main :: IO ()
