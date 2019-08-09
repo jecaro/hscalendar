@@ -26,13 +26,13 @@ import           Internal.HalfDayType (HalfDayType(..))
 import qualified IdleDayType as IDT
 import           Idle(Idle(..))
 import           Notes(Notes(..))
-import qualified Project as P (Project(..))
+import           Project (Project(..))
 import           Office (Office)
 import           TimeInDay (TimeInDay)
 import           Worked (Worked(..))
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-Project
+DBProject
     -- Fields
     name       Text
     -- Constraint
@@ -41,7 +41,7 @@ Project
     deriving Ord
     deriving Eq
     deriving Generic
-HalfDay
+DBHalfDay
     -- Fields
     day             Time.Day        
     timeInDay       TimeInDay   -- morning/afternoon
@@ -50,15 +50,15 @@ HalfDay
     DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
     deriving Show
     deriving Eq
-HalfDayWorked -- Only for WorkedOpenDay
+DBHalfDayWorked -- Only for WorkedOpenDay
     -- Fields
     notes     Text -- default empty string
     arrived   Time.TimeOfDay 
     left      Time.TimeOfDay --Constraint Left > Arrived
     office    Office
     -- Foreign keys
-    projectId ProjectId 
-    halfDayId HalfDayId
+    projectId DBProjectId 
+    halfDayId DBHalfDayId
     -- Constraints
     UniqueHalfDayId halfDayId
     deriving Show
@@ -67,14 +67,14 @@ HalfDayWorked -- Only for WorkedOpenDay
 
 -- Conversion functions
 
-projectToDb :: P.Project -> Project
-projectToDb project = Project $ P.unProject project
+projectToDb :: Project -> DBProject
+projectToDb project = DBProject $ unProject project
 
-dbToProject :: Project -> P.Project
-dbToProject project = P.MkProject $ projectName project
+dbToProject :: DBProject -> Project
+dbToProject project = MkProject $ dBProjectName project
 
-dbToIdle :: HalfDay -> Maybe Idle
-dbToIdle (HalfDay day timeInDay halfDayType) = 
+dbToIdle :: DBHalfDay -> Maybe Idle
+dbToIdle (DBHalfDay day timeInDay halfDayType) = 
     mkIdle <$> dbToIdleDayType halfDayType
   where mkIdle halfDayType' = MkIdle
           { _idleDay       = day
@@ -100,9 +100,9 @@ dbToIdleDayType PublicHoliday = Just IDT.PublicHoliday
 dbToIdleDayType PartTime      = Just IDT.PartTime
 dbToIdleDayType Worked        = Nothing
 
-dbToWorked :: HalfDay -> HalfDayWorked -> Project -> Maybe Worked
-dbToWorked (HalfDay day timeInDay Worked)
-    (HalfDayWorked notes arrived left office _ _) project = Just $ MkWorked
+dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
+dbToWorked (DBHalfDay day timeInDay Worked)
+    (DBHalfDayWorked notes arrived left office _ _) project = Just $ MkWorked
         { _workedDay       = day
         , _workedTimeInDay = timeInDay
         , _workedArrived   = arrived

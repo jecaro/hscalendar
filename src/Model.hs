@@ -2,14 +2,13 @@
 module Model
     ( 
     -- * Types and accessors
-      HalfDayWorked(..)
-    , HD.HalfDay(..)
+      HD.HalfDay(..)
     , Idle(..)
     , Notes
-    , P.Project
-    , P.mkProject
-    , P.mkProjectLit
-    , P.unProject
+    , Project
+    , mkProject
+    , mkProjectLit
+    , unProject
     , Worked(..)
     , mkNotes
     , mkNotesLit
@@ -99,7 +98,7 @@ import           Formatting (int, left, sformat, (%.))
 import qualified HalfDay as HD (HalfDay(..))
 import           Idle (Idle(..))
 import           IdleDayType
-import qualified Project as P(Project, mkProject, mkProjectLit, unProject)
+import           Project (Project, mkProject, mkProjectLit, unProject)
 import           Notes (Notes, mkNotes, mkNotesLit, unNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
@@ -111,31 +110,31 @@ import           Internal.Model
 -- Exceptions that are likely to occure
 
 -- | The requested project has not been found
-newtype ProjNotFound = ProjNotFound P.Project
+newtype ProjNotFound = ProjNotFound Project
 
 instance Exception ProjNotFound
 
 instance Show ProjNotFound where
     show (ProjNotFound project) = "The project " <> name <> " is not in the database"
-      where name = Text.unpack (P.unProject project)
+      where name = Text.unpack (unProject project)
 
 -- | A project with the same name allready exists in the db
-newtype ProjExists = ProjExists P.Project
+newtype ProjExists = ProjExists Project
 
 instance Exception ProjExists
 
 instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
-      where name = Text.unpack (P.unProject project)
+      where name = Text.unpack (unProject project)
 
 -- | The project has associated hdw
-newtype ProjHasHDW = ProjHasHDW P.Project
+newtype ProjHasHDW = ProjHasHDW Project
 
 instance Exception ProjHasHDW
 
 instance Show ProjHasHDW where
     show (ProjHasHDW project) = "The project " <> name <> " has associated half-day work"
-      where name = Text.unpack (P.unProject project)
+      where name = Text.unpack (unProject project)
 
 -- | There is no record for specified HD
 data HdNotFound = HdNotFound Time.Day TimeInDay
@@ -195,41 +194,41 @@ showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY])
 -- | Clean up the db
 cleanDB :: (MonadIO m) => SqlPersistT m ()
 cleanDB = do
-    deleteWhere ([] :: [Filter HalfDayWorked])
-    deleteWhere ([] :: [Filter HalfDay])
-    deleteWhere ([] :: [Filter Project])
+    deleteWhere ([] :: [Filter DBHalfDayWorked])
+    deleteWhere ([] :: [Filter DBHalfDay])
+    deleteWhere ([] :: [Filter DBProject])
 
 -- Exported project functions 
 
 -- | Check if a project exists 
-projExists :: MonadIO m => P.Project -> SqlPersistT m Bool
-projExists project = isJust <$> getBy (UniqueName $ P.unProject project)
+projExists :: MonadIO m => Project -> SqlPersistT m Bool
+projExists project = isJust <$> getBy (UniqueName $ unProject project)
 
 
 -- | Add a project 
-projAdd :: (MonadIO m) => P.Project -> SqlPersistT m ()
+projAdd :: (MonadIO m) => Project -> SqlPersistT m ()
 projAdd project = do
     guardProjNotExistsInt project
     void $ insert $ projectToDb project
 
 -- | Get the list of the projects present in the database
-projList :: MonadIO m => SqlPersistT m [P.Project]
-projList = map (dbToProject . entityVal) <$> selectList [] [Asc ProjectName] 
+projList :: MonadIO m => SqlPersistT m [Project]
+projList = map (dbToProject . entityVal) <$> selectList [] [Asc DBProjectName] 
 
 -- | Delete a project 
-projRm :: (MonadIO m) => P.Project -> SqlPersistT m ()
+projRm :: (MonadIO m) => Project -> SqlPersistT m ()
 projRm project = do
     -- The following can throw exception same exception apply to this function
     -- so we dont catch it here
     pId <- projGetInt project 
     -- Test if there is hdw using this project
-    selectFirst [HalfDayWorkedProjectId P.==. pId] [] >>=
+    selectFirst [DBHalfDayWorkedProjectId P.==. pId] [] >>=
         \case
             Nothing -> delete pId
             Just _  -> throwIO $ ProjHasHDW project
 
 -- | Rename a project 
-projRename :: (MonadIO m) => P.Project -> P.Project -> SqlPersistT m ()
+projRename :: (MonadIO m) => Project -> Project -> SqlPersistT m ()
 projRename p1 p2 = do
     pId <- projGetInt p1
     guardProjNotExistsInt p2
@@ -238,15 +237,15 @@ projRename p1 p2 = do
 -- Internal project functions
 
 -- | Get a project with error handling
-projGetInt :: (MonadIO m) => P.Project -> SqlPersistT m (Key Project)
-projGetInt project = getBy (UniqueName $ P.unProject project) >>= 
+projGetInt :: (MonadIO m) => Project -> SqlPersistT m (Key DBProject)
+projGetInt project = getBy (UniqueName $ unProject project) >>= 
     \case
         Nothing             -> throwIO $ ProjNotFound project
         Just (Entity pId _) -> return pId
 
 -- | Guard to check if a project is allready present in the db. If so, raise an
 -- exception
-guardProjNotExistsInt :: (MonadIO m) => P.Project -> SqlPersistT m ()
+guardProjNotExistsInt :: (MonadIO m) => Project -> SqlPersistT m ()
 guardProjNotExistsInt project = do
     exists <- projExists project
     when exists (throwIO $ ProjExists project)
@@ -261,10 +260,10 @@ hdHdwProjGet
     -> SqlPersistT m HD.HalfDay
 hdHdwProjGet day tid = 
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (hd ^. HalfDayDay        ==. val day &&.
-                hd ^. HalfDayTimeInDay  ==. val tid)           
-        on (mbProj ?. ProjectId    ==. mbHdw ?. HalfDayWorkedProjectId)
-        on (just (hd ^. HalfDayId) ==. mbHdw ?. HalfDayWorkedHalfDayId)
+        where_ (hd ^. DBHalfDayDay        ==. val day &&.
+                hd ^. DBHalfDayTimeInDay  ==. val tid)           
+        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
+        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
         return (hd, mbHdw, mbProj)) >>=
     \case
         []    -> throwIO $ HdNotFound day tid
@@ -283,20 +282,20 @@ hdHdwProjGet day tid =
 hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
 hdwSetOffice day tid office = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [HalfDayWorkedOffice =. office]
+    update hdwId [DBHalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
 hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> SqlPersistT m ()
 hdwSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [HalfDayWorkedNotes =. unNotes notes]
+    update hdwId [DBHalfDayWorkedNotes =. unNotes notes]
 
 -- | Set a work half-day with a project
-hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> P.Project -> SqlPersistT m () 
+hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m () 
 hdwSetProject day tid project = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     pId <- projGetInt project
-    update hdwId [HalfDayWorkedProjectId =. pId]
+    update hdwId [DBHalfDayWorkedProjectId =. pId]
 
 -- | Set arrived time for a working half-day
 hdwSetArrived 
@@ -307,7 +306,7 @@ hdwSetArrived
     -> SqlPersistT m () 
 hdwSetArrived day tid tod = do
     (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
-    let hdw' = hdw { halfDayWorkedArrived = tod }
+    let hdw' = hdw { dBHalfDayWorkedArrived = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
@@ -320,7 +319,7 @@ hdwSetLeft
     -> SqlPersistT m () 
 hdwSetLeft day tid tod = do
     (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
-    let hdw' = hdw { halfDayWorkedLeft = tod }
+    let hdw' = hdw { dBHalfDayWorkedLeft = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
@@ -334,8 +333,8 @@ hdwSetArrivedAndLeft
     -> SqlPersistT m () 
 hdwSetArrivedAndLeft day tid tArrived tLeft = do
     (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
-    let hdw' = hdw { halfDayWorkedArrived = tArrived
-                   , halfDayWorkedLeft    = tLeft }
+    let hdw' = hdw { dBHalfDayWorkedArrived = tArrived
+                   , dBHalfDayWorkedLeft    = tLeft }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
@@ -349,13 +348,13 @@ hdSetHoliday
 hdSetHoliday day tid hdt = try (hdGetInt day tid) >>=
     \case 
         -- Create a new entry
-        Left (HdNotFound _ _) -> void $ insert $ HalfDay day tid dbHdt
+        Left (HdNotFound _ _) -> void $ insert $ DBHalfDay day tid dbHdt
         -- Edit existing entry
         Right (Entity hdId _)   -> do
             -- Delete entry from HalfDayWorked if it exists
-            deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
+            deleteWhere [DBHalfDayWorkedHalfDayId P.==. hdId]
             -- Update entry
-            update hdId [HalfDayType =. dbHdt]
+            update hdId [DBHalfDayType =. dbHdt]
   where dbHdt = idleDayTypeToDb hdt
 
 -- | Set a half-day as working on a project. 
@@ -363,7 +362,7 @@ hdSetWork
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
-    -> P.Project 
+    -> Project 
     -> Office
     -> Time.TimeOfDay
     -> Time.TimeOfDay
@@ -371,18 +370,18 @@ hdSetWork
 hdSetWork day tid project office tArrived tLeft = do 
     -- Get the proj entry if it exists
     projId <- projGetInt project
-    let hdw = HalfDayWorked "" tArrived tLeft office (toSqlKey 0) (toSqlKey 0)
+    let hdw = DBHalfDayWorked "" tArrived tLeft office (toSqlKey 0) (toSqlKey 0)
     guardNewTimesAreOk day tid hdw
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
         -- Create a new entry
-        Left (HdNotFound _ _) -> insert $ HalfDay day tid Worked 
+        Left (HdNotFound _ _) -> insert $ DBHalfDay day tid Worked 
         -- Edit existing entry
         Right (Entity hdId _) -> do
           -- Update entry
-          update hdId [HalfDayType =. Worked]
+          update hdId [DBHalfDayType =. Worked]
           return hdId
-    let hdw' = HalfDayWorked "" tArrived tLeft office projId hdId
+    let hdw' = DBHalfDayWorked "" tArrived tLeft office projId hdId
     void $ insert hdw'
    
 -- | Remove a half-day from the db
@@ -390,13 +389,13 @@ hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m ()
 hdRm day tid = do
     (Entity hdId _) <- hdGetInt day tid
     -- Delete entry from HalfDayWorked if it exists
-    deleteWhere [HalfDayWorkedHalfDayId P.==. hdId]
+    deleteWhere [DBHalfDayWorkedHalfDayId P.==. hdId]
     delete hdId
 
 -- Internal project functions
 
 -- | Get a half day if it exists or raise an exception
-hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity HalfDay)
+hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity DBHalfDay)
 hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
     \case 
         Nothing -> throwIO $ HdNotFound day tid
@@ -408,23 +407,23 @@ hdHdwProjGetInt
     :: (MonadIO m) 
     => Time.Day 
     -> TimeInDay 
-    -> SqlPersistT m (Entity HalfDay, Entity HalfDayWorked, Entity Project)
+    -> SqlPersistT m (Entity DBHalfDay, Entity DBHalfDayWorked, Entity DBProject)
 hdHdwProjGetInt day tid = do
     hdHdwProjs <- select $ from $ \(hd, hdw, proj) -> do
-        where_ (hd  ^. HalfDayDay             ==. val day           &&.
-                hd  ^. HalfDayTimeInDay       ==. val tid           &&.
-                hdw ^. HalfDayWorkedProjectId ==. proj ^. ProjectId &&. 
-                hdw ^. HalfDayWorkedHalfDayId ==. hd ^. HalfDayId)
+        where_ (hd  ^. DBHalfDayDay             ==. val day           &&.
+                hd  ^. DBHalfDayTimeInDay       ==. val tid           &&.
+                hdw ^. DBHalfDayWorkedProjectId ==. proj ^. DBProjectId &&. 
+                hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId)
         return (hd, hdw, proj)
     maybe (throwIO $ HdwNotFound day tid) return (L.headMaybe hdHdwProjs)
 
 -- hd private functions
 
--- | Check that the constraints on the times are valid between the two days
+-- | Check that the constraints on the times are valid between the two half-days
 timesAreOrderedInDay 
     :: TimeInDay 
-    -> HalfDayWorked 
-    -> Maybe HalfDayWorked 
+    -> DBHalfDayWorked 
+    -> Maybe DBHalfDayWorked 
     -> Bool
 timesAreOrderedInDay Morning hdw mbOtherHdw = 
     isOrdered $ timesOfDay hdw ++ otherTimes
@@ -441,7 +440,7 @@ timesAreOrderedInDay Afternoon hdw Nothing = isOrdered $ timesOfDay hdw
 guardNewTimesAreOk :: (MonadIO m, MonadUnliftIO m)
     => Time.Day
     -> TimeInDay
-    -> HalfDayWorked
+    -> DBHalfDayWorked
     -> SqlPersistT m ()
 guardNewTimesAreOk day tid hdw = do
     eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
@@ -452,8 +451,8 @@ guardNewTimesAreOk day tid hdw = do
     unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
 
 -- | Return the times in the day in a list
-timesOfDay :: HalfDayWorked -> [Time.TimeOfDay]
-timesOfDay hdw = [halfDayWorkedArrived hdw, halfDayWorkedLeft hdw]
+timesOfDay :: DBHalfDayWorked -> [Time.TimeOfDay]
+timesOfDay hdw = [dBHalfDayWorkedArrived hdw, dBHalfDayWorkedLeft hdw]
 
 -- | Return true if the list is sorted
 isOrdered :: (Ord a) => [a] -> Bool
