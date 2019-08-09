@@ -51,7 +51,6 @@ import           Run (App(..), run)
 -- - Check if we can simplifie Project and Notes
 -- - Protect Project and Notes
 -- - bug hdSetWork twice
--- - rename Internal.Model to Internal.DBModel
 
 -- | Main function
 main :: IO ()

@@ -1,4 +1,4 @@
--- | This module reexport the public functions from "Internal.Model"
+-- | 
 module Model
     ( 
     -- * Types and accessors
@@ -105,7 +105,7 @@ import           TimeInDay (TimeInDay(..), other)
 import           Worked (Worked(..))
 
 import           Internal.HalfDayType (HalfDayType(..))
-import           Internal.Model
+import           Internal.DBModel
 import           Internal.Convert 
     ( dbToIdleDayType
     , dbToIdle

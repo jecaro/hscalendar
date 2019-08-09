@@ -9,10 +9,9 @@ module Internal.Convert
 where
 
 import           RIO
-import qualified RIO.Text ()
 
 import           Internal.HalfDayType (HalfDayType(..))
-import           Internal.Model 
+import           Internal.DBModel 
 import qualified IdleDayType as IDT
 import           Idle(Idle(..))
 import           Notes(Notes(..))
