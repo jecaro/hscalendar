@@ -22,7 +22,7 @@ import           Database.Persist.TH
    , sqlSettings
    )
 
-import           Internal.HalfDayType (HalfDayType(..))
+import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Office (Office)
 import           TimeInDay (TimeInDay)
 
@@ -39,8 +39,8 @@ DBProject
 DBHalfDay
     -- Fields
     day             Time.Day        
-    timeInDay       TimeInDay   -- morning/afternoon
-    type            HalfDayType -- worked/holiday
+    timeInDay       TimeInDay     -- morning/afternoon
+    type            DBHalfDayType -- worked/parttime/paidleave etc...
     -- Constraint
     DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
     deriving Show

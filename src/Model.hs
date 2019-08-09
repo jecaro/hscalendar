@@ -104,7 +104,7 @@ import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
 import           Worked (Worked(..))
 
-import           Internal.HalfDayType (HalfDayType(..))
+import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Internal.DBModel
 import           Internal.Convert 
     ( dbToIdleDayType
@@ -383,11 +383,11 @@ hdSetWork day tid project office tArrived tLeft = do
     eiHd <- try $ hdGetInt day tid
     hdId <- case eiHd of
         -- Create a new entry
-        Left (HdNotFound _ _) -> insert $ DBHalfDay day tid Worked 
+        Left (HdNotFound _ _) -> insert $ DBHalfDay day tid DBWorked 
         -- Edit existing entry
         Right (Entity hdId _) -> do
           -- Update entry
-          update hdId [DBHalfDayType =. Worked]
+          update hdId [DBHalfDayType =. DBWorked]
           return hdId
     let hdw' = DBHalfDayWorked "" tArrived tLeft office projId hdId
     void $ insert hdw'

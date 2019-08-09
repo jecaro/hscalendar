@@ -10,11 +10,11 @@ where
 
 import           RIO
 
-import           Internal.HalfDayType (HalfDayType(..))
+import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Internal.DBModel 
-import qualified IdleDayType as IDT
-import           Idle(Idle(..))
-import           Notes(Notes(..))
+import           IdleDayType (IdleDayType(..))
+import           Idle (Idle(..))
+import           Notes (Notes(..))
 import           Project (Project(..))
 import           Worked (Worked(..))
 
@@ -34,27 +34,27 @@ dbToIdle (DBHalfDay day timeInDay halfDayType) =
           , _idleTimeInDay = timeInDay
           , _idleDayType   = halfDayType' }
 
-idleDayTypeToDb :: IDT.IdleDayType -> HalfDayType
-idleDayTypeToDb IDT.PayedLeave    = PayedLeave
-idleDayTypeToDb IDT.FamilyEvent   = FamilyEvent
-idleDayTypeToDb IDT.RTTE          = RTTE
-idleDayTypeToDb IDT.RTTS          = RTTS
-idleDayTypeToDb IDT.UnpayedLeave  = UnpayedLeave
-idleDayTypeToDb IDT.PublicHoliday = PublicHoliday
-idleDayTypeToDb IDT.PartTime      = PartTime
+idleDayTypeToDb :: IdleDayType -> DBHalfDayType
+idleDayTypeToDb PayedLeave    = DBPayedLeave
+idleDayTypeToDb FamilyEvent   = DBFamilyEvent
+idleDayTypeToDb RTTE          = DBRTTE
+idleDayTypeToDb RTTS          = DBRTTS
+idleDayTypeToDb UnpayedLeave  = DBUnpayedLeave
+idleDayTypeToDb PublicHoliday = DBPublicHoliday
+idleDayTypeToDb PartTime      = DBPartTime
 
-dbToIdleDayType :: HalfDayType -> Maybe IDT.IdleDayType
-dbToIdleDayType PayedLeave    = Just IDT.PayedLeave
-dbToIdleDayType FamilyEvent   = Just IDT.FamilyEvent
-dbToIdleDayType RTTE          = Just IDT.RTTE
-dbToIdleDayType RTTS          = Just IDT.RTTS
-dbToIdleDayType UnpayedLeave  = Just IDT.UnpayedLeave
-dbToIdleDayType PublicHoliday = Just IDT.PublicHoliday
-dbToIdleDayType PartTime      = Just IDT.PartTime
-dbToIdleDayType Worked        = Nothing
+dbToIdleDayType :: DBHalfDayType -> Maybe IdleDayType
+dbToIdleDayType DBPayedLeave    = Just PayedLeave
+dbToIdleDayType DBFamilyEvent   = Just FamilyEvent
+dbToIdleDayType DBRTTE          = Just RTTE
+dbToIdleDayType DBRTTS          = Just RTTS
+dbToIdleDayType DBUnpayedLeave  = Just UnpayedLeave
+dbToIdleDayType DBPublicHoliday = Just PublicHoliday
+dbToIdleDayType DBPartTime      = Just PartTime
+dbToIdleDayType DBWorked        = Nothing
 
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
-dbToWorked (DBHalfDay day timeInDay Worked)
+dbToWorked (DBHalfDay day timeInDay DBWorked)
     (DBHalfDayWorked notes arrived left office _ _) project = Just $ MkWorked
         { _workedDay       = day
         , _workedTimeInDay = timeInDay
