@@ -2,17 +2,17 @@
 module Model
     ( 
     -- * Types and accessors
-      HD.HalfDay(..)
+      HalfDay(..)
     , Idle(..)
     , Notes
     , Project
-    , mkProject
-    , mkProjectLit
-    , unProject
     , Worked(..)
     , mkNotes
     , mkNotesLit
+    , mkProject
+    , mkProjectLit
     , unNotes
+    , unProject
     -- * Exceptions
     , BadArgument(..)
     , ProjExists(..)
@@ -95,7 +95,7 @@ import qualified Database.Persist.Sqlite as P ((==.))
 import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
-import qualified HalfDay as HD (HalfDay(..))
+import           HalfDay (HalfDay(..))
 import           Idle (Idle(..))
 import           IdleDayType
 import           Project (Project, mkProject, mkProjectLit, unProject)
@@ -257,7 +257,7 @@ hdHdwProjGet
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day
     -> TimeInDay 
-    -> SqlPersistT m HD.HalfDay
+    -> SqlPersistT m HalfDay
 hdHdwProjGet day tid = 
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. DBHalfDayDay        ==. val day &&.
@@ -271,11 +271,11 @@ hdHdwProjGet day tid =
             (Entity _ hd, Nothing, Nothing) -> 
                 case dbToIdle hd of
                     Nothing -> throwIO DbInconsistency
-                    Just idle -> return $ HD.MkHalfDayIdle idle
+                    Just idle -> return $ MkHalfDayIdle idle
             (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) -> 
                 case dbToWorked hd hdw proj of
                     Nothing -> throwIO BadArgument
-                    Just worked -> return $ HD.MkHalfDayWorked worked
+                    Just worked -> return $ MkHalfDayWorked worked
             _ -> throwIO $ HdNotFound day tid
 
 -- | Set the office for a day-time in day
