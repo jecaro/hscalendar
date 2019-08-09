@@ -48,10 +48,10 @@ import           Run (App(..), run)
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
--- - Add a cleanUp function
 -- - Check if we can simplifie Project and Notes
+-- - Protect Project and Notes
 -- - bug hdSetWork twice
--- - move convert functions
+-- - rename Internal.Model to Internal.DBModel
 
 -- | Main function
 main :: IO ()

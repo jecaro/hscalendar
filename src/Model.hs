@@ -106,6 +106,14 @@ import           Worked (Worked(..))
 
 import           Internal.HalfDayType (HalfDayType(..))
 import           Internal.Model
+import           Internal.Convert 
+    ( dbToIdleDayType
+    , dbToIdle
+    , dbToProject
+    , dbToWorked
+    , idleDayTypeToDb
+    , projectToDb
+    )
 
 -- Exceptions that are likely to occure
 
