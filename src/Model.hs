@@ -40,7 +40,6 @@ module Model
     , projRm
     -- * Misc
     , cleanDB
-    , dbToIdleDayType
     , migrateAll
     , showDay
     )
@@ -97,7 +96,7 @@ import           Formatting (int, left, sformat, (%.))
 
 import           HalfDay (HalfDay(..))
 import           Idle (Idle(..))
-import           IdleDayType
+import           IdleDayType (IdleDayType(..))
 import           Project (Project, mkProject, mkProjectLit, unProject)
 import           Notes (Notes, mkNotes, mkNotesLit, unNotes)
 import           Office (Office(..))
@@ -107,8 +106,7 @@ import           Worked (Worked(..))
 import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Internal.DBModel
 import           Internal.Convert 
-    ( dbToIdleDayType
-    , dbToIdle
+    ( dbToIdle
     , dbToProject
     , dbToWorked
     , idleDayTypeToDb
