@@ -1,4 +1,9 @@
 module Notes
+    ( Notes
+    , mkNotes
+    , mkNotesLit
+    , unNotes
+    )
 where
 
 import           RIO

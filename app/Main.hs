@@ -49,7 +49,7 @@ import           Run (App(..), run)
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
 -- - Check if we can simplifie Project and Notes
--- - Protect Project and Notes
+-- - Protect Project 
 -- - bug hdSetWork twice
 
 -- | Main function

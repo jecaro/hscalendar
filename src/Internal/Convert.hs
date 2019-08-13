@@ -14,7 +14,7 @@ import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Internal.DBModel 
 import           IdleDayType (IdleDayType(..))
 import           Idle (Idle(..))
-import           Notes (Notes(..))
+import           Notes (mkNotes)
 import           Project (Project(..))
 import           Worked (Worked(..))
 
@@ -55,13 +55,15 @@ dbToIdleDayType DBWorked        = Nothing
 
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
 dbToWorked (DBHalfDay day timeInDay DBWorked)
-    (DBHalfDayWorked notes arrived left office _ _) project = Just $ MkWorked
-        { _workedDay       = day
-        , _workedTimeInDay = timeInDay
-        , _workedArrived   = arrived
-        , _workedLeft      = left
-        , _workedOffice    = office
-        , _workedNotes     = MkNotes notes
-        , _workedProject   = dbToProject project
-        }
+    (DBHalfDayWorked dbNotes arrived left office _ _) project = do
+        notes <- mkNotes dbNotes
+        return MkWorked
+            { _workedDay       = day
+            , _workedTimeInDay = timeInDay
+            , _workedArrived   = arrived
+            , _workedLeft      = left
+            , _workedOffice    = office
+            , _workedNotes     = notes
+            , _workedProject   = dbToProject project
+            }
 dbToWorked _ _ _ = Nothing
