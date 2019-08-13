@@ -19,7 +19,6 @@ module Model
     , ProjHasHDW(..)
     , ProjNotFound(..)
     , HdNotFound(..)
-    , HdwNotFound(..)
     , TimesAreWrong(..)
     -- * Half-day functions
     , hdHdwProjGet
@@ -124,7 +123,7 @@ instance Show ProjNotFound where
     show (ProjNotFound project) = "The project " <> name <> " is not in the database"
       where name = Text.unpack (unProject project)
 
--- | A project with the same name allready exists in the db
+-- | A project with the same name already exists in the db
 newtype ProjExists = ProjExists Project
 
 instance Exception ProjExists
@@ -149,15 +148,6 @@ instance Exception HdNotFound
 
 instance Show HdNotFound where
     show (HdNotFound day tid) = "Nothing for " <> Text.unpack (showDay day) <> " " <> show tid
-
--- | There is no work record in HDW for specified day and time in day
-data HdwNotFound = HdwNotFound Time.Day TimeInDay
-
-instance Exception HdwNotFound
-
-instance Show HdwNotFound where
-    show (HdwNotFound day tid) = "No half-day worked entry for " 
-        <> Text.unpack (showDay day) <> " " <> show tid
 
 -- | Given times are wrong
 data TimesAreWrong = TimesAreWrong
@@ -422,7 +412,7 @@ hdHdwProjGetInt day tid = do
                 hdw ^. DBHalfDayWorkedProjectId ==. proj ^. DBProjectId &&. 
                 hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId)
         return (hd, hdw, proj)
-    maybe (throwIO $ HdwNotFound day tid) return (L.headMaybe hdHdwProjs)
+    maybe (throwIO $ HdNotFound day tid) return (L.headMaybe hdHdwProjs)
 
 -- hd private functions
 
@@ -452,7 +442,7 @@ guardNewTimesAreOk :: (MonadIO m, MonadUnliftIO m)
 guardNewTimesAreOk day tid hdw = do
     eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
     let mbOtherHdw = case eiHdHdwProj of
-          Left (HdwNotFound _ _)      -> Nothing
+          Left (HdNotFound _ _)      -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Check if it works
     unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
