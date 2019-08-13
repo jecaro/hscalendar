@@ -324,7 +324,7 @@ hdwSetLeft
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetLeft day tid tod = do
-    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { dBHalfDayWorkedLeft = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
@@ -338,7 +338,7 @@ hdwSetArrivedAndLeft
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
 hdwSetArrivedAndLeft day tid tArrived tLeft = do
-    (_, (Entity hdwId hdw), _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { dBHalfDayWorkedArrived = tArrived
                    , dBHalfDayWorkedLeft    = tLeft }
     guardNewTimesAreOk day tid hdw' 
@@ -387,7 +387,8 @@ hdSetWork day tid project office tArrived tLeft = do
           -- Update entry
           update hdId [DBHalfDayType =. DBWorked]
           return hdId
-    let hdw' = DBHalfDayWorked "" tArrived tLeft office projId hdId
+    let hdw' = hdw { dBHalfDayWorkedProjectId = projId
+                   , dBHalfDayWorkedHalfDayId = hdId }
     void $ insert hdw'
    
 -- | Remove a half-day from the db

@@ -49,6 +49,7 @@ import           Run (App(..), run)
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
 -- - bug hdSetWork twice
+-- - sort out exception hd hdw
 
 -- | Main function
 main :: IO ()
