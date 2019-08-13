@@ -219,7 +219,7 @@ projAdd project = do
 
 -- | Get the list of the projects present in the database
 projList :: MonadIO m => SqlPersistT m [Project]
-projList = map (dbToProject . entityVal) <$> selectList [] [Asc DBProjectName] 
+projList = mapMaybe (dbToProject . entityVal) <$> selectList [] [Asc DBProjectName] 
 
 -- | Delete a project 
 projRm :: (MonadIO m) => Project -> SqlPersistT m ()

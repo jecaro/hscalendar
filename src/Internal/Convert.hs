@@ -15,7 +15,7 @@ import           Internal.DBModel
 import           IdleDayType (IdleDayType(..))
 import           Idle (Idle(..))
 import           Notes (mkNotes)
-import           Project (Project(..))
+import           Project (Project, mkProject, unProject)
 import           Worked (Worked(..))
 
 -- Conversion functions
@@ -23,8 +23,8 @@ import           Worked (Worked(..))
 projectToDb :: Project -> DBProject
 projectToDb project = DBProject $ unProject project
 
-dbToProject :: DBProject -> Project
-dbToProject project = MkProject $ dBProjectName project
+dbToProject :: DBProject -> Maybe Project
+dbToProject project = mkProject $ dBProjectName project
 
 dbToIdle :: DBHalfDay -> Maybe Idle
 dbToIdle (DBHalfDay day timeInDay halfDayType) = 
@@ -55,8 +55,9 @@ dbToIdleDayType DBWorked        = Nothing
 
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
 dbToWorked (DBHalfDay day timeInDay DBWorked)
-    (DBHalfDayWorked dbNotes arrived left office _ _) project = do
+    (DBHalfDayWorked dbNotes arrived left office _ _) dbProject = do
         notes <- mkNotes dbNotes
+        project <- dbToProject dbProject
         return MkWorked
             { _workedDay       = day
             , _workedTimeInDay = timeInDay
@@ -64,6 +65,6 @@ dbToWorked (DBHalfDay day timeInDay DBWorked)
             , _workedLeft      = left
             , _workedOffice    = office
             , _workedNotes     = notes
-            , _workedProject   = dbToProject project
+            , _workedProject   = project
             }
 dbToWorked _ _ _ = Nothing

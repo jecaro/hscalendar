@@ -48,8 +48,6 @@ import           Run (App(..), run)
 -- - Replace pattern matching with record syntax
 -- - Add ExitWith
 -- - Put hdHdwProjAsText in Editor
--- - Check if we can simplifie Project and Notes
--- - Protect Project 
 -- - bug hdSetWork twice
 
 -- | Main function

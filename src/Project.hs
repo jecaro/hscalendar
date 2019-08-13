@@ -1,4 +1,9 @@
 module Project
+    ( Project
+    , mkProject
+    , mkProjectLit
+    , unProject
+    )
 where
     
 import           RIO
@@ -45,7 +50,8 @@ projNameValid name =  Text.length name > 0
 -- | Arbitrary instance for project. Only project with allowed characters
 instance Arbitrary Project where
     arbitrary = sized $ \s -> do
-        n <- choose (1, s `min` projNameMaxLength)
+        let minSize = 1
+        n <- choose (minSize, minSize `max` (s `min` projNameMaxLength))
         xs <- vectorOf n (elements projNameAllowedChars)
         return (MkProject (Text.pack xs))
 
