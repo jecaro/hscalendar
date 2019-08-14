@@ -10,6 +10,7 @@ import           Database.Persist.Sqlite
 import           Data.Yaml (prettyPrintParseException)
 import           Options.Applicative (execParser)
 import           Path (toFilePath)
+import           System.Exit (exitFailure)
 
 import           Config (Config(..), getConfig)
 import           CommandLine 
@@ -41,7 +42,6 @@ import           Run (App(..), run)
 -- - Add show month
 -- - Make diary date/TimeInDay optional default today
 -- - Put defaults values in config file for a week
--- - Add ExitWith
 -- - bug hdSetWork twice
 -- - Add unit test for editor features
 -- - Add cleanUp command
@@ -59,7 +59,9 @@ main = do
     withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
         \case 
             -- Error with the config file end of the program
-            Left e -> runRIO lf $ logError $ display $ Text.pack (prettyPrintParseException e)
+            Left e -> runRIO lf $ do
+                logError $ display $ Text.pack (prettyPrintParseException e)
+                liftIO exitFailure
             -- Got config file carry on
             Right config ->
                 -- Create the sql pool with RIO to handle log
@@ -73,6 +75,7 @@ main = do
 
                     -- Run the app, handle exceptions (should be only because
                     -- the database is not initialized)
-                    liftIO $ runRIO app $ catch (run cmd) (\e -> 
-                        logError $ "Error: " <> display (e :: SomeException))
+                    liftIO $ runRIO app $ catch (run cmd) (\e -> do
+                        logError ("Error: " <> display (e :: SomeException))
+                        liftIO exitFailure)
               where dbFile = Text.pack $ toFilePath $ db config
