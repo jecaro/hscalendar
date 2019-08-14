@@ -37,18 +37,16 @@ import           Run (App(..), run)
 -- TODO:
 -- - Add import CSV
 -- - Add stats for a year
--- - Add optional day/time
+-- - Add show week
+-- - Add show month
 -- - Make diary date/TimeInDay optional default today
--- - Append note
--- - Launch editor
--- - Put -p as positional parameter
--- - Use Lens instead of records
--- - Add colors/bold
--- - Put defaults values in config file
--- - Replace pattern matching with record syntax
+-- - Put defaults values in config file for a week
 -- - Add ExitWith
--- - Put hdHdwProjAsText in Editor
 -- - bug hdSetWork twice
+-- - Add unit test for editor features
+-- - Add cleanUp command
+-- - Comments modules
+-- - import from applications module should use only Model
 
 -- | Main function
 main :: IO ()

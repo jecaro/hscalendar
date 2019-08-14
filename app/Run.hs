@@ -8,8 +8,8 @@ where
 import           RIO
 import           RIO.Orphans()
 import           RIO.Process (proc, runProcess)
-import qualified RIO.Text as Text (intercalate, pack)
-import qualified RIO.Time as Time (Day, TimeOfDay(..))
+import qualified RIO.Text as Text (pack)
+import qualified RIO.Time as Time (Day)
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
@@ -20,8 +20,6 @@ import           Database.Persist.Sqlite
     , runSqlPersistMPool
     )
 import           Data.Text.IO (putStrLn, readFile) 
-import qualified Formatting as F (int, left, sformat)
-import           Formatting ((%.))
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
@@ -48,7 +46,7 @@ import           CommandLine
     , WorkOption(..)
     )
 import           CustomDay(toDay)
-import           Editor(ParseError(..), parse)
+import           Editor(ParseError(..), hdAsText, parse)
 import           Model
     ( HalfDay(..)
     , HdNotFound(..)
@@ -75,6 +73,7 @@ import           Model
     , projRename
     , projRm
     , showDay
+    , showTime
     , unNotes
     )
 import           TimeInDay (TimeInDay(..))
@@ -132,31 +131,6 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
--- | Print time in a friendly format ex 9:00
-showTime :: Time.TimeOfDay -> Text
-showTime (Time.TimeOfDay h m _) = 
-            Text.intercalate ":" $ fmap (F.sformat (F.left 2 '0' %. F.int)) [h, m]
-
-hdHdwProjAsText :: (HasConnPool env) 
-    => Time.Day 
-    -> TimeInDay 
-    -> RIO env Text
-hdHdwProjAsText day tid = do
-    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
-    case eiHdHdwProj of
-        (Left (HdNotFound _ _)) -> return $ header <> " Nothing\n"
-        (Right (MkHalfDayIdle (MkIdle _ _ hdt))) -> return $ headerWithHdt hdt <> "\n"
-        (Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project))) -> return $
-            header <> "\n"
-            <> unProject project <> "\n"
-            <> packShow office <> " " <> showTime tArrived <> " " <> showTime tLeft <> "\n"
-            <> unNotes notes
-            
-  where header = "# " <> showDay day <> " " <> packShow tid
-        headerWithHdt hdt = header <> " " <> packShow hdt 
-        packShow :: Show a => a -> Text
-        packShow = Text.pack . show
-
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
     => Cmd 
@@ -208,7 +182,7 @@ run (DiaryDisplay cd tid) = do
 run (DiaryEdit cd tid) = do
     -- Get the old record to put as default in the file
     day <- toDay cd
-    oldRecord <- hdHdwProjAsText day tid
+    oldRecord <- hdAsText <$> try (runDB $ hdHdwProjGet day tid)
     -- Bracket to make sure the temporary file will be deleted no matter what
     fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar") 
         (liftIO . removeFile) 
@@ -232,7 +206,7 @@ run (DiaryEdit cd tid) = do
             Right options          -> run $ DiaryWork cd tid options
   where nothingToDo = liftIO $ putStrLn "Nothing to do"
 
-    -- Set a work entry 
+-- Set a work entry 
 run (DiaryWork cd tid wopts) = do
 
     -- Get actual day

@@ -2,12 +2,20 @@
 module Editor
     ( ParseError(..)
     , parse
+    , hdAsText
     )
 where
 
 import           RIO
-import qualified RIO.Text as Text(isPrefixOf, lines, null, pack, unlines, unpack)
-import qualified RIO.Time as Time(TimeOfDay)
+import qualified RIO.Text as Text
+    ( isPrefixOf
+    , lines
+    , null
+    , pack
+    , unlines
+    , unpack
+    )
+import qualified RIO.Time as Time (TimeOfDay(..), Day(..))
 import qualified RIO.Time.Extended as Time(parser)
 
 import           Lens.Micro.Platform (makeFields)
@@ -32,8 +40,22 @@ import           CommandLine
     , SetProj(..)
     , WorkOption(..)
     )
-import           Model (Notes, Project, mkNotes, mkProject) 
+import           HalfDay (HalfDay(..))
+import           Idle (Idle(..))
+import           Model 
+    ( HdNotFound(..)
+    , Notes
+    , Project
+    , mkNotes
+    , mkProject
+    , showDay
+    , showTime
+    ) 
+import           TimeInDay
+import           Notes (unNotes)
 import qualified Office (Office(..), parser) 
+import           Project (unProject)
+import           Worked (Worked(..))
 
 -- Example of data
 -- 
@@ -107,3 +129,19 @@ toOptions file = [ MkSetProj    . SetProj    $ file ^. project
                  , MkSetLeft    . SetLeft    $ file ^. left
                  , MkSetNotes   . SetNotes   $ file ^. notes 
                  ]
+
+header :: Time.Day -> TimeInDay -> Text
+header day tid = "# " <> showDay day <> " " <> packShow tid
+        
+packShow :: Show a => a -> Text
+packShow = Text.pack . show
+        
+hdAsText :: Either HdNotFound HalfDay -> Text
+hdAsText (Left (HdNotFound day tid)) = header day tid <> " Nothing\n"
+hdAsText (Right (MkHalfDayIdle (MkIdle day tid hdt))) = header day tid <> " " <> packShow hdt <> "\n"
+hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNotes wProject))) =
+    header wDay wTid <> "\n"
+                   <> unProject wProject <> "\n"
+                   <> packShow wOffice <> " " <> showTime wArrived <> " " <> showTime wLeft <> "\n"
+                   <> unNotes wNotes
+

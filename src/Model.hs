@@ -41,6 +41,7 @@ module Model
     , cleanDB
     , migrateAll
     , showDay
+    , showTime
     )
 
 where 
@@ -186,6 +187,11 @@ showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY])
         intY = fromIntegral y
         printNum = sformat (left 2 '0' %. int) 
         weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
+
+-- | Print time in a friendly format ex 9:00
+showTime :: Time.TimeOfDay -> Text
+showTime (Time.TimeOfDay h m _) = 
+            Text.intercalate ":" $ fmap (sformat (left 2 '0' %. int)) [h, m]
 
 -- | Clean up the db
 cleanDB :: (MonadIO m) => SqlPersistT m ()
