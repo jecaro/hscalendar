@@ -44,17 +44,13 @@ import           HalfDay (HalfDay(..))
 import           Idle (Idle(..))
 import           Model 
     ( HdNotFound(..)
-    , Notes
-    , Project
-    , mkNotes
-    , mkProject
     , showDay
     , showTime
     ) 
-import           TimeInDay
-import           Notes (unNotes)
+import           Notes (Notes, mkNotes, unNotes)
 import qualified Office (Office(..), parser) 
-import           Project (unProject)
+import           Project (Project, mkProject, unProject)
+import           TimeInDay
 import           Worked (Worked(..))
 
 -- Example of data

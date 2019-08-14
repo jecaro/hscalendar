@@ -44,18 +44,15 @@ import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
 import qualified IdleDayType as IDT (IdleDayType(..))
+import           HalfDay (HalfDay(..))
+import           Idle (Idle(..))
 import           Model 
     ( BadArgument(..)
-    , HalfDay(..)
     , HdNotFound(..)
-    , Idle(..)
-    , Notes
-    , Project
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
-    , Worked(..)
     , cleanDB
     , hdHdwProjGet
     , hdRm
@@ -68,16 +65,17 @@ import           Model
     , hdwSetOffice
     , hdwSetProject
     , migrateAll
-    , mkNotesLit
-    , mkProjectLit
     , projAdd
     , projExists
     , projList
     , projRename
     , projRm
     )
+import          Notes (Notes(..), mkNotesLit)
 import          Office (Office(..))
+import          Project (Project(..), mkProjectLit)
 import          TimeInDay (TimeInDay(..), other)
+import          Worked (Worked(..))
 
 -- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)

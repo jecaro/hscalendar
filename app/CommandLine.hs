@@ -50,9 +50,10 @@ import           Options.Applicative as Opt
     )
 
 import qualified CustomDay as CD (CustomDay(..), parser)
-import           Model (Project, Notes, mkProject, mkNotes)
 import qualified IdleDayType as IDT (IdleDayType(..), parser)
+import           Notes (Notes, mkNotes)
 import qualified Office (Office(..), parser)
+import           Project (Project, mkProject)
 import           TimeInDay (TimeInDay(..))
 
 data Options = Options { optVerbose :: !Bool,

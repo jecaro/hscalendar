@@ -47,16 +47,14 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 import           Editor(ParseError(..), hdAsText, parse)
+import           HalfDay (HalfDay(..))
+import           Idle (Idle(..))
 import           Model
-    ( HalfDay(..)
-    , HdNotFound(..)
-    , Idle(..)
-    , Project(..)
+    ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
-    , Worked(..)
     , hdHdwProjGet
     , hdRm
     , hdSetHoliday
@@ -74,9 +72,11 @@ import           Model
     , projRm
     , showDay
     , showTime
-    , unNotes
     )
+import           Notes (unNotes)
+import           Project (unProject)
 import           TimeInDay (TimeInDay(..))
+import           Worked (Worked(..))
 
 -- | The editor returns an error
 newtype ProcessReturnsError = ProcessReturnsError String

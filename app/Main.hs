@@ -46,7 +46,6 @@ import           Run (App(..), run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Comments modules
--- - import from applications module should use only Model
 
 -- | Main function
 main :: IO ()

@@ -1,20 +1,8 @@
 -- | 
 module Model
     ( 
-    -- * Types and accessors
-      HalfDay(..)
-    , Idle(..)
-    , Notes
-    , Project
-    , Worked(..)
-    , mkNotes
-    , mkNotesLit
-    , mkProject
-    , mkProjectLit
-    , unNotes
-    , unProject
     -- * Exceptions
-    , BadArgument(..)
+      BadArgument(..)
     , ProjExists(..)
     , ProjHasHDW(..)
     , ProjNotFound(..)
@@ -95,13 +83,11 @@ import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
 import           HalfDay (HalfDay(..))
-import           Idle (Idle(..))
 import           IdleDayType (IdleDayType(..))
-import           Project (Project, mkProject, mkProjectLit, unProject)
-import           Notes (Notes, mkNotes, mkNotesLit, unNotes)
+import           Project (Project, unProject)
+import           Notes (Notes, unNotes)
 import           Office (Office(..))
 import           TimeInDay (TimeInDay(..), other)
-import           Worked (Worked(..))
 
 import           Internal.DBHalfDayType (DBHalfDayType(..))
 import           Internal.DBModel
