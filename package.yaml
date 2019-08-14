@@ -1,18 +1,15 @@
 copyright: 2019 Jean-Charles Quillet
 maintainer: jeancharles.quillet@gmail.com
 dependencies:
-- ansi-terminal
 - attoparsec
 - base >= 4.7 && < 5
-- brick
 - directory
 - either
 - esqueleto
 - formatting
 - hspec
 - microlens-platform
-- monad-logger
-- monad-loops
+- monad-logger # Only needed for runNoLoggingT from Spec.hs
 - optparse-applicative
 - path
 - path-io
@@ -24,12 +21,8 @@ dependencies:
 - refined
 - rio
 - rio-orphans
-- template-haskell
 - temporary
-- text
-- text-zipper
-- transformers
-- vty
+- text 
 - yaml
 name: hscalendar
 version: 0.1.0.0
