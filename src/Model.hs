@@ -4,21 +4,21 @@ module Model
     -- * Exceptions
       BadArgument(..)
     , ProjExists(..)
-    , ProjHasHDW(..)
+    , ProjHasHd(..)
     , ProjNotFound(..)
     , HdNotFound(..)
     , TimesAreWrong(..)
     -- * Half-day functions
-    , hdHdwProjGet
+    , hdGet
     , hdRm
     , hdSetHoliday
     , hdSetWork
-    , hdwSetArrived
-    , hdwSetArrivedAndLeft
-    , hdwSetLeft
-    , hdwSetNotes
-    , hdwSetOffice
-    , hdwSetProject
+    , hdSetArrived
+    , hdSetArrivedAndLeft
+    , hdSetLeft
+    , hdSetNotes
+    , hdSetOffice
+    , hdSetProject
     -- * Project functions
     , projAdd
     , projExists
@@ -120,12 +120,12 @@ instance Show ProjExists where
       where name = Text.unpack (unProject project)
 
 -- | The project has associated hdw
-newtype ProjHasHDW = ProjHasHDW Project
+newtype ProjHasHd = ProjHasHd Project
 
-instance Exception ProjHasHDW
+instance Exception ProjHasHd
 
-instance Show ProjHasHDW where
-    show (ProjHasHDW project) = "The project " <> name <> " has associated half-day work"
+instance Show ProjHasHd where
+    show (ProjHasHd project) = "The project " <> name <> " has associated half-day work"
       where name = Text.unpack (unProject project)
 
 -- | There is no record for specified HD
@@ -213,7 +213,7 @@ projRm project = do
     selectFirst [DBHalfDayWorkedProjectId P.==. pId] [] >>=
         \case
             Nothing -> delete pId
-            Just _  -> throwIO $ ProjHasHDW project
+            Just _  -> throwIO $ ProjHasHd project
 
 -- | Rename a project 
 projRename :: (MonadIO m) => Project -> Project -> SqlPersistT m ()
@@ -241,12 +241,12 @@ guardProjNotExistsInt project = do
 -- Exported hd functions
 
 -- | This is the main request function
-hdHdwProjGet
+hdGet
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day
     -> TimeInDay 
     -> SqlPersistT m HalfDay
-hdHdwProjGet day tid = 
+hdGet day tid = 
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. DBHalfDayDay        ==. val day &&.
                 hd ^. DBHalfDayTimeInDay  ==. val tid)           
@@ -267,59 +267,59 @@ hdHdwProjGet day tid =
             _ -> throwIO $ HdNotFound day tid
 
 -- | Set the office for a day-time in day
-hdwSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
-hdwSetOffice day tid office = do
+hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
+hdSetOffice day tid office = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [DBHalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
-hdwSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> SqlPersistT m ()
-hdwSetNotes day tid notes = do
+hdSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> SqlPersistT m ()
+hdSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     update hdwId [DBHalfDayWorkedNotes =. unNotes notes]
 
 -- | Set a work half-day with a project
-hdwSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m () 
-hdwSetProject day tid project = do
+hdSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m () 
+hdSetProject day tid project = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
     pId <- projGetInt project
     update hdwId [DBHalfDayWorkedProjectId =. pId]
 
 -- | Set arrived time for a working half-day
-hdwSetArrived 
+hdSetArrived 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
-hdwSetArrived day tid tod = do
+hdSetArrived day tid tod = do
     (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { dBHalfDayWorkedArrived = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
 -- | Set left time for a working half-day
-hdwSetLeft 
+hdSetLeft 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
-hdwSetLeft day tid tod = do
+hdSetLeft day tid tod = do
     (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { dBHalfDayWorkedLeft = tod }
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
 -- | Set both arrived and left time for a working half-day
-hdwSetArrivedAndLeft 
+hdSetArrivedAndLeft 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 
     -> TimeInDay 
     -> Time.TimeOfDay 
     -> Time.TimeOfDay 
     -> SqlPersistT m () 
-hdwSetArrivedAndLeft day tid tArrived tLeft = do
+hdSetArrivedAndLeft day tid tArrived tLeft = do
     (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
     let hdw' = hdw { dBHalfDayWorkedArrived = tArrived
                    , dBHalfDayWorkedLeft    = tLeft }

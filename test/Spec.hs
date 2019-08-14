@@ -50,20 +50,20 @@ import           Model
     ( BadArgument(..)
     , HdNotFound(..)
     , ProjExists(..)
-    , ProjHasHDW(..)
+    , ProjHasHd(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , cleanDB
-    , hdHdwProjGet
+    , hdGet
     , hdRm
     , hdSetHoliday
     , hdSetWork
-    , hdwSetArrived
-    , hdwSetArrivedAndLeft
-    , hdwSetLeft
-    , hdwSetNotes
-    , hdwSetOffice
-    , hdwSetProject
+    , hdSetArrived
+    , hdSetArrivedAndLeft
+    , hdSetLeft
+    , hdSetNotes
+    , hdSetOffice
+    , hdSetProject
     , migrateAll
     , projAdd
     , projExists
@@ -97,8 +97,8 @@ projExistsException = const True
 projNotFoundException :: Selector ProjNotFound
 projNotFoundException = const True
 
--- | hspec selector for ProjHasHDW exception
-projHasHDWException :: Selector ProjHasHDW
+-- | hspec selector for ProjHasHd exception
+projHasHDWException :: Selector ProjHasHd
 projHasHDWException = const True
 
 -- | hspec selector for HdNotFound exception
@@ -206,10 +206,10 @@ prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
     -- Check if the value in the database is right
     unless exceptionRaised $ do
-        hdHdwProj <- Q.run $ hdHdwProjGet day tid
+        hd <- Q.run $ hdGet day tid
 
-        case hdHdwProj of
-          MkHalfDayWorked _ -> Q.assert False
+        case hd of
+          MkHalfDayWorked _               -> Q.assert False
           MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ hdt == hdt'
 
     Q.run cleanDB
@@ -260,12 +260,12 @@ testDBAndTimes day tid arrived left exceptionRaised = do
     (mbWorked, mbOWorked) <- Q.run $ do
         -- current is not necessary present in the DB, especially if there is 
         -- something wrong with the times
-        eiHd <- try (hdHdwProjGet day tid)
+        eiHd <- try (hdGet day tid)
         let mbWorked = case eiHd of
                            Left (HdNotFound _ _) -> Nothing
-                           Right entity -> toMbWorked entity
-        -- other is allways present in the DB
-        mbOWorked <- toMbWorked <$> hdHdwProjGet day (other tid)
+                           Right entity          -> toMbWorked entity
+        -- other is always present in the DB
+        mbOWorked <- toMbWorked <$> hdGet day (other tid)
         return (mbWorked, mbOWorked)
 
     let beforeOtherArrived = beforeArrived left mbOWorked
@@ -303,14 +303,15 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
         projAdd project
         hdSetWorkDefault day Morning project
         hdSetWorkDefault day Afternoon project
-        mbWorked  <- toMbWorked <$> hdHdwProjGet day tid
-        mbOWorked <- toMbWorked <$> hdHdwProjGet day (other tid)
+        mbWorked  <- toMbWorked <$> hdGet day tid
+        mbOWorked <- toMbWorked <$> hdGet day (other tid)
         -- Return current and other hdw
         return (mbWorked, mbOWorked)
     
     -- Update arrived time and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetArrived day tid tod >> return False) (\TimesAreWrong -> return True)
-    mbWorked' <- toMbWorked <$> Q.run (hdHdwProjGet day tid)
+    exceptionRaised <- Q.run $ catch (hdSetArrived day tid tod >> return False) 
+        (\TimesAreWrong -> return True)
+    mbWorked' <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
     -- In all case, we need arrive before left
@@ -330,14 +331,15 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
         projAdd project
         hdSetWorkDefault day Morning project
         hdSetWorkDefault day Afternoon project
-        mbWorked  <- toMbWorked <$> hdHdwProjGet day tid
-        mbOWorked <- toMbWorked <$> hdHdwProjGet day (other tid)
+        mbWorked  <- toMbWorked <$> hdGet day tid
+        mbOWorked <- toMbWorked <$> hdGet day (other tid)
         -- Return current and other hdw
         return (mbWorked, mbOWorked)
     
     -- Update left time and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetLeft day tid tod >> return False) (\TimesAreWrong -> return True)
-    mbWorked' <- toMbWorked <$> Q.run (hdHdwProjGet day tid)
+    exceptionRaised <- Q.run $ catch (hdSetLeft day tid tod >> return False) 
+        (\TimesAreWrong -> return True)
+    mbWorked' <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
     -- We all case, we need to leave after arrived
@@ -366,7 +368,9 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
         hdSetWorkDefault day Afternoon project 
     
     -- Update times and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetArrivedAndLeft day tid arrived left >> return False) (\TimesAreWrong -> return True)
+    exceptionRaised <- Q.run $ catch 
+        (hdSetArrivedAndLeft day tid arrived left >> return False) 
+        (\TimesAreWrong -> return True)
 
     testDBAndTimes day tid arrived left exceptionRaised
 
@@ -379,8 +383,8 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
     mbWorked <- Q.run $ do
         projAdd project
         hdSetWorkDefault day tid project
-        hdwSetNotes day tid notes
-        res <- toMbWorked <$> hdHdwProjGet day tid
+        hdSetNotes day tid notes
+        res <- toMbWorked <$> hdGet day tid
         cleanDB
         return res
 
@@ -393,8 +397,8 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
     mbWorked <- Q.run $ do
         projAdd project
         hdSetWorkDefault day tid project
-        hdwSetOffice day tid office
-        res <- toMbWorked <$> hdHdwProjGet day tid
+        hdSetOffice day tid office
+        res <- toMbWorked <$> hdGet day tid
         cleanDB
         return res
 
@@ -409,8 +413,10 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
         hdSetWorkDefault day tid project
 
     -- Update project and get new value
-    exceptionRaised <- Q.run $ catch (hdwSetProject day tid project' >> return False) (\(ProjNotFound _) -> return True)
-    mbWorked <- toMbWorked <$> Q.run (hdHdwProjGet day tid)
+    exceptionRaised <- Q.run $ catch 
+        (hdSetProject day tid project' >> return False) 
+        (\(ProjNotFound _) -> return True)
+    mbWorked <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
     let inDB = checkProj project' mbWorked 
@@ -467,17 +473,17 @@ testProjAPI runDB =
 itemsNoWorkedEntry :: RunDB -> Spec
 itemsNoWorkedEntry runDB = do
     it "tests setting arrived time" $
-        runDB (hdwSetArrived day1 tid1 (arrived1 tid1)) `shouldThrow` hdNotFoundException
+        runDB (hdSetArrived day1 tid1 (arrived1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting left time" $
-        runDB (hdwSetLeft day1 tid1 (left1 tid1)) `shouldThrow` hdNotFoundException
+        runDB (hdSetLeft day1 tid1 (left1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting arrived and left time" $
-        runDB (hdwSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) `shouldThrow` hdNotFoundException
+        runDB (hdSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting notes" $
-        runDB (hdwSetNotes day1 tid1 notes1) `shouldThrow` hdNotFoundException
+        runDB (hdSetNotes day1 tid1 notes1) `shouldThrow` hdNotFoundException
     it "tests setting office" $
-        runDB (hdwSetOffice day1 tid1 office1) `shouldThrow` hdNotFoundException
+        runDB (hdSetOffice day1 tid1 office1) `shouldThrow` hdNotFoundException
     it "tests setting the project" $
-        runDB (hdwSetProject day1 tid1 project1) `shouldThrow` hdNotFoundException
+        runDB (hdSetProject day1 tid1 project1) `shouldThrow` hdNotFoundException
 
 -- | Test the HD API
 testHdAPI :: RunDB -> Spec
@@ -491,7 +497,7 @@ testHdAPI runDB =
                 runDB $  projAdd project1 
                       >> hdSetWorkDefault day1 tid1 project1
             it "tests getting an entry" $
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
+                runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
@@ -499,57 +505,57 @@ testHdAPI runDB =
         context "When there is one holiday entry" $ 
             before_ (runDB $ hdSetHoliday day1 tid1 hdt1) $ do
             it "tests getting the entry" $ do
-                res <- runDB (hdHdwProjGet day1 tid1)
+                res <- runDB (hdGet day1 tid1)
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1) 
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
+                runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a worked entry" $ 
                 runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1
             itemsNoWorkedEntry runDB 
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1) $ do
             it "tests getting the entry" $ do
-                worked <- runDB (hdHdwProjGet day1 tid1)
+                worked <- runDB (hdGet day1 tid1)
                 worked `shouldBe` defaultWorked day1 tid1 project1
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
-                runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
+                runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a work entry" $ do
                 runDB $ do
                     projAdd project2
                     hdSetWorkDefault day1 tid1 project2
-                worked <- runDB (hdHdwProjGet day1 tid1)
+                worked <- runDB (hdGet day1 tid1)
                 worked `shouldBe` defaultWorked day1 tid1 project2
             it "tests overriding with a holiday entry" $ do
                 runDB $ hdSetHoliday day1 tid1 hdt1
-                res <- runDB (hdHdwProjGet day1 tid1)
+                res <- runDB (hdGet day1 tid1)
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1)
             it "tests setting arrived time" $ do
-                runDB (hdwSetArrived day1 tid1 (arrived1 tid1)) 
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (hdSetArrived day1 tid1 (arrived1 tid1)) 
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `hdwShouldSatisfy` ((==) (arrived1 tid1) . _workedArrived)
             it "tests setting left time" $ do
-                runDB (hdwSetLeft day1 tid1 (left1 tid1)) 
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (hdSetLeft day1 tid1 (left1 tid1)) 
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `hdwShouldSatisfy` ((==) (left1 tid1). _workedLeft)
             it "tests setting arrived and left time" $ do
-                runDB (hdwSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) 
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (hdSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) 
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 -- We check that arrived and left times are good
                 mbWorked `hdwShouldSatisfy` (and . ap [ (==) (arrived1 tid1) . _workedArrived, 
                                                         (==) (left1 tid1) . _workedLeft ] . pure) 
             it "tests setting notes" $ do
-                runDB (hdwSetNotes day1 tid1 notes1)
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (hdSetNotes day1 tid1 notes1)
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `hdwShouldSatisfy` ((==) notes1 . _workedNotes)
             it "tests setting office" $ do
-                runDB (hdwSetOffice day1 tid1 office1)
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (hdSetOffice day1 tid1 office1)
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `hdwShouldSatisfy` ((==) office1 . _workedOffice)
             it "tests setting the project" $ do
-                runDB (projAdd project2 >> hdwSetProject day1 tid1 project2)
-                mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
+                runDB (projAdd project2 >> hdSetProject day1 tid1 project2)
+                mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `projShouldBe` project2
         context "Test properties" $ do
             it "prop_hdSetHoliday" $

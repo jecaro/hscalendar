@@ -52,19 +52,19 @@ import           Idle (Idle(..))
 import           Model
     ( HdNotFound(..)
     , ProjExists(..)
-    , ProjHasHDW(..)
+    , ProjHasHd(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
-    , hdHdwProjGet
+    , hdGet
     , hdRm
     , hdSetHoliday
     , hdSetWork
-    , hdwSetArrived
-    , hdwSetArrivedAndLeft
-    , hdwSetLeft
-    , hdwSetNotes
-    , hdwSetOffice
-    , hdwSetProject
+    , hdSetArrived
+    , hdSetArrivedAndLeft
+    , hdSetLeft
+    , hdSetNotes
+    , hdSetOffice
+    , hdSetProject
     , migrateAll
     , projAdd
     , projList
@@ -148,7 +148,7 @@ run (ProjAdd project) = catch (void $ runDB $ projAdd project)
 
 -- Remove a project
 run (ProjRm project) = catches (runDB $ projRm project) 
-    [ Handler (\e@(ProjHasHDW _)   -> printException e)
+    [ Handler (\e@(ProjHasHd _)    -> printException e)
     , Handler (\e@(ProjNotFound _) -> printException e)
     ]
 
@@ -165,9 +165,9 @@ run (DiaryDisplay cd tid) = do
     -- Display input date
     liftIO . putStrLn $ showDay day <> " " <> (Text.pack . show) tid
     -- Get half-day
-    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
+    eiHd <- try $ runDB $ hdGet day tid
     -- Analyse output to produce lines of text
-    let hdStr = case eiHdHdwProj of
+    let hdStr = case eiHd of
            Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
            Right (MkHalfDayIdle (MkIdle _ _ hdt)) -> [ (Text.pack . show) hdt ]
            Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project)) ->
@@ -182,7 +182,7 @@ run (DiaryDisplay cd tid) = do
 run (DiaryEdit cd tid) = do
     -- Get the old record to put as default in the file
     day <- toDay cd
-    oldRecord <- hdAsText <$> try (runDB $ hdHdwProjGet day tid)
+    oldRecord <- hdAsText <$> try (runDB $ hdGet day tid)
     -- Bracket to make sure the temporary file will be deleted no matter what
     fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar") 
         (liftIO . removeFile) 
@@ -213,10 +213,10 @@ run (DiaryWork cd tid wopts) = do
     day <- toDay cd
 
     -- Get hdw
-    eiHdHdwProj <- try $ runDB $ hdHdwProjGet day tid
+    eiHd <- try $ runDB $ hdGet day tid
  
     -- Create it with a project if needed
-    eiOtherOpts <- case (eiHdHdwProj, findProjCmd wopts) of
+    eiOtherOpts <- case (eiHd, findProjCmd wopts) of
         -- Everything is there
         (Right (MkHalfDayWorked _), _) -> return $ Right wopts 
         -- Nothing or holiday
@@ -251,7 +251,7 @@ run (DiaryWork cd tid wopts) = do
             let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
             case mbAL of
                 Just (SetArrived a, SetLeft l) -> 
-                     catch (runDB $ hdwSetArrivedAndLeft day tid a l) 
+                     catch (runDB $ hdSetArrivedAndLeft day tid a l) 
                          (\e@TimesAreWrong -> printException e)
                 Nothing -> return ()
             -- Then apply remaining commands
@@ -281,13 +281,13 @@ dispatchEdit
     -> WorkOption
     -> SqlPersistT m()
 -- Set arrived time
-dispatchEdit day tid (MkSetArrived (SetArrived time)) = hdwSetArrived day tid time
+dispatchEdit day tid (MkSetArrived (SetArrived time)) = hdSetArrived day tid time
 -- Set left time
-dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdwSetLeft day tid time
+dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdSetLeft day tid time
 -- Simple actions handling
-dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdwSetNotes day tid notes
-dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdwSetOffice day tid office
-dispatchEdit day tid (MkSetProj (SetProj project))    = hdwSetProject day tid project
+dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdSetNotes day tid notes
+dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdSetOffice day tid office
+dispatchEdit day tid (MkSetProj (SetProj project))    = hdSetProject day tid project
 
 
 -- | Run sql actions with the pool
