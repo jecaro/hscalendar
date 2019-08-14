@@ -371,8 +371,11 @@ hdSetWork day tid project office tArrived tLeft = do
           return hdId
     let hdw' = hdw { dBHalfDayWorkedProjectId = projId
                    , dBHalfDayWorkedHalfDayId = hdId }
-    void $ insert hdw'
-   
+    getBy (UniqueHalfDayId hdId) >>= 
+        \case
+            Nothing               -> void $ insert hdw'
+            Just (Entity hdwId _) -> replace hdwId hdw'
+
 -- | Remove a half-day from the db
 hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m () 
 hdRm day tid = do
@@ -399,8 +402,8 @@ hdHdwProjGetInt
     -> SqlPersistT m (Entity DBHalfDay, Entity DBHalfDayWorked, Entity DBProject)
 hdHdwProjGetInt day tid = do
     hdHdwProjs <- select $ from $ \(hd, hdw, proj) -> do
-        where_ (hd  ^. DBHalfDayDay             ==. val day           &&.
-                hd  ^. DBHalfDayTimeInDay       ==. val tid           &&.
+        where_ (hd  ^. DBHalfDayDay             ==. val day             &&.
+                hd  ^. DBHalfDayTimeInDay       ==. val tid             &&.
                 hdw ^. DBHalfDayWorkedProjectId ==. proj ^. DBProjectId &&. 
                 hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId)
         return (hd, hdw, proj)
@@ -437,7 +440,7 @@ guardNewTimesAreOk day tid hdw = do
           Left (HdNotFound _ _)      -> Nothing
           Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Check if it works
-    unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO $ TimesAreWrong)
+    unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO TimesAreWrong)
 
 -- | Return the times in the day in a list
 timesOfDay :: DBHalfDayWorked -> [Time.TimeOfDay]

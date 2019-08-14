@@ -42,10 +42,10 @@ import           Run (App(..), run)
 -- - Add show month
 -- - Make diary date/TimeInDay optional default today
 -- - Put defaults values in config file for a week
--- - bug hdSetWork twice
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Comments modules
+-- - Rename the Model functions (remove hdw)
 
 -- | Main function
 main :: IO ()

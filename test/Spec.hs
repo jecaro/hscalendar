@@ -515,6 +515,12 @@ testHdAPI runDB =
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
+            it "tests overriding with a work entry" $ do
+                runDB $ do
+                    projAdd project2
+                    hdSetWorkDefault day1 tid1 project2
+                worked <- runDB (hdHdwProjGet day1 tid1)
+                worked `shouldBe` defaultWorked day1 tid1 project2
             it "tests overriding with a holiday entry" $ do
                 runDB $ hdSetHoliday day1 tid1 hdt1
                 res <- runDB (hdHdwProjGet day1 tid1)
