@@ -464,20 +464,20 @@ testProjAPI runDB =
                 property (prop_projList runDB)
 
 -- | When there is no work entry, all these should throw an exception
-itemsNoWorkedEntry :: Exception e => RunDB -> Selector e -> Spec
-itemsNoWorkedEntry runDB exception = do
+itemsNoWorkedEntry :: RunDB -> Spec
+itemsNoWorkedEntry runDB = do
     it "tests setting arrived time" $
-        runDB (hdwSetArrived day1 tid1 (arrived1 tid1)) `shouldThrow` exception
+        runDB (hdwSetArrived day1 tid1 (arrived1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting left time" $
-        runDB (hdwSetLeft day1 tid1 (left1 tid1)) `shouldThrow` exception
+        runDB (hdwSetLeft day1 tid1 (left1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting arrived and left time" $
-        runDB (hdwSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) `shouldThrow` exception
+        runDB (hdwSetArrivedAndLeft day1 tid1 (arrived1 tid1) (left1 tid1)) `shouldThrow` hdNotFoundException
     it "tests setting notes" $
-        runDB (hdwSetNotes day1 tid1 notes1) `shouldThrow` exception
+        runDB (hdwSetNotes day1 tid1 notes1) `shouldThrow` hdNotFoundException
     it "tests setting office" $
-        runDB (hdwSetOffice day1 tid1 office1) `shouldThrow` exception
+        runDB (hdwSetOffice day1 tid1 office1) `shouldThrow` hdNotFoundException
     it "tests setting the project" $
-        runDB (hdwSetProject day1 tid1 project1) `shouldThrow` exception
+        runDB (hdwSetProject day1 tid1 project1) `shouldThrow` hdNotFoundException
 
 -- | Test the HD API
 testHdAPI :: RunDB -> Spec
@@ -495,7 +495,7 @@ testHdAPI runDB =
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
-            itemsNoWorkedEntry runDB hdNotFoundException
+            itemsNoWorkedEntry runDB 
         context "When there is one holiday entry" $ 
             before_ (runDB $ hdSetHoliday day1 tid1 hdt1) $ do
             it "tests getting the entry" $ do
@@ -506,7 +506,7 @@ testHdAPI runDB =
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests overriding with a worked entry" $ 
                 runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1
-            itemsNoWorkedEntry runDB hdNotFoundException
+            itemsNoWorkedEntry runDB 
         context "When there is one work entry" $ 
             before_ (runDB $ projAdd project1 >> hdSetWorkDefault day1 tid1 project1) $ do
             it "tests getting the entry" $ do
