@@ -444,7 +444,7 @@ testProjAPI runDB =
                     projRm project1
                     projExists project1
                 exists `shouldBe` False
-            it "tests if we can remove the project if it is used" $  do
+            it "tests if we can remove the project if it is used" $  
                 runDB (hdSetWorkDefault day1 tid1 project1 >> projRm project1)
                     `shouldThrow` projHasHDWException
             it "tests if we can rename it" $ do
@@ -515,8 +515,10 @@ testHdAPI runDB =
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdHdwProjGet day1 tid1) `shouldThrow` hdNotFoundException
-            it "tests overriding with a holiday entry" $ 
+            it "tests overriding with a holiday entry" $ do
                 runDB $ hdSetHoliday day1 tid1 hdt1
+                res <- runDB (hdHdwProjGet day1 tid1)
+                res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1)
             it "tests setting arrived time" $ do
                 runDB (hdwSetArrived day1 tid1 (arrived1 tid1)) 
                 mbWorked <- toMbWorked <$> runDB (hdHdwProjGet day1 tid1)
