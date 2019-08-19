@@ -45,6 +45,9 @@ import           Run (App(..), run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Comments modules
+-- - Use display to print exceptions
+-- - Stop DiaryWork in case of an error
+-- - Remove Data.Text.IO
 
 -- | Main function
 main :: IO ()
