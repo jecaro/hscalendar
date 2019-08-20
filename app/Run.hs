@@ -86,8 +86,12 @@ instance Exception ProcessReturnsError
 instance Show ProcessReturnsError where
     show (ProcessReturnsError cmd) = "The process " <> cmd <> " returns an error"
 
-errProjCmdIsMandatory :: Text
-errProjCmdIsMandatory = "There should be one project command"
+data ProjCmdIsMandatory = ProjCmdIsMandatory
+
+instance Exception ProjCmdIsMandatory
+
+instance Show ProjCmdIsMandatory where
+    show ProjCmdIsMandatory = "There should be one project command"
 
 -- | Print an exception 
 printException :: (MonadIO m, Show a) => a -> m ()
@@ -133,7 +137,7 @@ findArrivedAndLeftCmd options =
 
 
 createHdWork :: (HasConnPool env, HasConfig env) 
-    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env (Either Text [WorkOption])
+    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env [WorkOption]
 createHdWork day tid wopts = do
     -- Get hdw
     eiHd <- try $ runDB $ hdGet day tid
@@ -141,7 +145,7 @@ createHdWork day tid wopts = do
     -- Create it with a project if needed
     case (eiHd, findProjCmd wopts) of
         -- Everything is there
-        (Right (MkHalfDayWorked _), _) -> return $ Right wopts 
+        (Right (MkHalfDayWorked _), _) -> return wopts 
         -- Nothing or holiday
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
@@ -157,14 +161,12 @@ createHdWork day tid wopts = do
                 arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
                 left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
             -- Carry on, we have now everything to create the hwd
-            eiAdded <- try $ runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
-            case eiAdded of
-                Right _ -> return $ Right otherOpts''
-                Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
+            runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
+            return otherOpts''
         -- Holiday but no project
-        (Right (MkHalfDayIdle _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+        (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
         -- No hd, but no project either
-        (Left (HdNotFound _ _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+        (Left (HdNotFound _ _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
 
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
@@ -248,25 +250,22 @@ run (DiaryWork cd tid wopts) = do
     day <- toDay cd
 
     -- Create it with a project if needed
-    eiOtherOpts <- createHdWork day tid wopts
+    otherOpts <- createHdWork day tid wopts
 
-    -- Apply remaining options
-    case eiOtherOpts of
-        Left msg -> liftIO $ putStrLn msg
-        Right otherOpts -> do
-            -- Apply set arrived set left when we have the two options
-            let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
-            case mbAL of
-                Just (SetArrived a, SetLeft l) -> 
-                     catch (runDB $ hdSetArrivedAndLeft day tid a l) 
-                         (\e@TimesAreWrong -> printException e)
-                Nothing -> return ()
-            -- Then apply remaining commands
-            runDB $ mapM_ dispatchEditWithError otherOpts' 
-            -- Display new Half-Day
-            run $ DiaryDisplay cd tid
-          where dispatchEditWithError x = catch (dispatchEdit day tid x) 
-                    (\e@TimesAreWrong -> printException e)
+    -- Handle exceptions here
+
+    -- Apply set arrived set left when we have the two options
+    let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
+    case mbAL of
+        Just (SetArrived a, SetLeft l) -> 
+             catch (runDB $ hdSetArrivedAndLeft day tid a l) 
+                 (\e@TimesAreWrong -> printException e)
+        Nothing -> return ()
+    -- Then apply remaining commands
+    let dispatchEditWithError x = catch (dispatchEdit day tid x) (\e@TimesAreWrong -> printException e)
+    runDB $ mapM_ dispatchEditWithError otherOpts' 
+    -- Display new Half-Day
+    run $ DiaryDisplay cd tid
  
 -- Set a holiday entry
 run (DiaryHoliday cd tid hdt) = do
