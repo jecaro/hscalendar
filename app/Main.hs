@@ -46,7 +46,6 @@ import           Run (App(..), run)
 -- - Add cleanUp command
 -- - Comments modules
 -- - Use display to print exceptions
--- - Remove Data.Text.IO
 
 -- | Main function
 main :: IO ()

@@ -19,7 +19,6 @@ import           Database.Persist.Sqlite
     , runMigration
     , runSqlPersistMPool
     )
-import           Data.Text.IO (readFile) 
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
@@ -245,7 +244,7 @@ run (DiaryEdit cd tid) = do
             -- Handle error code
             when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
             -- Read file content
-            liftIO $ readFile filename
+            readFileUtf8 filename
         )
     if fileContent == oldRecord 
         then nothingToDo

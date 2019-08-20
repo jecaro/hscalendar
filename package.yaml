@@ -22,7 +22,6 @@ dependencies:
 - rio
 - rio-orphans
 - temporary
-- text 
 - yaml
 name: hscalendar
 version: 0.1.0.0
