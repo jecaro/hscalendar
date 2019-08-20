@@ -19,7 +19,7 @@ import           Database.Persist.Sqlite
     , runMigration
     , runSqlPersistMPool
     )
-import           Data.Text.IO (putStrLn, readFile) 
+import           Data.Text.IO (readFile) 
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
@@ -94,8 +94,8 @@ instance Show ProjCmdIsMandatory where
     show ProjCmdIsMandatory = "There should be one project command"
 
 -- | Print an exception 
-printException :: (MonadIO m, Show a) => a -> m ()
-printException e =  liftIO . putStrLn $ Text.pack $ show e
+printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
+printException =  logError . displayShow
 
 -- | Get out the first element of a list which return Just 
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
@@ -189,7 +189,7 @@ run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env)
 run Migrate = runDB $ runMigration migrateAll
 
 -- List the projects
-run ProjList = runDB projList >>= liftIO . mapM_ (putStrLn . unProject) 
+run ProjList = runDB projList >>= mapM_ (logInfo . display . unProject) 
 
 -- Add a project
 run (ProjAdd project) = catch (void $ runDB $ projAdd project) 
@@ -212,7 +212,7 @@ run (DiaryDisplay cd tid) = do
     -- Get actual day
     day <- toDay cd
     -- Display input date
-    liftIO . putStrLn $ showDay day <> " " <> (Text.pack . show) tid
+    logInfo . display $ showDay day <> " " <> (Text.pack . show) tid
     -- Get half-day
     eiHd <- try $ runDB $ hdGet day tid
     -- Analyse output to produce lines of text
@@ -225,7 +225,7 @@ run (DiaryDisplay cd tid) = do
                , "Notes:   " <> unNotes notes
                ]
     -- Print it
-    liftIO $ mapM_ putStrLn hdStr
+    mapM_ (logInfo . display) hdStr
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
@@ -253,7 +253,7 @@ run (DiaryEdit cd tid) = do
             Left e@(ParserError _) -> throwIO e
             Left EmptyFileError    -> nothingToDo
             Right options          -> run $ DiaryWork cd tid options
-  where nothingToDo = liftIO $ putStrLn "Nothing to do"
+  where nothingToDo = logWarn "Nothing to do"
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
