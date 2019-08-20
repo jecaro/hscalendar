@@ -131,6 +131,41 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
+
+createHdWork :: (HasConnPool env, HasConfig env) 
+    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env (Either Text [WorkOption])
+createHdWork day tid wopts = do
+    -- Get hdw
+    eiHd <- try $ runDB $ hdGet day tid
+ 
+    -- Create it with a project if needed
+    case (eiHd, findProjCmd wopts) of
+        -- Everything is there
+        (Right (MkHalfDayWorked _), _) -> return $ Right wopts 
+        -- Nothing or holiday
+        (_, (Just (SetProj proj), otherOpts)) -> do
+            config <- view configL
+            -- Get the default times from the config file
+            let (DefaultHours dArrived dLeft) = case tid of
+                    Morning   -> morning (defaultHours config)
+                    Afternoon -> afternoon (defaultHours config)
+            -- Get the arrived and left commands if they exists, maintaining 
+            -- the other options
+                (mbArrived, otherOpts') = findArrivedCmd otherOpts
+                (mbLeft, otherOpts'') = findLeftCmd otherOpts'
+            -- Unwarp maybe and the newtype
+                arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
+                left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
+            -- Carry on, we have now everything to create the hwd
+            eiAdded <- try $ runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
+            case eiAdded of
+                Right _ -> return $ Right otherOpts''
+                Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
+        -- Holiday but no project
+        (Right (MkHalfDayIdle _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+        -- No hd, but no project either
+        (Left (HdNotFound _ _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
+
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
     => Cmd 
@@ -212,37 +247,9 @@ run (DiaryWork cd tid wopts) = do
     -- Get actual day
     day <- toDay cd
 
-    -- Get hdw
-    eiHd <- try $ runDB $ hdGet day tid
- 
     -- Create it with a project if needed
-    eiOtherOpts <- case (eiHd, findProjCmd wopts) of
-        -- Everything is there
-        (Right (MkHalfDayWorked _), _) -> return $ Right wopts 
-        -- Nothing or holiday
-        (_, (Just (SetProj proj), otherOpts)) -> do
-            config <- view configL
-            -- Get the default times from the config file
-            let (DefaultHours dArrived dLeft) = case tid of
-                    Morning   -> morning (defaultHours config)
-                    Afternoon -> afternoon (defaultHours config)
-            -- Get the arrived and left commands if they exists, maintaining 
-            -- the other options
-                (mbArrived, otherOpts') = findArrivedCmd otherOpts
-                (mbLeft, otherOpts'') = findLeftCmd otherOpts'
-            -- Unwarp maybe and the newtype
-                arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
-                left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
-            -- Carry on, we have now everything to create the hwd
-            eiAdded <- try $ runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
-            case eiAdded of
-                Right _ -> return $ Right otherOpts''
-                Left e@(ProjNotFound _) -> return $ Left $ Text.pack $ show e
-        -- Holiday but no project
-        (Right (MkHalfDayIdle _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
-        -- No hd, but no project either
-        (Left (HdNotFound _ _), (Nothing, _)) -> return $ Left errProjCmdIsMandatory
-    
+    eiOtherOpts <- createHdWork day tid wopts
+
     -- Apply remaining options
     case eiOtherOpts of
         Left msg -> liftIO $ putStrLn msg
