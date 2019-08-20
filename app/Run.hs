@@ -262,6 +262,7 @@ run (DiaryWork cd tid wopts) = do
     catches (runWorkOptions day tid wopts)
         [ Handler (\e@TimesAreWrong      -> printException e)
         , Handler (\e@ProjCmdIsMandatory -> printException e)
+        , Handler (\e@(ProjNotFound _)   -> printException e)
         ]
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
