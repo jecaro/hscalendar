@@ -135,18 +135,22 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
-
-createHdWork :: (HasConnPool env, HasConfig env) 
-    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env [WorkOption]
-createHdWork day tid wopts = do
+-- | Execute the work options. For this the fct checks if the record is already
+--   a work half-day. If not it searches the mandatory project command to be
+--   able to create it. It uses for so arrived and left time set in the config 
+--   file or on the command line. Then it applies the remaining options. Error
+--   is handled with exceptions by the Model module.
+runWorkOptions :: (HasConnPool env, HasConfig env) 
+    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()
+runWorkOptions day tid wopts = do
     -- Get hdw
     eiHd <- try $ runDB $ hdGet day tid
  
     -- Create it with a project if needed
-    case (eiHd, findProjCmd wopts) of
+    otherOpts <- case (eiHd, findProjCmd wopts) of
         -- Everything is there
         (Right (MkHalfDayWorked _), _) -> return wopts 
-        -- Nothing or holiday
+        -- Nothing or holiday but a project
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
             -- Get the default times from the config file
@@ -167,6 +171,14 @@ createHdWork day tid wopts = do
         (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
         -- No hd, but no project either
         (Left (HdNotFound _ _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
+
+    -- Apply set arrived set left when we have the two options
+    let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
+    case mbAL of
+        Just (SetArrived a, SetLeft l) -> runDB $ hdSetArrivedAndLeft day tid a l
+        Nothing -> return ()
+    -- Then apply remaining commands
+    runDB $ mapM_ (dispatchEdit day tid) otherOpts' 
 
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
@@ -245,25 +257,13 @@ run (DiaryEdit cd tid) = do
 
 -- Set a work entry 
 run (DiaryWork cd tid wopts) = do
-
     -- Get actual day
     day <- toDay cd
-
-    -- Create it with a project if needed
-    otherOpts <- createHdWork day tid wopts
-
-    -- Handle exceptions here
-
-    -- Apply set arrived set left when we have the two options
-    let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
-    case mbAL of
-        Just (SetArrived a, SetLeft l) -> 
-             catch (runDB $ hdSetArrivedAndLeft day tid a l) 
-                 (\e@TimesAreWrong -> printException e)
-        Nothing -> return ()
-    -- Then apply remaining commands
-    let dispatchEditWithError x = catch (dispatchEdit day tid x) (\e@TimesAreWrong -> printException e)
-    runDB $ mapM_ dispatchEditWithError otherOpts' 
+    -- Create the record in DB
+    catches (runWorkOptions day tid wopts)
+        [ Handler (\e@TimesAreWrong      -> printException e)
+        , Handler (\e@ProjCmdIsMandatory -> printException e)
+        ]
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
  

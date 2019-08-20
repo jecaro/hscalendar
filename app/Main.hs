@@ -46,7 +46,6 @@ import           Run (App(..), run)
 -- - Add cleanUp command
 -- - Comments modules
 -- - Use display to print exceptions
--- - Stop DiaryWork in case of an error
 -- - Remove Data.Text.IO
 
 -- | Main function
