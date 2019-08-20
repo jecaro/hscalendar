@@ -231,7 +231,7 @@ projGetInt project = getBy (UniqueName $ unProject project) >>=
         Nothing             -> throwIO $ ProjNotFound project
         Just (Entity pId _) -> return pId
 
--- | Guard to check if a project is allready present in the db. If so, raise an
+-- | Guard to check if a project is already present in the db. If so, raise an
 -- exception
 guardProjNotExistsInt :: (MonadIO m) => Project -> SqlPersistT m ()
 guardProjNotExistsInt project = do
