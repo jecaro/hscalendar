@@ -1,3 +1,4 @@
+-- | The configuration file in yaml format
 {-# LANGUAGE TemplateHaskell #-}
 
 module Config 
@@ -75,7 +76,7 @@ defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
     let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0) 
-        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 30 0) 
+        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0) 
     return $ Config { db = defaultDb
                     , defaultHours = DefaultHoursForDay morning afternoon 
                     , defaultOffice = Rennes 

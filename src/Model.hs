@@ -1,4 +1,4 @@
--- | 
+-- | The main API
 module Model
     ( 
     -- * Exceptions
@@ -119,7 +119,7 @@ instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
       where name = Text.unpack (unProject project)
 
--- | The project has associated hdw
+-- | The project has associated hds
 newtype ProjHasHd = ProjHasHd Project
 
 instance Exception ProjHasHd
@@ -311,7 +311,7 @@ hdSetLeft day tid tod = do
     guardNewTimesAreOk day tid hdw' 
     replace hdwId hdw'
 
--- | Set both arrived and left time for a working half-day
+-- | Set both arrived and left times for a working half-day
 hdSetArrivedAndLeft 
     :: (MonadIO m, MonadUnliftIO m) 
     => Time.Day 

@@ -1,3 +1,4 @@
+-- | Command line options using optparse-applicative
 module CommandLine
     ( Cmd(..)
     , Options(..)
@@ -56,9 +57,11 @@ import qualified Office (Office(..), parser)
 import           Project (Project, mkProject)
 import           TimeInDay (TimeInDay(..))
 
+-- | Options for the log function
 data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
+-- | Commands handle by command line
 data Cmd = Migrate                                             |
            DiaryDisplay CD.CustomDay TimeInDay                 |
            DiaryEdit CD.CustomDay TimeInDay                    |

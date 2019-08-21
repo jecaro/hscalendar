@@ -1,3 +1,4 @@
+-- | Application global read only state
 module App
     ( App(..)
     , HasConnPool(..)
@@ -18,7 +19,7 @@ data App = App
     { appLogFunc        :: !LogFunc        -- ^ The log function
     , appConnPool       :: !ConnectionPool -- ^ The connexion pool
     , appConfig         :: !Config         -- ^ The configuration file
-    , appProcessContext :: !ProcessContext
+    , appProcessContext :: !ProcessContext -- ^ Context to start processes
     }
 
 class HasConnPool env where

@@ -1,3 +1,4 @@
+-- | Functions related to the Project type
 module Project
     ( Project
     , mkProject

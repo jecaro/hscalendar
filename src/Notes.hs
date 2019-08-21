@@ -1,3 +1,4 @@
+-- | Functions related to Notes
 module Notes
     ( Notes
     , mkNotes
@@ -31,17 +32,17 @@ import           Test.QuickCheck
     )
 import           Test.QuickCheck.Instances.Text()
 
-
+-- | The type for storing notes
 newtype Notes = MkNotes { unNotes :: Text.Text }
     deriving (Eq, Show)
 
--- | Simple type to refine Text for notes
+-- | Simple type to refine Text for Notes
 data NotesData
 
 -- | The actual refined type
 type NotesText = Refined NotesData Text
 
--- | Predicate instance to validate what is allowable for a project name
+-- | Predicate instance to validate what is allowable for notes
 instance Predicate NotesData Text where
     validate p name = unless (notesValid name) $
             throwRefineOtherException (typeOf p) "Not alpha num text"

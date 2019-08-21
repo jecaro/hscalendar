@@ -1,3 +1,6 @@
+-- | Contains functions related to CustomDay: a data type which can handle
+--   any calendar day or today, yesterday and tomorrow. It can also use an easy
+--   numbering system.
 module CustomDay
     ( CustomDay(..)
     , parser
@@ -23,9 +26,10 @@ import           Data.Attoparsec.Text
     )
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 
-data CustomDay = MkDay Time.Day        |
-                 MkDayNum Int          |
-                 MkDayMonthNum Int Int |
+-- | The custom day
+data CustomDay = MkDay Time.Day        | -- ^ Fully defined day
+                 MkDayNum Int          | -- ^ The year and the month are not present
+                 MkDayMonthNum Int Int | -- ^ The year is not present
                  Today                 |
                  Yesterday             |
                  Tomorrow

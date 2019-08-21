@@ -1,3 +1,4 @@
+-- | Implement all the commands
 module Run 
   ( App(..)
   , run
@@ -77,13 +78,13 @@ import           Project (unProject)
 import           TimeInDay (TimeInDay(..))
 import           Worked (Worked(..))
 
--- | The editor returns an error
-newtype ProcessReturnsError = ProcessReturnsError String
+-- | The editor returned an error
+newtype ProcessReturnedError = ProcessReturnedError String
 
-instance Exception ProcessReturnsError
+instance Exception ProcessReturnedError
 
-instance Show ProcessReturnsError where
-    show (ProcessReturnsError cmd) = "The process " <> cmd <> " returns an error"
+instance Show ProcessReturnedError where
+    show (ProcessReturnedError cmd) = "The process " <> cmd <> " returned an error"
 
 -- | When setting a work HD, a project command is mandatory
 data ProjCmdIsMandatory = ProjCmdIsMandatory
@@ -137,9 +138,10 @@ findArrivedAndLeftCmd options =
 
 -- | Execute the work options. In order to do that, the fct checks if the record 
 --   is already a work half-day. If not it searches the mandatory project 
---   command to be able to create it. It uses for so arrived and left time set 
+--   command to be able to create it. It uses for that arrived and left times set 
 --   in the config file or on the command line. Then it applies the remaining 
---   options. Error is handled with exceptions by the Model module.
+--   options. Error is handled with exceptions by the Model module and catch
+--   by the caller.
 runWorkOptions :: (HasConnPool env, HasConfig env) 
     => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()
 runWorkOptions day tid wopts = do
@@ -244,7 +246,7 @@ run (DiaryEdit cd tid) = do
             -- Launch process
             exitCode <- proc editor [filename] runProcess
             -- Handle error code
-            when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnsError editor)
+            when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnedError editor)
             -- Read file content
             readFileUtf8 filename
         )

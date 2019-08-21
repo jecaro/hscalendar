@@ -1,3 +1,4 @@
+-- | The test suite
 {-# LANGUAGE TemplateHaskell #-}
 
 import           RIO

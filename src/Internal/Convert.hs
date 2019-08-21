@@ -1,3 +1,4 @@
+-- | The functions to convert the data between the DBModel and the business model
 module Internal.Convert
     ( dbToIdleDayType
     , dbToIdle
