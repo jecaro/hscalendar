@@ -48,8 +48,7 @@ import qualified IdleDayType as IDT (IdleDayType(..))
 import           HalfDay (HalfDay(..))
 import           Idle (Idle(..))
 import           Model 
-    ( BadArgument(..)
-    , HdNotFound(..)
+    ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
     , ProjNotFound(..)
@@ -105,10 +104,6 @@ projHasHDWException = const True
 -- | hspec selector for HdNotFound exception
 hdNotFoundException :: Selector HdNotFound
 hdNotFoundException = const True
-
--- | hspec selector for BadArgument exception
-badArgumentException :: Selector BadArgument
-badArgumentException = const True
 
 -- Some constants for the specs
 
@@ -202,16 +197,14 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
 prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> IDT.IdleDayType -> Property
 prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
-    exceptionRaised <- Q.run $ catch (hdSetHoliday day tid hdt >> return False) 
-        (\BadArgument -> return True)
+    Q.run $ hdSetHoliday day tid hdt
 
     -- Check if the value in the database is right
-    unless exceptionRaised $ do
-        hd <- Q.run $ hdGet day tid
+    hd <- Q.run $ hdGet day tid
 
-        case hd of
-          MkHalfDayWorked _               -> Q.assert False
-          MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ hdt == hdt'
+    case hd of
+        MkHalfDayWorked _               -> Q.assert False
+        MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ hdt == hdt'
 
     Q.run cleanDB
 

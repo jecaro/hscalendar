@@ -2,8 +2,7 @@
 module Model
     ( 
     -- * Exceptions
-      BadArgument(..)
-    , ProjExists(..)
+      ProjExists(..)
     , ProjHasHd(..)
     , ProjNotFound(..)
     , HdNotFound(..)
@@ -154,14 +153,6 @@ instance Exception DbInconsistency
 instance Show DbInconsistency where
     show _ = "Warning db inconsistency"
 
--- | Bad argument for function
-data BadArgument = BadArgument
-
-instance Exception BadArgument
-
-instance Show BadArgument where
-    show _ = "Bad argument"
-
 -- Misc 
 
 -- | Convert a Day to a string in the form dd-mm-yyyy
@@ -262,7 +253,7 @@ hdGet day tid =
                     Just idle -> return $ MkHalfDayIdle idle
             (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) -> 
                 case dbToWorked hd hdw proj of
-                    Nothing -> throwIO BadArgument
+                    Nothing -> throwIO DbInconsistency
                     Just worked -> return $ MkHalfDayWorked worked
             _ -> throwIO $ HdNotFound day tid
 

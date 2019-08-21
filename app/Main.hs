@@ -44,8 +44,6 @@ import           Run (App(..), run)
 -- - Put defaults values in config file for a week
 -- - Add unit test for editor features
 -- - Add cleanUp command
--- - Remove FileWorked type
--- - Rename BadArgument exception
 
 -- | Main function
 main :: IO ()
