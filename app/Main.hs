@@ -45,8 +45,6 @@ import           Run (App(..), run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Comments modules
--- - Use display to print exceptions
--- - Add an indent space to notes
 
 -- | Main function
 main :: IO ()

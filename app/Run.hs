@@ -85,6 +85,7 @@ instance Exception ProcessReturnsError
 instance Show ProcessReturnsError where
     show (ProcessReturnsError cmd) = "The process " <> cmd <> " returns an error"
 
+-- | When setting a work HD, a project command is mandatory
 data ProjCmdIsMandatory = ProjCmdIsMandatory
 
 instance Exception ProjCmdIsMandatory
@@ -100,7 +101,7 @@ printException =  logError . displayShow
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
 partitionFirst _ [] = (Nothing, [])
 partitionFirst p (x:xs) =
-    case p x of
+    case p x of 
         r@(Just _) -> (r, xs)
         Nothing    -> (r', x:xs')
           where (r', xs') = partitionFirst p xs
@@ -134,11 +135,11 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
--- | Execute the work options. For this the fct checks if the record is already
---   a work half-day. If not it searches the mandatory project command to be
---   able to create it. It uses for so arrived and left time set in the config 
---   file or on the command line. Then it applies the remaining options. Error
---   is handled with exceptions by the Model module.
+-- | Execute the work options. In order to do that, the fct checks if the record 
+--   is already a work half-day. If not it searches the mandatory project 
+--   command to be able to create it. It uses for so arrived and left time set 
+--   in the config file or on the command line. Then it applies the remaining 
+--   options. Error is handled with exceptions by the Model module.
 runWorkOptions :: (HasConnPool env, HasConfig env) 
     => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()
 runWorkOptions day tid wopts = do
@@ -221,7 +222,8 @@ run (DiaryDisplay cd tid) = do
            Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project)) ->
                [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
                , "Project: " <> unProject project
-               , "Notes:   " <> unNotes notes
+               , "Notes:"
+               , unNotes notes
                ]
     -- Print it
     mapM_ (logInfo . display) hdStr
