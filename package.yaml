@@ -21,6 +21,9 @@ dependencies:
 - refined
 - rio
 - rio-orphans
+- servant-cli
+- servant-client
+- servant-server
 - temporary
 - yaml
 name: hscalendar

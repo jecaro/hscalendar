@@ -18,7 +18,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-12.26
+resolver: lts-13.10
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,7 +40,9 @@ packages:
 # (e.g., acme-missiles-0.3)
 # extra-deps: []
 extra-deps:
-- esqueleto-2.6.0@sha256:e4672cd3baec100ef8597224abae4e030795e8a1f80abb6e0c3e2570f213a258
+- servant-cli-0.1.0.1@sha256:a33e6fa770be0e127da6967dc6d9fea3cda882d168c40226e0479732764858a7,2542
+- functor-combinators-0.1.1.1@sha256:1386291a5b3236bb52b25d26c732150e3ee8f5d67026544f311e1423b243eb9d,3691
+- trivial-constraint-0.6.0.0@sha256:117b4aed290097f48fa87fd18e8e365c1b58b917cf0397d3bc36fd89fc53e0d5,4093
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
