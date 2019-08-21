@@ -12,9 +12,9 @@ import           IdleDayType
 import           TimeInDay (TimeInDay)
 
 data Idle = MkIdle
-    { _idleDay       :: Time.Day
-    , _idleTimeInDay :: TimeInDay
-    , _idleDayType   :: IdleDayType
+    { _idleDay       :: !Time.Day
+    , _idleTimeInDay :: !TimeInDay
+    , _idleDayType   :: !IdleDayType
     }
     deriving (Show, Eq)
 makeFields ''Idle

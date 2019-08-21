@@ -14,13 +14,13 @@ import           Office (Office)
 import           TimeInDay (TimeInDay)
 
 data Worked = MkWorked
-    { _workedDay       :: Time.Day
-    , _workedTimeInDay :: TimeInDay
-    , _workedArrived   :: Time.TimeOfDay
-    , _workedLeft      :: Time.TimeOfDay
-    , _workedOffice    :: Office
-    , _workedNotes     :: Notes
-    , _workedProject   :: Project
+    { _workedDay       :: !Time.Day
+    , _workedTimeInDay :: !TimeInDay
+    , _workedArrived   :: !Time.TimeOfDay
+    , _workedLeft      :: !Time.TimeOfDay
+    , _workedOffice    :: !Office
+    , _workedNotes     :: !Notes
+    , _workedProject   :: !Project
     }
     deriving (Show, Eq)
 makeFields ''Worked

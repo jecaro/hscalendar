@@ -44,7 +44,6 @@ import           Run (App(..), run)
 -- - Put defaults values in config file for a week
 -- - Add unit test for editor features
 -- - Add cleanUp command
--- - Add strict annotations for new model
 -- - Remove FileWorked type
 -- - Rename BadArgument exception
 
