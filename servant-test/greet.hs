@@ -7,6 +7,8 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 
+import           Prelude
+
 import           Control.Concurrent
 import           Control.Exception
 import           Control.Monad.IO.Class
