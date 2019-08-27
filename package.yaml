@@ -21,11 +21,21 @@ dependencies:
 - refined
 - rio
 - rio-orphans
+- temporary
+- yaml
+# For servant-test
 - servant-cli
 - servant-client
 - servant-server
-- temporary
-- yaml
+- servant
+- aeson
+- text
+- vinyl
+- http-client
+- warp
+- random
+- bytestring
+- containers
 name: hscalendar
 version: 0.1.0.0
 author: Jean-Charles Quillet
@@ -39,6 +49,22 @@ executables:
   hscalendar-exe:
     source-dirs: app
     main: Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -Wcompat
+    - -Widentities
+    - -Wincomplete-record-updates
+    - -Wincomplete-uni-patterns
+    - -Wpartial-fields
+    - -Wredundant-constraints
+    dependencies:
+    - hscalendar
+  servant-test:
+    source-dirs: servant-test
+    main: greet.hs
     ghc-options:
     - -threaded
     - -rtsopts
