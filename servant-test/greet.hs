@@ -7,10 +7,9 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 
-import           Prelude
+import           RIO
 
 import           Control.Concurrent
-import           Control.Exception
 import           Control.Monad.IO.Class
 import           Data.Aeson
 import           Data.Maybe
@@ -113,33 +112,37 @@ server = serveWithContext testApi (authCheck :. EmptyContext) $
 
 main :: IO ()
 main = do
-    c <- parseHandleClientWithContext
-                    testApi
-                    (Proxy :: Proxy ClientM)
-                    (getPwd :& RNil)
-                    cinfo $
-            (\(Greet g) -> "Greeting: " ++ T.unpack g)
-       :<|> ( (\i -> show i ++ " letters")
-         :<|> (\_ -> "posted!")
-            )
-       :<|> (\s -> "Reversed: " ++ T.unpack s)
-
     _ <- forkIO $ run 8081 server
 
     manager' <- newManager defaultManagerSettings
-    res      <- runClientM c (mkClientEnv manager' (BaseUrl Http "localhost" 8081 ""))
 
-    case res of
-      Left e        -> throwIO e
-      Right rstring -> putStrLn rstring
+    runSimpleApp $ do
+        c <- liftIO $ parseHandleClientWithContext
+                        testApi
+                        (Proxy :: Proxy ClientM)
+                        (getPwd :& RNil)
+                        cinfo $
+                (\(Greet g) -> "Greeting: " ++ T.unpack g)
+           :<|> ( (\i -> show i ++ " letters")
+             :<|> (\_ -> "posted!")
+                )
+           :<|> (\s -> "Reversed: " ++ T.unpack s)
+
+        res <- liftIO $ runClientM c (mkClientEnv manager' (BaseUrl Http "localhost" 8081 ""))
+
+        case res of
+          Left e        -> throwIO e
+          Right rstring -> logInfo $ displayShow rstring
   where
     cinfo = header "greet" <> progDesc "Greet API"
+    -- cinfo = _
     getPwd :: ContextFor ClientM (BasicAuth "login" Int)
+    -- getPwd = _
     getPwd = GenBasicAuthData . liftIO $ do
-      putStrLn "Authentication needed for this action!"
-      putStrLn "(Hint: try 'bob' and 'hunter2')"
-      putStrLn "Enter username:"
+      BS.putStrLn "Authentication needed for this action!"
+      BS.putStrLn "(Hint: try 'bob' and 'hunter2')"
+      BS.putStrLn "Enter username:"
       n <- BS.getLine
-      putStrLn "Enter password:"
+      BS.putStrLn "Enter password:"
       p <- BS.getLine
       pure $ BasicAuthData n p
