@@ -121,7 +121,7 @@ main = do
                         cinfo $
                 (\(Greet g) -> "Greeting: " ++ T.unpack g)
            :<|> ( (\i -> show i ++ " letters")
-             :<|> (\_ -> "posted!")
+             :<|> const "posted!"
                 )
            :<|> (\s -> "Reversed: " ++ T.unpack s)
 
