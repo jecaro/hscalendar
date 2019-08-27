@@ -10,13 +10,9 @@
 import           RIO
 
 import           Control.Concurrent
-import           Control.Monad.IO.Class
 import           Data.Aeson
-import           Data.Maybe
-import           Data.Proxy
 import           Data.Text                (Text)
 import           Data.Vinyl
-import           GHC.Generics
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative      (header, progDesc)
@@ -26,6 +22,7 @@ import           Servant.Client
 import           Servant.Server
 import           System.Random
 import qualified Data.ByteString          as BS
+import qualified Data.ByteString.Char8    as BSC
 import qualified Data.Map                 as M
 import qualified Data.Text                as T
 
@@ -139,10 +136,10 @@ main = do
     getPwd :: ContextFor ClientM (BasicAuth "login" Int)
     -- getPwd = _
     getPwd = GenBasicAuthData . liftIO $ do
-      BS.putStrLn "Authentication needed for this action!"
-      BS.putStrLn "(Hint: try 'bob' and 'hunter2')"
-      BS.putStrLn "Enter username:"
+      BSC.putStrLn "Authentication needed for this action!"
+      BSC.putStrLn "(Hint: try 'bob' and 'hunter2')"
+      BSC.putStrLn "Enter username:"
       n <- BS.getLine
-      BS.putStrLn "Enter password:"
+      BSC.putStrLn "Enter password:"
       p <- BS.getLine
       pure $ BasicAuthData n p
