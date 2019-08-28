@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 
@@ -8,7 +7,6 @@ import           RIO
 import           Control.Concurrent
 import           Data.Aeson
 import           Data.Text                (Text)
-import           Data.Vinyl
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative      (header, progDesc)
@@ -16,10 +14,6 @@ import           Servant.API
 import           Servant.CLI
 import           Servant.Client
 import           Servant.Server
-import           System.Random
-import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Char8    as BSC
-import qualified Data.Map                 as M
 import qualified Data.Text                as T
 
 
@@ -50,11 +44,6 @@ instance ToParam (QueryParam "capital" Bool) where
                     "Get the greeting message in uppercase (true) or not (false). Default is false."
                     Normal
 
-instance ToAuthInfo (BasicAuth "login" Int) where
-    toAuthInfo _ =
-      DocAuthentication "Login credientials"
-                        "Username and password"
-
 type TestApi =
         Summary "Send a greeting"
            :> "hello"
@@ -64,7 +53,7 @@ type TestApi =
    :<|> Summary "Greet utilities"
            :> "greet"
            :> ReqBody '[JSON] Greet
-           :> Get  '[JSON] Int
+           :> Get '[JSON] Int
    :<|> Summary "Deep paths test"
            :> "dig"
            :> "down"
@@ -80,7 +69,7 @@ testApi :: Proxy TestApi
 testApi = Proxy
 
 server :: Application
-server = serveWithContext testApi (authCheck :. EmptyContext) $
+server = serve testApi $
         (\t b -> pure . Greet $ "Hello, "
               <> if fromMaybe False b
                     then T.toUpper t
@@ -88,47 +77,24 @@ server = serveWithContext testApi (authCheck :. EmptyContext) $
         )
    :<|> (\(Greet g) -> pure (T.length g))
    :<|> (pure . T.reverse)
-  where
-    -- | Map of valid users and passwords
-    userMap = M.fromList [("alice", "password"), ("bob", "hunter2")]
-    authCheck = BasicAuthCheck $ \(BasicAuthData u p) ->
-      case M.lookup u userMap of
-        Nothing -> pure NoSuchUser
-        Just p'
-          | p == p'   -> Authorized <$> randomIO @Int
-          | otherwise -> pure BadPassword
 
 main :: IO ()
 main = do
     _ <- forkIO $ run 8081 server
 
-    manager' <- newManager defaultManagerSettings
+    manager <- newManager defaultManagerSettings
 
     runSimpleApp $ do
-        c <- liftIO $ parseHandleClientWithContext
+        c <- liftIO $ parseHandleClient
                         testApi
                         (Proxy :: Proxy ClientM)
-                        (getPwd :& RNil)
-                        cinfo $
+                        (header "greet" <> progDesc "Greet API") $
                 (\(Greet g) -> "Greeting: " ++ T.unpack g)
            :<|> (\i -> show i ++ " letters")
            :<|> (\s -> "Reversed: " ++ T.unpack s)
 
-        res <- liftIO $ runClientM c (mkClientEnv manager' (BaseUrl Http "localhost" 8081 ""))
+        res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
 
         case res of
           Left e        -> throwIO e
           Right rstring -> logInfo $ displayShow rstring
-  where
-    cinfo = header "greet" <> progDesc "Greet API"
-    -- cinfo = _
-    getPwd :: ContextFor ClientM (BasicAuth "login" Int)
-    -- getPwd = _
-    getPwd = GenBasicAuthData . liftIO $ do
-      BSC.putStrLn "Authentication needed for this action!"
-      BSC.putStrLn "(Hint: try 'bob' and 'hunter2')"
-      BSC.putStrLn "Enter username:"
-      n <- BS.getLine
-      BSC.putStrLn "Enter password:"
-      p <- BS.getLine
-      pure $ BasicAuthData n p
