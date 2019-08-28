@@ -64,10 +64,7 @@ type TestApi =
    :<|> Summary "Greet utilities"
            :> "greet"
            :> ReqBody '[JSON] Greet
-           :> ( Get  '[JSON] Int
-           :<|> BasicAuth "login" Int
-             :> Post '[JSON] NoContent
-              )
+           :> Get  '[JSON] Int
    :<|> Summary "Deep paths test"
            :> "dig"
            :> "down"
@@ -89,9 +86,7 @@ server = serveWithContext testApi (authCheck :. EmptyContext) $
                     then T.toUpper t
                     else t
         )
-   :<|> (\(Greet g) -> pure (T.length g)
-                  :<|> (\_ -> pure NoContent)
-        )
+   :<|> (\(Greet g) -> pure (T.length g))
    :<|> (pure . T.reverse)
   where
     -- | Map of valid users and passwords
@@ -116,9 +111,7 @@ main = do
                         (getPwd :& RNil)
                         cinfo $
                 (\(Greet g) -> "Greeting: " ++ T.unpack g)
-           :<|> ( (\i -> show i ++ " letters")
-             :<|> const "posted!"
-                )
+           :<|> (\i -> show i ++ " letters")
            :<|> (\s -> "Reversed: " ++ T.unpack s)
 
         res <- liftIO $ runClientM c (mkClientEnv manager' (BaseUrl Http "localhost" 8081 ""))
