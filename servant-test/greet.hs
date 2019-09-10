@@ -21,7 +21,7 @@ import           Servant.Client
 import           Servant.Server           (Application, serve)
 
 
-type TestApi =
+type HSCalendarApi =
         Summary "List all projects"
            :> "project"
            :> "all"
@@ -32,11 +32,11 @@ type TestApi =
            :> Get '[JSON] Text
 
 
-testApi :: Proxy TestApi
-testApi = Proxy
+hscalendarApi :: Proxy HSCalendarApi
+hscalendarApi = Proxy
 
 server :: Application
-server = serve testApi $
+server = serve hscalendarApi $
         pure "list all projects"
    :<|> pure "rm a project"
 
@@ -50,7 +50,7 @@ main = withServer $ do
     
     runSimpleApp $ do
         c <- liftIO $ parseHandleClient
-                        testApi
+                        hscalendarApi
                         (Proxy :: Proxy ClientM)
                         (header "hscalendar" <> progDesc "hscalendar API") $
                 Text.unpack 
