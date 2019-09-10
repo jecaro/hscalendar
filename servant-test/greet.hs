@@ -4,15 +4,21 @@
 
 import           RIO
 
-import           Control.Concurrent
+import           Control.Concurrent       (forkIO, killThread)
 import           Data.Text                (Text)
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative      (header, progDesc)
-import           Servant.API
-import           Servant.CLI
-import           Servant.Client
-import           Servant.Server
+import           Servant.API              (Get, JSON, Summary, (:>), (:<|>)(..))
+import           Servant.CLI              (parseHandleClient)
+import           Servant.Client           
+    ( BaseUrl(..)
+    , ClientM
+    , Scheme(Http)
+    , mkClientEnv
+    , runClientM
+    )
+import           Servant.Server           (Application, serve)
 import qualified Data.Text                as T
 
 
