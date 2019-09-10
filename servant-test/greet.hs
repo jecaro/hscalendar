@@ -18,7 +18,11 @@ import           Servant.Client
     , mkClientEnv
     , runClientM
     )
-import           Servant.Server           (Application, serve)
+import qualified Servant.Server           as Server 
+    ( Application
+    , Handler
+    , serve
+    )
 
 
 type HSCalendarApi =
@@ -35,10 +39,16 @@ type HSCalendarApi =
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
-server :: Application
-server = serve hscalendarApi $
-        pure "list all projects"
-   :<|> pure "rm a project"
+server :: Server.Application
+server = Server.serve hscalendarApi $
+        allProjects
+   :<|> rmProject
+
+allProjects :: Server.Handler Text
+allProjects = return "list all the projects"
+
+rmProject :: Server.Handler Text
+rmProject = return "rm a project"
 
 withServer :: IO () -> IO ()
 withServer actions = bracket (forkIO $ run 8081 server) killThread (const actions)
