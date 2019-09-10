@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 
 import           RIO
+import qualified RIO.Text                 as Text
 
 import           Control.Concurrent       (forkIO, killThread)
 import           Data.Text                (Text)
@@ -19,7 +20,6 @@ import           Servant.Client
     , runClientM
     )
 import           Servant.Server           (Application, serve)
-import qualified Data.Text                as T
 
 
 type TestApi =
@@ -54,8 +54,8 @@ main = withServer $ do
                         testApi
                         (Proxy :: Proxy ClientM)
                         (header "hscalendar" <> progDesc "hscalendar API") $
-                T.unpack 
-           :<|> T.unpack 
+                Text.unpack 
+           :<|> Text.unpack 
     
         res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
     
