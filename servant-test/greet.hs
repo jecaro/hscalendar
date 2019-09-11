@@ -1,5 +1,6 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
+-- {-# LANGUAGE FlexibleContexts #-}
 
 import           RIO
 import qualified RIO.Text                 as Text
@@ -20,8 +21,10 @@ import           Servant.Client
     )
 import qualified Servant.Server           as Server 
     ( Application
-    , Handler
     , serve
+    , ServerT
+    , Server
+    , hoistServer
     )
 
 
@@ -36,18 +39,27 @@ type HSCalendarApi =
            :> Get '[JSON] Text
 
 
+rioServer :: Server.ServerT HSCalendarApi (RIO Text)
+rioServer = allProjects :<|> rmProject 
+
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
+mainServer :: Server.Server HSCalendarApi
+mainServer = Server.hoistServer hscalendarApi nt rioServer
+
+nt :: (MonadIO m) => RIO Text a -> m a
+nt = runRIO "hi" 
+
 server :: Server.Application
-server = Server.serve hscalendarApi $
-        allProjects
-   :<|> rmProject
+server = Server.serve hscalendarApi mainServer
 
-allProjects :: Server.Handler Text
-allProjects = return "list all the projects"
+allProjects :: RIO Text Text
+allProjects = do
+    env <- ask
+    return $ "list all the projects with env " <> env
 
-rmProject :: Server.Handler Text
+rmProject :: RIO Text Text
 rmProject = return "rm a project"
 
 withServer :: IO () -> IO ()
