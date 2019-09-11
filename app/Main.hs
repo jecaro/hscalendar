@@ -12,7 +12,7 @@ import           Options.Applicative (execParser)
 import           Path (toFilePath)
 import           System.Exit (exitFailure)
 
-import           Config (Config(..), getConfig)
+import           App.Config (Config(..), getConfig)
 import           CommandLine 
     ( Options(..)
     , opts

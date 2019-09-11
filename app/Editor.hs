@@ -40,18 +40,18 @@ import           CommandLine
     , SetProj(..)
     , WorkOption(..)
     )
-import           HalfDay (HalfDay(..))
-import           Idle (Idle(..))
-import           Model 
+import           Db.HalfDay (HalfDay(..))
+import           Db.Idle (Idle(..))
+import           Db.Model 
     ( HdNotFound(..)
     , showDay
     , showTime
     ) 
-import           Notes (Notes, mkNotes, unNotes)
-import qualified Office (Office(..), parser) 
-import           Project (Project, mkProject, unProject)
-import           TimeInDay
-import           Worked (Worked(..))
+import           Db.Notes (Notes, mkNotes, unNotes)
+import qualified Db.Office as Office (Office(..), parser) 
+import           Db.Project (Project, mkProject, unProject)
+import           Db.TimeInDay
+import           Db.Worked (Worked(..))
 
 -- Example of data
 -- 

@@ -1,5 +1,5 @@
 -- | Functions related to Notes
-module Notes
+module Db.Notes
     ( Notes
     , mkNotes
     , mkNotesLit

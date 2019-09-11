@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module TimeInDay where
+module Db.TimeInDay where
 
 import           RIO
 

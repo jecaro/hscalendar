@@ -1,7 +1,7 @@
 -- | The configuration file in yaml format
 {-# LANGUAGE TemplateHaskell #-}
 
-module Config 
+module App.Config 
     ( Config(..)
     , DefaultHours(..)
     , DefaultHoursForDay(..)
@@ -35,7 +35,7 @@ import           Path.IO
     , getXdgDir
     )
 
-import           Office(Office(..))
+import           Db.Office(Office(..))
 
 -- | Two default hours for a half-day worked
 data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay

@@ -1,4 +1,4 @@
-module IdleDayType
+module Db.IdleDayType
 where
 
 import RIO

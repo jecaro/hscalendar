@@ -7,7 +7,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Internal.DBModel
+module Db.Internal.DBModel
 where
 
 import           RIO
@@ -22,9 +22,9 @@ import           Database.Persist.TH
    , sqlSettings
    )
 
-import           Internal.DBHalfDayType (DBHalfDayType(..))
-import           Office (Office)
-import           TimeInDay (TimeInDay)
+import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
+import           Db.Office (Office)
+import           Db.TimeInDay (TimeInDay)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 DBProject

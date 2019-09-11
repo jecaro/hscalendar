@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Worked
+module Db.Worked
 where
 
 import           RIO
@@ -8,10 +8,10 @@ import qualified RIO.Time as Time (Day, TimeOfDay)
 
 import           Lens.Micro.Platform (makeFields)
 
-import           Notes(Notes)
-import           Project(Project)
-import           Office (Office)
-import           TimeInDay (TimeInDay)
+import           Db.Notes(Notes)
+import           Db.Project(Project)
+import           Db.Office (Office)
+import           Db.TimeInDay (TimeInDay)
 
 data Worked = MkWorked
     { _workedDay       :: !Time.Day

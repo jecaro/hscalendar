@@ -1,5 +1,5 @@
 -- | The main API
-module Model
+module Db.Model
     ( 
     -- * Exceptions
       ProjExists(..)
@@ -81,16 +81,16 @@ import qualified Database.Persist.Sqlite as P ((==.))
 import           Data.Maybe (isJust)
 import           Formatting (int, left, sformat, (%.))
 
-import           HalfDay (HalfDay(..))
-import           IdleDayType (IdleDayType(..))
-import           Project (Project, unProject)
-import           Notes (Notes, unNotes)
-import           Office (Office(..))
-import           TimeInDay (TimeInDay(..), other)
+import           Db.HalfDay (HalfDay(..))
+import           Db.IdleDayType (IdleDayType(..))
+import           Db.Project (Project, unProject)
+import           Db.Notes (Notes, unNotes)
+import           Db.Office (Office(..))
+import           Db.TimeInDay (TimeInDay(..), other)
 
-import           Internal.DBHalfDayType (DBHalfDayType(..))
-import           Internal.DBModel
-import           Internal.Convert 
+import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
+import           Db.Internal.DBModel
+import           Db.Internal.Convert 
     ( dbToIdle
     , dbToProject
     , dbToWorked

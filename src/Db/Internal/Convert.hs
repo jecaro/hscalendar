@@ -1,5 +1,5 @@
 -- | The functions to convert the data between the DBModel and the business model
-module Internal.Convert
+module Db.Internal.Convert
     ( dbToIdleDayType
     , dbToIdle
     , dbToProject
@@ -11,13 +11,13 @@ where
 
 import           RIO
 
-import           Internal.DBHalfDayType (DBHalfDayType(..))
-import           Internal.DBModel 
-import           IdleDayType (IdleDayType(..))
-import           Idle (Idle(..))
-import           Notes (mkNotes)
-import           Project (Project, mkProject, unProject)
-import           Worked (Worked(..))
+import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
+import           Db.Internal.DBModel 
+import           Db.IdleDayType (IdleDayType(..))
+import           Db.Idle (Idle(..))
+import           Db.Notes (mkNotes)
+import           Db.Project (Project, mkProject, unProject)
+import           Db.Worked (Worked(..))
 
 -- Conversion functions
 

@@ -51,11 +51,11 @@ import           Options.Applicative as Opt
     )
 
 import qualified CustomDay as CD (CustomDay(..), parser)
-import qualified IdleDayType as IDT (IdleDayType(..), parser)
-import           Notes (Notes, mkNotes)
-import qualified Office (Office(..), parser)
-import           Project (Project, mkProject)
-import           TimeInDay (TimeInDay(..))
+import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
+import           Db.Notes (Notes, mkNotes)
+import qualified Db.Office as Office (Office(..), parser)
+import           Db.Project (Project, mkProject)
+import           Db.TimeInDay (TimeInDay(..))
 
 -- | Options for the log function
 data Options = Options { optVerbose :: !Bool,

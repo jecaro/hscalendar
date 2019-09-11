@@ -1,5 +1,5 @@
 -- | Functions related to the Project type
-module Project
+module Db.Project
     ( Project
     , mkProject
     , mkProjectLit

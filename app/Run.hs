@@ -25,13 +25,13 @@ import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
 
 
-import           App 
+import           App.App 
     ( App(..)
     , HasConfig(..)
     , HasConnPool(..)
     , HasProcessContext(..)
     )
-import           Config
+import           App.Config
     ( Config(..)
     , DefaultHours(..)
     , DefaultHoursForDay(..)
@@ -47,9 +47,9 @@ import           CommandLine
     )
 import           CustomDay(toDay)
 import           Editor(ParseError(..), hdAsText, parse)
-import           HalfDay (HalfDay(..))
-import           Idle (Idle(..))
-import           Model
+import           Db.HalfDay (HalfDay(..))
+import           Db.Idle (Idle(..))
+import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
@@ -73,10 +73,10 @@ import           Model
     , showDay
     , showTime
     )
-import           Notes (unNotes)
-import           Project (unProject)
-import           TimeInDay (TimeInDay(..))
-import           Worked (Worked(..))
+import           Db.Notes (unNotes)
+import           Db.Project (unProject)
+import           Db.TimeInDay (TimeInDay(..))
+import           Db.Worked (Worked(..))
 
 -- | The editor returned an error
 newtype ProcessReturnedError = ProcessReturnedError String

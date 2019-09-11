@@ -44,10 +44,10 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
-import qualified IdleDayType as IDT (IdleDayType(..))
-import           HalfDay (HalfDay(..))
-import           Idle (Idle(..))
-import           Model 
+import qualified Db.IdleDayType as IDT (IdleDayType(..))
+import           Db.HalfDay (HalfDay(..))
+import           Db.Idle (Idle(..))
+import           Db.Model 
     ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
@@ -71,11 +71,11 @@ import           Model
     , projRename
     , projRm
     )
-import          Notes (Notes(..), mkNotesLit)
-import          Office (Office(..))
-import          Project (Project(..), mkProjectLit)
-import          TimeInDay (TimeInDay(..), other)
-import          Worked (Worked(..))
+import          Db.Notes (Notes(..), mkNotesLit)
+import          Db.Office (Office(..))
+import          Db.Project (Project(..), mkProjectLit)
+import          Db.TimeInDay (TimeInDay(..), other)
+import          Db.Worked (Worked(..))
 
 -- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)

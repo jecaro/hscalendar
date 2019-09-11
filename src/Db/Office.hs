@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Office 
+module Db.Office 
     ( Office(..)
     , parser 
     ) where

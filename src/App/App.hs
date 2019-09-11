@@ -1,5 +1,5 @@
 -- | Application global read only state
-module App
+module App.App
     ( App(..)
     , HasConnPool(..)
     , HasConfig(..)
@@ -12,7 +12,7 @@ import           RIO.Process (HasProcessContext(..), ProcessContext)
 
 import           Database.Persist.Sql (ConnectionPool)
 
-import           Config(Config(..))
+import           App.Config(Config(..))
 
 -- | The app data
 data App = App

@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Idle 
+module Db.Idle 
 where
 
 import           RIO
@@ -8,8 +8,8 @@ import qualified RIO.Time as Time (Day)
 
 import           Lens.Micro.Platform (makeFields)
 
-import           IdleDayType
-import           TimeInDay (TimeInDay)
+import           Db.IdleDayType
+import           Db.TimeInDay (TimeInDay)
 
 data Idle = MkIdle
     { _idleDay       :: !Time.Day
