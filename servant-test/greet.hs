@@ -34,7 +34,7 @@ type HSCalendarApi =
         Summary "List all projects"
            :> "project"
            :> "all"
-           :> Get '[JSON] Text
+           :> Get '[JSON] [Text]
    :<|> Summary "Rm project"
            :> "project"
            :> "rm"
@@ -53,10 +53,10 @@ mainServer app = Server.hoistServer hscalendarApi (runRIO app) rioServer
 server :: App -> Server.Application
 server app = Server.serve hscalendarApi (mainServer app)
 
-allProjects :: HasConnPool env => RIO env Text
+allProjects :: HasConnPool env => RIO env [Text]
 allProjects = do
     projects <- runDB projList 
-    return $ Text.unlines $ map unProject projects
+    return $ map unProject projects
 
 rmProject :: RIO App Text
 rmProject = return "rm a project"
@@ -79,11 +79,11 @@ main = do
                             hscalendarApi
                             (Proxy :: Proxy ClientM)
                             (header "hscalendar" <> progDesc "hscalendar API") $
-                    Text.unpack 
-               :<|> Text.unpack 
+                    Text.unlines 
+               :<|> id 
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
             
             case res of
-                Left e        -> throwIO e
-                Right rstring -> logInfo $ displayShow rstring
+                Left e      -> throwIO e
+                Right rtext -> logInfo $ display rtext
