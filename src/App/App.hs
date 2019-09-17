@@ -5,6 +5,7 @@ module App.App
     , HasConfig(..)
     , HasProcessContext(..)
     , initAppAndRun
+    , runDB
     )
 where
 
@@ -14,7 +15,7 @@ import           RIO.Process (HasProcessContext(..), ProcessContext, mkDefaultPr
 import           RIO.Text as Text (pack)
 
 import           Database.Persist.Sqlite (withSqlitePool)
-import           Database.Persist.Sql (ConnectionPool)
+import           Database.Persist.Sql (ConnectionPool, SqlPersistM, runSqlPersistMPool)
 import           Data.Yaml (prettyPrintParseException)
 import           System.Exit (exitFailure)
 import           Path (toFilePath)
@@ -74,4 +75,10 @@ initAppAndRun verbose level actions = do
                         logError ("Error: " <> display (e :: SomeException))
                         liftIO exitFailure)
               where dbFile = Text.pack $ toFilePath $ db config
+
+-- | Run sql actions with the pool
+runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
+runDB actions = do
+    pool <- view connPoolL
+    liftIO $ runSqlPersistMPool actions pool
 

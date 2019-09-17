@@ -2,7 +2,6 @@
 module Run 
   ( App(..)
   , run
-  , runDB
   )
 where
 
@@ -16,9 +15,7 @@ import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
 import           Database.Persist.Sqlite
     ( SqlPersistT
-    , SqlPersistM
     , runMigration
-    , runSqlPersistMPool
     )
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
@@ -30,6 +27,7 @@ import           App.App
     , HasConfig(..)
     , HasConnPool(..)
     , HasProcessContext(..)
+    , runDB
     )
 import           App.Config
     ( Config(..)
@@ -298,11 +296,4 @@ dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdSetLeft day tid time
 dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdSetNotes day tid notes
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdSetProject day tid project
-
-
--- | Run sql actions with the pool
-runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
-runDB actions = do
-    pool <- view connPoolL
-    liftIO $ runSqlPersistMPool actions pool
 

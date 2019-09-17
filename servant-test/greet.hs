@@ -26,7 +26,9 @@ import qualified Servant.Server           as Server
     , hoistServer
     )
 
-import App.App (App, initAppAndRun)
+import           App.App (App, HasConnPool, initAppAndRun, runDB)
+import           Db.Model (projList)
+import           Db.Project (unProject)
 
 type HSCalendarApi =
         Summary "List all projects"
@@ -46,29 +48,29 @@ hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
 mainServer :: App -> Server.Server HSCalendarApi
-mainServer app = Server.hoistServer hscalendarApi (nt app) rioServer
-
-nt :: (MonadIO m) => App -> RIO App a -> m a
-nt = runRIO
+mainServer app = Server.hoistServer hscalendarApi (runRIO app) rioServer
 
 server :: App -> Server.Application
 server app = Server.serve hscalendarApi (mainServer app)
 
-allProjects :: RIO App Text
-allProjects = return "list all the projects" 
+allProjects :: HasConnPool env => RIO env Text
+allProjects = do
+    projects <- runDB projList 
+    return $ Text.unlines $ map unProject projects
 
 rmProject :: RIO App Text
 rmProject = return "rm a project"
 
 withServer :: MonadUnliftIO m => App -> m c -> m c
-withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) (liftIO . killThread) (const actions)
+withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
+    (liftIO . killThread) (const actions)
 
 main :: IO ()
 main = do
 
     manager <- newManager defaultManagerSettings
 
-    initAppAndRun False LevelDebug $ do
+    initAppAndRun False LevelInfo $ do
     
         app <- ask
         withServer app $ do
