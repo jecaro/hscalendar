@@ -34,6 +34,7 @@ import           Run (run)
 -- - Put defaults values in config file for a week
 -- - Add unit test for editor features
 -- - Add cleanUp command
+-- - Make FromJSON instance safe for Project
 
 -- | Main function
 main :: IO ()

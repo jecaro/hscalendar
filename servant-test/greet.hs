@@ -28,13 +28,13 @@ import qualified Servant.Server           as Server
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
 import           Db.Model (projList)
-import           Db.Project (unProject)
+import           Db.Project (Project, unProject)
 
 type HSCalendarApi =
         Summary "List all projects"
            :> "project"
            :> "all"
-           :> Get '[JSON] [Text]
+           :> Get '[JSON] [Project]
    :<|> Summary "Rm project"
            :> "project"
            :> "rm"
@@ -53,10 +53,8 @@ mainServer app = Server.hoistServer hscalendarApi (runRIO app) rioServer
 server :: App -> Server.Application
 server app = Server.serve hscalendarApi (mainServer app)
 
-allProjects :: HasConnPool env => RIO env [Text]
-allProjects = do
-    projects <- runDB projList 
-    return $ map unProject projects
+allProjects :: HasConnPool env => RIO env [Project]
+allProjects = runDB projList 
 
 rmProject :: RIO App Text
 rmProject = return "rm a project"
@@ -79,7 +77,7 @@ main = do
                             hscalendarApi
                             (Proxy :: Proxy ClientM)
                             (header "hscalendar" <> progDesc "hscalendar API") $
-                    Text.unlines 
+                    Text.unlines . map unProject 
                :<|> id 
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))

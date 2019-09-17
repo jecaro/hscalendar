@@ -11,6 +11,7 @@ import           RIO
 
 import qualified RIO.Text as Text (Text, all, length, pack)
 
+import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
 import           Refined
@@ -32,7 +33,10 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances.Text()
 
 newtype Project = MkProject { unProject :: Text.Text }
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Generic, Show, Ord)
+
+instance ToJSON Project
+instance FromJSON Project
 
 -- | Max length of project name
 projNameMaxLength :: Int
