@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
--- {-# LANGUAGE FlexibleContexts #-}
 
 import           RIO
 import qualified RIO.Text                 as Text
@@ -27,6 +26,7 @@ import qualified Servant.Server           as Server
     , hoistServer
     )
 
+import App.App (App, initAppAndRun)
 
 type HSCalendarApi =
         Summary "List all projects"
@@ -39,47 +39,49 @@ type HSCalendarApi =
            :> Get '[JSON] Text
 
 
-rioServer :: Server.ServerT HSCalendarApi (RIO Text)
+rioServer :: Server.ServerT HSCalendarApi (RIO App)
 rioServer = allProjects :<|> rmProject 
 
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
-mainServer :: Server.Server HSCalendarApi
-mainServer = Server.hoistServer hscalendarApi nt rioServer
+mainServer :: App -> Server.Server HSCalendarApi
+mainServer app = Server.hoistServer hscalendarApi (nt app) rioServer
 
-nt :: (MonadIO m) => RIO Text a -> m a
-nt = runRIO "hi" 
+nt :: (MonadIO m) => App -> RIO App a -> m a
+nt = runRIO
 
-server :: Server.Application
-server = Server.serve hscalendarApi mainServer
+server :: App -> Server.Application
+server app = Server.serve hscalendarApi (mainServer app)
 
-allProjects :: RIO Text Text
-allProjects = do
-    env <- ask
-    return $ "list all the projects with env " <> env
+allProjects :: RIO App Text
+allProjects = return "list all the projects" 
 
-rmProject :: RIO Text Text
+rmProject :: RIO App Text
 rmProject = return "rm a project"
 
-withServer :: IO () -> IO ()
-withServer actions = bracket (forkIO $ run 8081 server) killThread (const actions)
+withServer :: MonadUnliftIO m => App -> m c -> m c
+withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) (liftIO . killThread) (const actions)
 
 main :: IO ()
-main = withServer $ do
+main = do
 
     manager <- newManager defaultManagerSettings
+
+    initAppAndRun False LevelDebug $ do
     
-    runSimpleApp $ do
-        c <- liftIO $ parseHandleClient
-                        hscalendarApi
-                        (Proxy :: Proxy ClientM)
-                        (header "hscalendar" <> progDesc "hscalendar API") $
-                Text.unpack 
-           :<|> Text.unpack 
-    
-        res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
-    
-        case res of
-          Left e        -> throwIO e
-          Right rstring -> logInfo $ displayShow rstring
+        app <- ask
+        withServer app $ do
+
+            c <- liftIO $ parseHandleClient
+                            hscalendarApi
+                            (Proxy :: Proxy ClientM)
+                            (header "hscalendar" <> progDesc "hscalendar API") $
+                    Text.unpack 
+               :<|> Text.unpack 
+            
+            res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
+            
+            case res of
+                Left e        -> throwIO e
+                Right rstring -> logInfo $ displayShow rstring

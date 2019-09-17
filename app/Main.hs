@@ -1,23 +1,13 @@
 import           RIO
-import           RIO.Orphans()
-import           RIO.Process (mkDefaultProcessContext)
-import qualified RIO.Text as Text (pack)
 
-import           Control.Monad.IO.Class (liftIO)
-import           Database.Persist.Sqlite
-    ( withSqlitePool
-    )
-import           Data.Yaml (prettyPrintParseException)
 import           Options.Applicative (execParser)
-import           Path (toFilePath)
-import           System.Exit (exitFailure)
 
-import           App.Config (Config(..), getConfig)
+import           App.App (initAppAndRun)
 import           CommandLine 
     ( Options(..)
     , opts
     )
-import           Run (App(..), run)
+import           Run (run)
 
 -- Synopsis
 -- hsmaster diary work date -m|-a [commands]
@@ -50,29 +40,4 @@ main :: IO ()
 main = do
     -- Parse command line
     (Options verbose level, cmd) <- execParser opts
-    -- Init log options: level and verbose mode
-    logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose 
-    -- Read config file with logger
-    withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
-        \case 
-            -- Error with the config file end of the program
-            Left e -> runRIO lf $ do
-                logError $ display $ Text.pack (prettyPrintParseException e)
-                liftIO exitFailure
-            -- Got config file carry on
-            Right config ->
-                -- Create the sql pool with RIO to handle log
-                runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
-                    pc <- mkDefaultProcessContext
-                    -- Initialize the application
-                    let app = App { appLogFunc        = lf
-                                  , appConnPool       = pool 
-                                  , appConfig         = config
-                                  , appProcessContext = pc }
-
-                    -- Run the app, handle exceptions (should be only because
-                    -- the database is not initialized)
-                    liftIO $ runRIO app $ catch (run cmd) (\e -> do
-                        logError ("Error: " <> display (e :: SomeException))
-                        liftIO exitFailure)
-              where dbFile = Text.pack $ toFilePath $ db config
+    initAppAndRun verbose level (run cmd)
