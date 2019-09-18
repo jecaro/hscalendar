@@ -35,6 +35,8 @@ import           Run (run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Make FromJSON instance safe for Project
+-- - Factorize readProject
+-- - Add servant-test extensions to package
 
 -- | Main function
 main :: IO ()

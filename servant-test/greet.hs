@@ -8,9 +8,14 @@ import           Control.Concurrent       (forkIO, killThread)
 import           Data.Text                (Text)
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
-import           Options.Applicative      (header, progDesc)
-import           Servant.API              (Get, JSON, Summary, (:>), (:<|>)(..))
-import           Servant.CLI              (parseHandleClient)
+import           Options.Applicative      (header, ReadM, maybeReader, progDesc)
+import           Servant.API              (Get, JSON, ReqBody, Summary, (:>), (:<|>)(..))
+import           Servant.CLI              
+    ( ParseBody(..)
+    , defaultParseBody
+    , parseBody
+    , parseHandleClient
+    )
 import           Servant.Client           
     ( BaseUrl(..)
     , ClientM
@@ -27,8 +32,14 @@ import qualified Servant.Server           as Server
     )
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
-import           Db.Model (projList)
-import           Db.Project (Project, unProject)
+import           Db.Model (ProjNotFound(..), ProjHasHd(..), projList, projRm)
+import           Db.Project (Project, mkProject, unProject)
+
+instance ParseBody Project where
+    parseBody = defaultParseBody "Project" readProject
+
+readProject :: ReadM Project
+readProject = maybeReader $ mkProject . Text.pack
 
 type HSCalendarApi =
         Summary "List all projects"
@@ -38,6 +49,7 @@ type HSCalendarApi =
    :<|> Summary "Rm project"
            :> "project"
            :> "rm"
+           :> ReqBody '[JSON] Project
            :> Get '[JSON] Text
 
 
@@ -56,8 +68,13 @@ server app = Server.serve hscalendarApi (mainServer app)
 allProjects :: HasConnPool env => RIO env [Project]
 allProjects = runDB projList 
 
-rmProject :: RIO App Text
-rmProject = return "rm a project"
+rmProject :: HasConnPool env => Project -> RIO env Text
+rmProject project = do
+    res <- catches (runDB (projRm project) >> return "Project deleted") 
+                   [ Handler (\e@(ProjHasHd _)    -> return $ show e)
+                   , Handler (\e@(ProjNotFound _) -> return $ show e)
+                   ]
+    return $ Text.pack res
 
 withServer :: MonadUnliftIO m => App -> m c -> m c
 withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
