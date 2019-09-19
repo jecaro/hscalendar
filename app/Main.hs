@@ -39,7 +39,6 @@ import           Run (run)
 -- - Add servant-test extensions to package
 -- - Remove qualified name for Server
 -- - Fix warning orphans
--- - Update extensions
 
 -- | Main function
 main :: IO ()
