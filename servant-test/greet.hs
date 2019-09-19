@@ -8,7 +8,14 @@ import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative      (header, ReadM, maybeReader, progDesc)
-import           Servant.API              (Get, JSON, ReqBody, Summary, (:>), (:<|>)(..))
+import           Servant.API              
+    ( Get
+    , Delete
+    , JSON
+    , ReqBody
+    , Summary
+    , (:>)
+    , (:<|>)(..))
 import           Servant.CLI              
     ( ParseBody(..)
     , defaultParseBody
@@ -54,7 +61,7 @@ type HSCalendarApi =
            :> "project"
            :> "rm"
            :> ReqBody '[JSON] Project
-           :> Get '[JSON] Text
+           :> Delete '[JSON] ()
 
 
 rioServer :: ServerT HSCalendarApi (RIO App)
@@ -76,13 +83,11 @@ server app = serve hscalendarApi (mainServer app)
 allProjects :: HasConnPool env => RIO env [Project]
 allProjects = runDB projList 
 
-rmProject :: HasConnPool env => Project -> RIO env Text
-rmProject project = do
-    res <- catches (runDB (projRm project) >> return "Project deleted") 
+rmProject :: HasConnPool env => Project -> RIO env ()
+rmProject project = catches (runDB (projRm project)) 
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
-    return $ Text.pack res
 
 withServer :: MonadUnliftIO m => App -> m c -> m c
 withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
@@ -102,8 +107,8 @@ main = do
                             hscalendarApi
                             (Proxy :: Proxy ClientM)
                             (header "hscalendar" <> progDesc "hscalendar API") $
-                    Text.unlines . map unProject 
-               :<|> id 
+                    Text.unlines . map unProject
+               :<|> const "Project deleted"
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
             
