@@ -24,18 +24,15 @@ dependencies:
 - temporary
 - yaml
 # For servant-test
+- mtl
 - servant-cli
 - servant-client
 - servant-server
 - servant
 - aeson
-- text
-- vinyl
 - http-client
 - warp
-- random
 - bytestring
-- containers
 name: hscalendar
 version: 0.1.0.0
 author: Jean-Charles Quillet

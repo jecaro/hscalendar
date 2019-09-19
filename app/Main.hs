@@ -37,6 +37,9 @@ import           Run (run)
 -- - Make FromJSON instance safe for Project
 -- - Factorize readProject
 -- - Add servant-test extensions to package
+-- - Remove qualified name for Server
+-- - Fix warning orphans
+-- - Update extensions
 
 -- | Main function
 main :: IO ()

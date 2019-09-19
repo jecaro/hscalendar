@@ -5,7 +5,8 @@ import           RIO
 import qualified RIO.Text                 as Text
 
 import           Control.Concurrent       (forkIO, killThread)
-import           Data.Text                (Text)
+import           Control.Monad.Except     (ExceptT(..))
+import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Network.HTTP.Client      (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative      (header, ReadM, maybeReader, progDesc)
@@ -25,10 +26,15 @@ import           Servant.Client
     )
 import qualified Servant.Server           as Server 
     ( Application
-    , serve
-    , ServerT
+    , Handler(..)
+    , ServantErr(..)
     , Server
+    , ServerT
+    , err404
+    , err409
+    , err409
     , hoistServer
+    , serve
     )
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
@@ -60,7 +66,11 @@ hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
 mainServer :: App -> Server.Server HSCalendarApi
-mainServer app = Server.hoistServer hscalendarApi (runRIO app) rioServer
+mainServer app = Server.hoistServer hscalendarApi (nt app) rioServer
+
+-- https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
+nt :: App -> RIO App a -> Server.Handler a
+nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Server.Application
 server app = Server.serve hscalendarApi (mainServer app)
@@ -71,9 +81,9 @@ allProjects = runDB projList
 rmProject :: HasConnPool env => Project -> RIO env Text
 rmProject project = do
     res <- catches (runDB (projRm project) >> return "Project deleted") 
-                   [ Handler (\e@(ProjHasHd _)    -> return $ show e)
-                   , Handler (\e@(ProjNotFound _) -> return $ show e)
-                   ]
+        [ Handler (\e@(ProjHasHd _)  -> throwM Server.err409 { Server.errBody = DBLC.pack $ show e } )
+        , Handler (\(ProjNotFound _) -> throwM Server.err404)
+        ]
     return $ Text.pack res
 
 withServer :: MonadUnliftIO m => App -> m c -> m c
