@@ -36,7 +36,6 @@ import           Run (run)
 -- - Add cleanUp command
 -- - Make FromJSON instance safe for Project
 -- - Factorize readProject
--- - Remove qualified name for Server
 
 -- | Main function
 main :: IO ()

@@ -22,9 +22,8 @@ import           Servant.Client
     , mkClientEnv
     , runClientM
     )
-import qualified Servant.Server           as Server 
+import           Servant.Server          
     ( Application
-    , Handler(..)
     , ServantErr(..)
     , Server
     , ServerT
@@ -34,6 +33,7 @@ import qualified Servant.Server           as Server
     , hoistServer
     , serve
     )
+import qualified Servant.Server as Server (Handler(..))         
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
 import           Db.Model (ProjNotFound(..), ProjHasHd(..), projList, projRm)
@@ -57,21 +57,21 @@ type HSCalendarApi =
            :> Get '[JSON] Text
 
 
-rioServer :: Server.ServerT HSCalendarApi (RIO App)
+rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer = allProjects :<|> rmProject 
 
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
-mainServer :: App -> Server.Server HSCalendarApi
-mainServer app = Server.hoistServer hscalendarApi (nt app) rioServer
+mainServer :: App -> Server HSCalendarApi
+mainServer app = hoistServer hscalendarApi (nt app) rioServer
 
 -- https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
 nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
-server :: App -> Server.Application
-server app = Server.serve hscalendarApi (mainServer app)
+server :: App -> Application
+server app = serve hscalendarApi (mainServer app)
 
 allProjects :: HasConnPool env => RIO env [Project]
 allProjects = runDB projList 
@@ -79,8 +79,8 @@ allProjects = runDB projList
 rmProject :: HasConnPool env => Project -> RIO env Text
 rmProject project = do
     res <- catches (runDB (projRm project) >> return "Project deleted") 
-        [ Handler (\e@(ProjHasHd _)  -> throwM Server.err409 { Server.errBody = DBLC.pack $ show e } )
-        , Handler (\(ProjNotFound _) -> throwM Server.err404)
+        [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
+        , Handler (\(ProjNotFound _) -> throwM err404)
         ]
     return $ Text.pack res
 
