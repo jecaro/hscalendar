@@ -12,6 +12,7 @@ import           Servant.API
     ( Get
     , Delete
     , JSON
+    , Post
     , ReqBody
     , Summary
     , (:>)
@@ -43,7 +44,14 @@ import           Servant.Server
 import qualified Servant.Server as Server (Handler(..))         
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
-import           Db.Model (ProjNotFound(..), ProjHasHd(..), projList, projRm)
+import           Db.Model 
+    ( ProjExists(..)
+    , ProjHasHd(..)
+    , ProjNotFound(..)
+    , projAdd
+    , projList
+    , projRm
+    )
 import           Db.Project (Project, mkProject, unProject)
 
 instance ParseBody Project where
@@ -62,10 +70,15 @@ type HSCalendarApi =
            :> "rm"
            :> ReqBody '[JSON] Project
            :> Delete '[JSON] ()
+   :<|> Summary "Add a project"
+           :> "project"
+           :> "add"
+           :> ReqBody '[JSON] Project
+           :> Post '[JSON] Project
 
 
 rioServer :: ServerT HSCalendarApi (RIO App)
-rioServer = allProjects :<|> rmProject 
+rioServer = allProjects :<|> rmProject :<|> addProject
 
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
@@ -89,6 +102,10 @@ rmProject project = catches (runDB (projRm project))
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
+addProject :: HasConnPool env => Project -> RIO env Project
+addProject project = catch (runDB (projAdd project) >> return project) 
+        (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
+
 withServer :: MonadUnliftIO m => App -> m c -> m c
 withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
     (liftIO . killThread) (const actions)
@@ -109,6 +126,7 @@ main = do
                             (header "hscalendar" <> progDesc "hscalendar API") $
                     Text.unlines . map unProject
                :<|> const "Project deleted"
+               :<|> \project -> "Project added: " <> unProject project 
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
             
