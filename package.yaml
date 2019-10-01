@@ -1,38 +1,37 @@
 copyright: 2019 Jean-Charles Quillet
 maintainer: jeancharles.quillet@gmail.com
 dependencies:
+- QuickCheck
+- aeson
 - attoparsec
 - base >= 4.7 && < 5
+- bytestring
 - directory
 - either
 - esqueleto
 - formatting
 - hspec
+- http-client
 - microlens-platform
 - monad-logger # Only needed for runNoLoggingT from Spec.hs
+- mtl
 - optparse-applicative
 - path
 - path-io
 - persistent
 - persistent-sqlite
 - persistent-template
-- QuickCheck
 - quickcheck-instances
 - refined
 - rio
 - rio-orphans
-- temporary
-- yaml
-# For servant-test
-- mtl
+- servant
 - servant-cli
 - servant-client
 - servant-server
-- servant
-- aeson
-- http-client
+- temporary
 - warp
-- bytestring
+- yaml
 name: hscalendar
 version: 0.1.0.0
 author: Jean-Charles Quillet
@@ -59,9 +58,9 @@ executables:
     - -Wredundant-constraints
     dependencies:
     - hscalendar
-  servant-test:
-    source-dirs: servant-test
-    main: greet.hs
+  servant-cli:
+    source-dirs: servant-cli
+    main: main.hs
     ghc-options:
     - -threaded
     - -rtsopts
