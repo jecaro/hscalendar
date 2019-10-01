@@ -1,7 +1,7 @@
 -- | Contains functions related to CustomDay: a data type which can handle
 --   any calendar day or today, yesterday and tomorrow. It can also use an easy
 --   numbering system.
-module CustomDay
+module App.CustomDay
     ( CustomDay(..)
     , parser
     , toDay

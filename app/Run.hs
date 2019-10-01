@@ -43,7 +43,7 @@ import           CommandLine
     , SetProj(..)
     , WorkOption(..)
     )
-import           CustomDay(toDay)
+import           App.CustomDay(toDay)
 import           Editor(ParseError(..), hdAsText, parse)
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))

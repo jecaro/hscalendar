@@ -50,7 +50,7 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 
-import qualified CustomDay as CD (CustomDay(..), parser)
+import qualified App.CustomDay as CD (CustomDay(..), parser)
 import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
 import           Db.Notes (Notes, mkNotes)
 import qualified Db.Office as Office (Office(..), parser)
