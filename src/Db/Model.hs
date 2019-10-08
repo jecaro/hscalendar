@@ -79,7 +79,7 @@ import           Database.Persist.Sqlite
 import qualified Database.Persist.Sqlite as P ((==.))
 
 import           Data.Maybe (isJust)
-import           Formatting (int, left, sformat, (%.))
+import           Formatting.Extended (formatTwoDigitsPadZero)
 
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
@@ -157,18 +157,17 @@ instance Show DbInconsistency where
 
 -- | Convert a Day to a string in the form dd-mm-yyyy weekday
 showDay :: Time.Day -> Text
-showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY]) 
+showDay day =  Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
             <> " " 
             <> Text.pack weekDay
   where (y, m, d) = Time.toGregorian day
         intY = fromIntegral y
-        printNum = sformat (left 2 '0' %. int) 
         weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
 
 -- | Print time in a friendly format ex 9:00
 showTime :: Time.TimeOfDay -> Text
 showTime (Time.TimeOfDay h m _) = 
-            Text.intercalate ":" $ fmap (sformat (left 2 '0' %. int)) [h, m]
+            Text.intercalate ":" $ fmap formatTwoDigitsPadZero [h, m]
 
 -- | Clean up the db
 cleanDB :: (MonadIO m) => SqlPersistT m ()

@@ -11,7 +11,7 @@ import           Data.Attoparsec.Text
     )
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Data.Aeson (FromJSON, ToJSON)
-import           Formatting (int, left, sformat, (%.))
+import           Formatting.Extended (formatTwoDigitsPadZero)
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
 import           Options.Applicative (header, progDesc)
@@ -94,11 +94,11 @@ instance FromHttpApiData CD.CustomDay where
         Right x  -> Right x
 
 instance ToHttpApiData CD.CustomDay where
-    toQueryParam (CD.MkDay day) = Text.intercalate "-" (fmap printNum [d, m, intY]) 
+    toQueryParam (CD.MkDay day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
         where (y, m, d) = Time.toGregorian day
               intY = fromIntegral y
-    toQueryParam (CD.MkDayNum d)        = printNum d        
-    toQueryParam (CD.MkDayMonthNum d m) = Text.intercalate "-" (fmap printNum [d, m]) 
+    toQueryParam (CD.MkDayNum d)        = formatTwoDigitsPadZero d        
+    toQueryParam (CD.MkDayMonthNum d m) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m]) 
     toQueryParam CD.Today               = "today"   
     toQueryParam CD.Yesterday           = "yesterday"   
     toQueryParam CD.Tomorrow            = "tomorrow"
@@ -139,9 +139,6 @@ type HSCalendarApi =
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TimeInDay
            :> Get '[JSON] HalfDay
-
-printNum :: Int -> Text
-printNum = sformat (left 2 '0' %. int) 
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    allProjects 
