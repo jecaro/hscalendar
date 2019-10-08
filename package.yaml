@@ -60,7 +60,7 @@ executables:
     - hscalendar
   servant-cli:
     source-dirs: servant-cli
-    main: main.hs
+    main: Main.hs
     ghc-options:
     - -threaded
     - -rtsopts
