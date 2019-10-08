@@ -12,6 +12,7 @@ import           RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Char (isPrint)
+import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
 import           Refined
@@ -34,7 +35,7 @@ import           Test.QuickCheck.Instances.Text()
 
 -- | The type for storing notes
 newtype Notes = MkNotes { unNotes :: Text.Text }
-    deriving (Eq, Show)
+    deriving (Generic, Eq, Show)
 
 -- | Simple type to refine Text for Notes
 data NotesData
@@ -53,6 +54,9 @@ instance Arbitrary Notes where
         n <- choose (0, s `min` notesMaxLength)
         xs <- vectorOf n (arbitrary `suchThat` printableOrEOLOrTab)
         return $ MkNotes $ Text.pack xs
+
+instance FromJSON Notes
+instance ToJSON Notes
 
 -- | Maximum length of a note
 notesMaxLength :: Int

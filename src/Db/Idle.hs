@@ -6,6 +6,7 @@ import           RIO
 
 import qualified RIO.Time as Time (Day)
 
+import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
 
 import           Db.IdleDayType
@@ -16,6 +17,8 @@ data Idle = MkIdle
     , _idleTimeInDay :: !TimeInDay
     , _idleDayType   :: !IdleDayType
     }
-    deriving (Show, Eq)
+    deriving (Eq, Generic, Show)
 makeFields ''Idle
 
+instance ToJSON Idle
+instance FromJSON Idle

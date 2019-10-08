@@ -155,7 +155,7 @@ instance Show DbInconsistency where
 
 -- Misc 
 
--- | Convert a Day to a string in the form dd-mm-yyyy
+-- | Convert a Day to a string in the form dd-mm-yyyy weekday
 showDay :: Time.Day -> Text
 showDay day =  Text.intercalate "-" (fmap printNum [d, m, intY]) 
             <> " " 

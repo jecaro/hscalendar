@@ -6,6 +6,7 @@ import           RIO
 
 import qualified RIO.Time as Time (Day, TimeOfDay)
 
+import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
 
 import           Db.Notes(Notes)
@@ -22,7 +23,10 @@ data Worked = MkWorked
     , _workedNotes     :: !Notes
     , _workedProject   :: !Project
     }
-    deriving (Show, Eq)
+    deriving (Eq, Generic, Show)
 makeFields ''Worked
+
+instance FromJSON Worked
+instance ToJSON Worked
 
 
