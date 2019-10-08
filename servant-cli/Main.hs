@@ -10,11 +10,11 @@ import           Data.Attoparsec.Text
     , endOfInput
     )
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
-import           Data.Aeson               (FromJSON, ToJSON)
+import           Data.Aeson (FromJSON, ToJSON)
 import           Formatting (int, left, sformat, (%.))
-import           Network.HTTP.Client      (newManager, defaultManagerSettings)
+import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
-import           Options.Applicative      (header, ReadM, maybeReader, progDesc)
+import           Options.Applicative (header, progDesc)
 import           Servant.API              
     ( Get
     , Capture
@@ -70,7 +70,7 @@ import           Db.Model
     , projRm
     )
 import           Db.HalfDay (HalfDay(..))
-import           Db.Project (Project, mkProject, unProject)
+import           Db.Project (Project, readProject, unProject)
 import           Db.TimeInDay as TID (TimeInDay(..), parser)
 
 instance ParseBody Project where
@@ -139,9 +139,6 @@ type HSCalendarApi =
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TimeInDay
            :> Get '[JSON] HalfDay
-
-readProject :: ReadM Project
-readProject = maybeReader $ mkProject . Text.pack
 
 printNum :: Int -> Text
 printNum = sformat (left 2 '0' %. int) 
@@ -217,7 +214,7 @@ main = do
                :<|> const "Project deleted"
                :<|> (\project -> "Project added: "   <> unProject project)
                :<|> (\project -> "Project renamed: " <> unProject project)
-               :<|> (\hd      -> Text.pack $ show hd)
+               :<|> Text.pack . show 
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
             

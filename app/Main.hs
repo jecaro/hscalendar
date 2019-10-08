@@ -35,9 +35,7 @@ import           Run (run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Make FromJSON instance safe for Project/Note
--- - Factorize readProject
 -- - Factorize printNum
--- - Rename servant-cli/main.hs to servant-cli/Main.hs
 -- - Factorize runAtto
 
 -- | Main function

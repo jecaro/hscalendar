@@ -3,6 +3,7 @@ module Db.Project
     ( Project
     , mkProject
     , mkProjectLit
+    , readProject
     , unProject
     )
 where
@@ -14,6 +15,7 @@ import qualified RIO.Text as Text (Text, all, length, pack)
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
+import           Options.Applicative (ReadM, maybeReader)
 import           Refined
     ( Predicate
     , Refined
@@ -79,4 +81,6 @@ mkProjectLit = MkProject . unrefine
 mkProject :: Text -> Maybe Project
 mkProject name = mkProjectLit <$> rightToMaybe (refine name)
 
+readProject :: ReadM Project
+readProject = maybeReader $ mkProject . Text.pack
 

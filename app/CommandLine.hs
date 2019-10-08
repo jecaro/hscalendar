@@ -54,7 +54,7 @@ import qualified App.CustomDay as CD (CustomDay(..), parser)
 import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
 import           Db.Notes (Notes, mkNotes)
 import qualified Db.Office as Office (Office(..), parser)
-import           Db.Project (Project, mkProject)
+import           Db.Project (Project, readProject)
 import           Db.TimeInDay (TimeInDay(..))
 
 -- | Options for the log function
@@ -107,9 +107,6 @@ readTimeOfDay = attoReadM Time.parser
 
 readCustomDay :: ReadM CD.CustomDay
 readCustomDay = attoReadM CD.parser
-
-readProject :: ReadM Project
-readProject = maybeReader $ mkProject . Text.pack
 
 readLevel :: ReadM LogLevel
 readLevel = attoReadM parser
