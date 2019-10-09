@@ -6,11 +6,12 @@ import qualified RIO.Time                 as Time (toGregorian)
 import           Control.Concurrent       (forkIO, killThread)
 import           Control.Monad.Except     (ExceptT(..))
 import           Data.Attoparsec.Text
-    ( parseOnly
+    ( Parser
+    , parseOnly
     , endOfInput
     )
-import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Data.Aeson (FromJSON, ToJSON)
+import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Formatting.Extended (formatTwoDigitsPadZero)
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
@@ -71,7 +72,8 @@ import           Db.Model
     )
 import           Db.HalfDay (HalfDay(..))
 import           Db.Project (Project, readProject, unProject)
-import           Db.TimeInDay as TID (TimeInDay(..), parser)
+import qualified Db.TimeInDay as TID (TimeInDay(..), parser)
+
 
 instance ParseBody Project where
     parseBody = defaultParseBody "Project" readProject
@@ -89,9 +91,7 @@ instance ToCapture (Capture "day" CD.CustomDay) where
     toCapture _ = DocCapture "day" "today|tomorrow|yesterday|22-03-1979|22-03|22"
 
 instance FromHttpApiData CD.CustomDay where
-    parseQueryParam text = case parseOnly (CD.parser <* endOfInput) text of
-        Left err -> Left (Text.pack err)
-        Right x  -> Right x
+    parseQueryParam = runAtto CD.parser
 
 instance ToHttpApiData CD.CustomDay where
     toQueryParam (CD.MkDay day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
@@ -103,16 +103,14 @@ instance ToHttpApiData CD.CustomDay where
     toQueryParam CD.Yesterday           = "yesterday"   
     toQueryParam CD.Tomorrow            = "tomorrow"
 
-instance FromHttpApiData TimeInDay where
-    parseQueryParam text = case parseOnly (TID.parser <* endOfInput) text of
-        Left err -> Left (Text.pack err)
-        Right x  -> Right x
+instance FromHttpApiData TID.TimeInDay where
+    parseQueryParam = runAtto TID.parser 
 
-instance ToHttpApiData TimeInDay where
-    toQueryParam Morning   = "morning"
-    toQueryParam Afternoon = "afternoon"
+instance ToHttpApiData TID.TimeInDay where
+    toQueryParam TID.Morning   = "morning"
+    toQueryParam TID.Afternoon = "afternoon"
 
-instance ToCapture (Capture "time in day" TimeInDay) where
+instance ToCapture (Capture "time in day" TID.TimeInDay) where
     toCapture _ = DocCapture "time in day" "morning|afternoon"
 
 type HSCalendarApi =
@@ -137,8 +135,14 @@ type HSCalendarApi =
            :> Put '[JSON] Project
    :<|> Summary "Display a half-day"
            :> Capture "day" CD.CustomDay
-           :> Capture "time in day" TimeInDay
+           :> Capture "time in day" TID.TimeInDay
            :> Get '[JSON] HalfDay
+
+-- | Taken from Web.Internal.HttpApiData
+runAtto :: Parser a -> Text -> Either Text a
+runAtto p t = case parseOnly (p <* endOfInput) t of
+    Left err -> Left (Text.pack err)
+    Right x  -> Right x
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    allProjects 
@@ -153,7 +157,7 @@ hscalendarApi = Proxy
 mainServer :: App -> Server HSCalendarApi
 mainServer app = hoistServer hscalendarApi (nt app) rioServer
 
--- https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
+-- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
 nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
@@ -179,7 +183,7 @@ renameProject (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-displayHd :: CD.CustomDay -> TimeInDay -> RIO App HalfDay
+displayHd :: CD.CustomDay -> TID.TimeInDay -> RIO App HalfDay
 displayHd cd tid = do
     -- Get actual day
     day <- CD.toDay cd

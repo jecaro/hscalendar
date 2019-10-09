@@ -35,7 +35,6 @@ import           Run (run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Make FromJSON instance safe for Project/Note
--- - Factorize runAtto
 
 -- | Main function
 main :: IO ()
