@@ -3,7 +3,6 @@ import           RIO
 import qualified RIO.Text                 as Text
 import qualified RIO.Time                 as Time (toGregorian)
 
-import           Control.Concurrent       (forkIO, killThread)
 import           Control.Monad.Except     (ExceptT(..))
 import           Data.Attoparsec.Text
     ( Parser
@@ -13,9 +12,7 @@ import           Data.Attoparsec.Text
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Formatting.Extended (formatTwoDigitsPadZero)
-import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
-import           Options.Applicative (eitherReader, header, ReadM, progDesc)
 import           Servant.API              
     ( Get
     , Capture
@@ -31,21 +28,6 @@ import           Servant.API
     , ToHttpApiData(..)
     , (:>)
     , (:<|>)(..))
-import           Servant.CLI              
-    ( DocCapture(..)
-    , ParseBody(..)
-    , ToCapture(..)
-    , defaultParseBody
-    , parseBody
-    , parseHandleClient
-    )
-import           Servant.Client           
-    ( BaseUrl(..)
-    , ClientM
-    , Scheme(Http)
-    , mkClientEnv
-    , runClientM
-    )
 import           Servant.Server          
     ( Application
     , ServantErr(..)
@@ -62,7 +44,7 @@ import qualified Servant.Server as Server (Handler(..))
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
 import qualified App.CustomDay as CD (CustomDay(..), parser, toDay)
 import           Db.HalfDay (HalfDay(..))
-import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
+import           Db.IdleDayType (IdleDayType(..))
 import           Db.Model 
     ( HdNotFound(..)
     , ProjExists(..)
@@ -75,24 +57,15 @@ import           Db.Model
     , projRename
     , projRm
     )
-import           Db.Project (Project, readProject, unProject)
+import           Db.Project (Project)
 import qualified Db.TimeInDay as TID (TimeInDay(..), parser)
 
-
-instance ParseBody Project where
-    parseBody = defaultParseBody "Project" readProject
 
 data RenameArgs = MkRenameArgs { from :: Project, to :: Project }
     deriving (Eq, Generic, Show, Ord)
 
 instance FromJSON RenameArgs
 instance ToJSON RenameArgs
-
-instance ParseBody RenameArgs where
-    parseBody = MkRenameArgs <$> parseBody <*> parseBody
-
-instance ToCapture (Capture "day" CD.CustomDay) where
-    toCapture _ = DocCapture "day" "today|tomorrow|yesterday|22-03-1979|22-03|22"
 
 instance FromHttpApiData CD.CustomDay where
     parseQueryParam = runAtto CD.parser
@@ -113,12 +86,6 @@ instance FromHttpApiData TID.TimeInDay where
 instance ToHttpApiData TID.TimeInDay where
     toQueryParam TID.Morning   = "morning"
     toQueryParam TID.Afternoon = "afternoon"
-
-instance ToCapture (Capture "time in day" TID.TimeInDay) where
-    toCapture _ = DocCapture "time in day" "morning|afternoon"
-
-instance ParseBody IDT.IdleDayType where
-    parseBody = defaultParseBody "IdleDayType" $ attoReadM IDT.parser
 
 type HSCalendarApi =
         Summary "List all projects"
@@ -147,7 +114,7 @@ type HSCalendarApi =
    :<|> Summary "Set a non-working half-day"
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TID.TimeInDay
-           :> ReqBody '[JSON] IDT.IdleDayType
+           :> ReqBody '[JSON] IdleDayType
            :> PostNoContent '[JSON] NoContent
 
 -- | Taken from Web.Internal.HttpApiData
@@ -155,9 +122,6 @@ runAtto :: Parser a -> Text -> Either Text a
 runAtto p t = case parseOnly (p <* endOfInput) t of
     Left err -> Left (Text.pack err)
     Right x  -> Right x
-
-attoReadM :: Parser a -> ReadM a
-attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    allProjects 
@@ -209,39 +173,14 @@ displayHd cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-setIdleDay :: CD.CustomDay -> TID.TimeInDay -> IDT.IdleDayType -> RIO App NoContent
+setIdleDay :: CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO App NoContent
 setIdleDay cd tid idt = do
     day <- CD.toDay cd
     runDB $ hdSetHoliday day tid idt
     return NoContent
 
-withServer :: MonadUnliftIO m => App -> m c -> m c
-withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
-    (liftIO . killThread) (const actions)
-
 main :: IO ()
-main = do
-
-    manager <- newManager defaultManagerSettings
-
-    initAppAndRun False LevelInfo $ do
+main = initAppAndRun False LevelInfo $ do
     
         app <- ask
-        withServer app $ do
-
-            c <- liftIO $ parseHandleClient
-                            hscalendarApi
-                            (Proxy :: Proxy ClientM)
-                            (header "hscalendar" <> progDesc "hscalendar API") $
-                    Text.unlines . map unProject
-               :<|> const "Project deleted"
-               :<|> (\project -> "Project added: "   <> unProject project)
-               :<|> (\project -> "Project renamed: " <> unProject project)
-               :<|> Text.pack . show 
-               :<|> void
-            
-            res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
-            
-            case res of
-                Left e      -> throwIO e
-                Right rtext -> logInfo $ display rtext
+        liftIO . run 8081 $ server app

@@ -26,8 +26,6 @@ dependencies:
 - rio
 - rio-orphans
 - servant
-- servant-cli
-- servant-client
 - servant-server
 - temporary
 - warp
