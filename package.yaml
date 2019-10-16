@@ -40,8 +40,8 @@ library:
   source-dirs: src
 
 executables:
-  hscalendar-exe:
-    source-dirs: app
+  hscalendar-cli:
+    source-dirs: cli
     main: Main.hs
     ghc-options:
     - -threaded
@@ -56,8 +56,8 @@ executables:
     - -Wredundant-constraints
     dependencies:
     - hscalendar
-  servant-cli:
-    source-dirs: servant-cli
+  hscalendar-server:
+    source-dirs: server
     main: Main.hs
     ghc-options:
     - -threaded
