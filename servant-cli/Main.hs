@@ -15,13 +15,15 @@ import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Formatting.Extended (formatTwoDigitsPadZero)
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.Wai.Handler.Warp (run)
-import           Options.Applicative (header, progDesc)
+import           Options.Applicative (eitherReader, header, ReadM, progDesc)
 import           Servant.API              
     ( Get
     , Capture
     , Delete
     , JSON
+    , NoContent(..)
     , Post
+    , PostNoContent
     , Put
     , ReqBody
     , Summary
@@ -59,18 +61,20 @@ import qualified Servant.Server as Server (Handler(..))
 
 import           App.App (App, HasConnPool, initAppAndRun, runDB)
 import qualified App.CustomDay as CD (CustomDay(..), parser, toDay)
+import           Db.HalfDay (HalfDay(..))
+import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
 import           Db.Model 
     ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
     , ProjNotFound(..)
     , hdGet
+    , hdSetHoliday
     , projAdd
     , projList
     , projRename
     , projRm
     )
-import           Db.HalfDay (HalfDay(..))
 import           Db.Project (Project, readProject, unProject)
 import qualified Db.TimeInDay as TID (TimeInDay(..), parser)
 
@@ -113,6 +117,9 @@ instance ToHttpApiData TID.TimeInDay where
 instance ToCapture (Capture "time in day" TID.TimeInDay) where
     toCapture _ = DocCapture "time in day" "morning|afternoon"
 
+instance ParseBody IDT.IdleDayType where
+    parseBody = defaultParseBody "IdleDayType" $ attoReadM IDT.parser
+
 type HSCalendarApi =
         Summary "List all projects"
            :> "project"
@@ -137,6 +144,11 @@ type HSCalendarApi =
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TID.TimeInDay
            :> Get '[JSON] HalfDay
+   :<|> Summary "Set a non-working half-day"
+           :> Capture "day" CD.CustomDay
+           :> Capture "time in day" TID.TimeInDay
+           :> ReqBody '[JSON] IDT.IdleDayType
+           :> PostNoContent '[JSON] NoContent
 
 -- | Taken from Web.Internal.HttpApiData
 runAtto :: Parser a -> Text -> Either Text a
@@ -144,12 +156,16 @@ runAtto p t = case parseOnly (p <* endOfInput) t of
     Left err -> Left (Text.pack err)
     Right x  -> Right x
 
+attoReadM :: Parser a -> ReadM a
+attoReadM p = eitherReader (parseOnly (p <* endOfInput) . Text.pack)
+
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    allProjects 
           :<|> rmProject 
           :<|> addProject 
           :<|> renameProject
           :<|> displayHd
+          :<|> setIdleDay
 
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
@@ -193,6 +209,12 @@ displayHd cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
+setIdleDay :: CD.CustomDay -> TID.TimeInDay -> IDT.IdleDayType -> RIO App NoContent
+setIdleDay cd tid idt = do
+    day <- CD.toDay cd
+    runDB $ hdSetHoliday day tid idt
+    return NoContent
+
 withServer :: MonadUnliftIO m => App -> m c -> m c
 withServer app actions = bracket (liftIO $ forkIO $ run 8081 $ server app) 
     (liftIO . killThread) (const actions)
@@ -216,6 +238,7 @@ main = do
                :<|> (\project -> "Project added: "   <> unProject project)
                :<|> (\project -> "Project renamed: " <> unProject project)
                :<|> Text.pack . show 
+               :<|> void
             
             res <- liftIO $ runClientM c (mkClientEnv manager (BaseUrl Http "localhost" 8081 ""))
             

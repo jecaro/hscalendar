@@ -35,6 +35,8 @@ import           Run (run)
 -- - Add unit test for editor features
 -- - Add cleanUp command
 -- - Make FromJSON instance safe for Project/Note
+-- - Factorize attoReadM
+-- - Add constraint to displayHd 
 
 -- | Main function
 main :: IO ()
