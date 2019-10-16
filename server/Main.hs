@@ -16,12 +16,11 @@ import           Network.Wai.Handler.Warp (run)
 import           Servant.API              
     ( Get
     , Capture
-    , Delete
+    , DeleteNoContent
     , JSON
     , NoContent(..)
-    , Post
     , PostNoContent
-    , Put
+    , PutNoContent
     , ReqBody
     , Summary
     , FromHttpApiData(..)
@@ -90,32 +89,31 @@ instance ToHttpApiData TID.TimeInDay where
 type HSCalendarApi =
         Summary "List all projects"
            :> "project"
-           :> "all"
            :> Get '[JSON] [Project]
    :<|> Summary "Rm project"
            :> "project"
-           :> "rm"
            :> ReqBody '[JSON] Project
-           :> Delete '[JSON] ()
+           :> DeleteNoContent '[JSON] NoContent
    :<|> Summary "Add a project"
            :> "project"
-           :> "add"
            :> ReqBody '[JSON] Project
-           :> Post '[JSON] Project
+           :> PostNoContent '[JSON] NoContent
    :<|> Summary "Rename a project"
            :> "project"
-           :> "rename"
            :> ReqBody '[JSON] RenameArgs
-           :> Put '[JSON] Project
+           :> PutNoContent '[JSON] NoContent
    :<|> Summary "Display a half-day"
+           :> "diary"
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TID.TimeInDay
            :> Get '[JSON] HalfDay
    :<|> Summary "Set a non-working half-day"
+           :> "diary"
+           :> "idle"
            :> Capture "day" CD.CustomDay
            :> Capture "time in day" TID.TimeInDay
            :> ReqBody '[JSON] IdleDayType
-           :> PostNoContent '[JSON] NoContent
+           :> PutNoContent '[JSON] NoContent
 
 -- | Taken from Web.Internal.HttpApiData
 runAtto :: Parser a -> Text -> Either Text a
@@ -147,23 +145,23 @@ server app = serve hscalendarApi (mainServer app)
 allProjects :: HasConnPool env => RIO env [Project]
 allProjects = runDB projList 
 
-rmProject :: HasConnPool env => Project -> RIO env ()
-rmProject project = catches (runDB (projRm project)) 
+rmProject :: HasConnPool env => Project -> RIO env NoContent
+rmProject project = catches (runDB (projRm project) >> return NoContent) 
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
-addProject :: HasConnPool env => Project -> RIO env Project
-addProject project = catch (runDB (projAdd project) >> return project) 
+addProject :: HasConnPool env => Project -> RIO env NoContent
+addProject project = catch (runDB (projAdd project) >> return NoContent) 
         (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
 
-renameProject :: HasConnPool env => RenameArgs -> RIO env Project
-renameProject (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return p2)
+renameProject :: HasConnPool env => RenameArgs -> RIO env NoContent
+renameProject (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
     [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-displayHd :: CD.CustomDay -> TID.TimeInDay -> RIO App HalfDay
+displayHd :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> RIO env HalfDay
 displayHd cd tid = do
     -- Get actual day
     day <- CD.toDay cd
@@ -173,7 +171,7 @@ displayHd cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-setIdleDay :: CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO App NoContent
+setIdleDay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
 setIdleDay cd tid idt = do
     day <- CD.toDay cd
     runDB $ hdSetHoliday day tid idt
