@@ -50,6 +50,7 @@ import           Db.Model
     , ProjHasHd(..)
     , ProjNotFound(..)
     , hdGet
+    , hdRm
     , hdSetHoliday
     , projAdd
     , projList
@@ -90,7 +91,7 @@ type HSCalendarApi =
         Summary "List all projects"
            :> "project"
            :> Get '[JSON] [Project]
-   :<|> Summary "Rm project"
+   :<|> Summary "Delete a project"
            :> "project"
            :> ReqBody '[JSON] Project
            :> DeleteNoContent '[JSON] NoContent
@@ -114,6 +115,11 @@ type HSCalendarApi =
            :> Capture "time in day" TID.TimeInDay
            :> ReqBody '[JSON] IdleDayType
            :> PutNoContent '[JSON] NoContent
+   :<|> Summary "Delete a half-day"
+           :> "diary"
+           :> Capture "day" CD.CustomDay
+           :> Capture "time in day" TID.TimeInDay
+           :> DeleteNoContent '[JSON] NoContent
 
 -- | Taken from Web.Internal.HttpApiData
 runAtto :: Parser a -> Text -> Either Text a
@@ -122,12 +128,13 @@ runAtto p t = case parseOnly (p <* endOfInput) t of
     Right x  -> Right x
 
 rioServer :: ServerT HSCalendarApi (RIO App)
-rioServer =    allProjects 
-          :<|> rmProject 
-          :<|> addProject 
-          :<|> renameProject
-          :<|> displayHd
-          :<|> setIdleDay
+rioServer =    projectAll
+          :<|> projectRm
+          :<|> projectAdd 
+          :<|> projectRename
+          :<|> diaryDisplay
+          :<|> diarySetIdleDay
+          :<|> diaryRm
 
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
@@ -142,27 +149,27 @@ nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 server :: App -> Application
 server app = serve hscalendarApi (mainServer app)
 
-allProjects :: HasConnPool env => RIO env [Project]
-allProjects = runDB projList 
+projectAll :: HasConnPool env => RIO env [Project]
+projectAll = runDB projList 
 
-rmProject :: HasConnPool env => Project -> RIO env NoContent
-rmProject project = catches (runDB (projRm project) >> return NoContent) 
+projectRm :: HasConnPool env => Project -> RIO env NoContent
+projectRm project = catches (runDB (projRm project) >> return NoContent) 
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
-addProject :: HasConnPool env => Project -> RIO env NoContent
-addProject project = catch (runDB (projAdd project) >> return NoContent) 
+projectAdd :: HasConnPool env => Project -> RIO env NoContent
+projectAdd project = catch (runDB (projAdd project) >> return NoContent) 
         (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
 
-renameProject :: HasConnPool env => RenameArgs -> RIO env NoContent
-renameProject (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
+projectRename :: HasConnPool env => RenameArgs -> RIO env NoContent
+projectRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
     [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-displayHd :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> RIO env HalfDay
-displayHd cd tid = do
+diaryDisplay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> RIO env HalfDay
+diaryDisplay cd tid = do
     -- Get actual day
     day <- CD.toDay cd
     -- Get half-day
@@ -171,14 +178,19 @@ displayHd cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-setIdleDay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
-setIdleDay cd tid idt = do
+diarySetIdleDay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
+diarySetIdleDay cd tid idt = do
     day <- CD.toDay cd
     runDB $ hdSetHoliday day tid idt
     return NoContent
 
+diaryRm :: HasConnPool env => CD.CustomDay -> TID.TimeInDay  -> RIO env NoContent
+diaryRm cd tid = do
+    day <- CD.toDay cd
+    catch (runDB (hdRm day tid) >> return NoContent) 
+        (\(HdNotFound _ _) -> throwM err404)
+
 main :: IO ()
 main = initAppAndRun False LevelInfo $ do
-    
         app <- ask
         liftIO . run 8081 $ server app
