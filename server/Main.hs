@@ -40,8 +40,13 @@ import           Servant.Server
     )
 import qualified Servant.Server as Server (Handler(..))         
 
-import           App.App (App, HasConnPool, initAppAndRun, runDB)
+import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import qualified App.CustomDay as CD (CustomDay(..), parser, toDay)
+import           App.WorkOption 
+    ( ProjCmdIsMandatory(..)
+    , runWorkOptions
+    , WorkOption(..)
+    )
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Model 
@@ -56,6 +61,7 @@ import           Db.Model
     , projList
     , projRename
     , projRm
+    , TimesAreWrong(..)
     )
 import           Db.Project (Project)
 import qualified Db.TimeInDay as TID (TimeInDay(..), parser)
@@ -91,14 +97,14 @@ type HSCalendarApi =
         Summary "List all projects"
            :> "project"
            :> Get '[JSON] [Project]
-   :<|> Summary "Delete a project"
-           :> "project"
-           :> ReqBody '[JSON] Project
-           :> DeleteNoContent '[JSON] NoContent
    :<|> Summary "Add a project"
            :> "project"
            :> ReqBody '[JSON] Project
            :> PostNoContent '[JSON] NoContent
+   :<|> Summary "Delete a project"
+           :> "project"
+           :> ReqBody '[JSON] Project
+           :> DeleteNoContent '[JSON] NoContent
    :<|> Summary "Rename a project"
            :> "project"
            :> ReqBody '[JSON] RenameArgs
@@ -115,6 +121,12 @@ type HSCalendarApi =
            :> Capture "time in day" TID.TimeInDay
            :> ReqBody '[JSON] IdleDayType
            :> PutNoContent '[JSON] NoContent
+   :<|> Summary "Set a working half-day"
+           :> "diary"
+           :> Capture "day" CD.CustomDay
+           :> Capture "time in day" TID.TimeInDay
+           :> ReqBody '[JSON] [WorkOption]
+           :> PutNoContent '[JSON] NoContent
    :<|> Summary "Delete a half-day"
            :> "diary"
            :> Capture "day" CD.CustomDay
@@ -129,11 +141,12 @@ runAtto p t = case parseOnly (p <* endOfInput) t of
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    projectAll
-          :<|> projectRm
           :<|> projectAdd 
+          :<|> projectRm
           :<|> projectRename
           :<|> diaryDisplay
           :<|> diarySetIdleDay
+          :<|> diarySetWork
           :<|> diaryRm
 
 hscalendarApi :: Proxy HSCalendarApi
@@ -178,7 +191,9 @@ diaryDisplay cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-diarySetIdleDay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
+diarySetIdleDay 
+    :: HasConnPool env 
+    => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
 diarySetIdleDay cd tid idt = do
     day <- CD.toDay cd
     runDB $ hdSetHoliday day tid idt
@@ -189,6 +204,18 @@ diaryRm cd tid = do
     day <- CD.toDay cd
     catch (runDB (hdRm day tid) >> return NoContent) 
         (\(HdNotFound _ _) -> throwM err404)
+
+diarySetWork 
+    :: (HasConnPool env, HasConfig env)
+    => CD.CustomDay -> TID.TimeInDay -> [WorkOption] -> RIO env NoContent
+diarySetWork cd tid wopts = do
+    day <- CD.toDay cd
+    -- Create the record in DB
+    catches (runWorkOptions day tid wopts >> return NoContent)
+        [ Handler (\e@TimesAreWrong      -> throwM err409 { errBody = DBLC.pack $ show e } )
+        , Handler (\e@ProjCmdIsMandatory -> throwM err409 { errBody = DBLC.pack $ show e } )
+        , Handler (\(ProjNotFound _)     -> throwM err404)
+        ]
 
 main :: IO ()
 main = initAppAndRun False LevelInfo $ do
