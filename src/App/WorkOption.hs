@@ -13,6 +13,7 @@ where
 import           RIO
 import qualified RIO.Time as Time
 
+import           Data.Aeson (FromJSON, ToJSON)
 import           Database.Persist.Sqlite (SqlPersistT)
 
 import           App.App 
@@ -52,27 +53,44 @@ instance Show ProjCmdIsMandatory where
     show ProjCmdIsMandatory = "There should be one project command"
 
 newtype SetProj = SetProj Project
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
+
+instance FromJSON SetProj
+instance ToJSON SetProj
 
 newtype SetNotes = SetNotes Notes
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
+
+instance FromJSON SetNotes
+instance ToJSON SetNotes
 
 newtype SetArrived = SetArrived Time.TimeOfDay
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
+
+instance FromJSON SetArrived
+instance ToJSON SetArrived
 
 newtype SetLeft = SetLeft Time.TimeOfDay
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
+
+instance FromJSON SetLeft
+instance ToJSON SetLeft
 
 newtype SetOffice = SetOffice Office
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
+
+instance FromJSON SetOffice
+instance ToJSON SetOffice
 
 data WorkOption = MkSetArrived SetArrived |
                   MkSetLeft SetLeft       |
                   MkSetNotes SetNotes     |
                   MkSetOffice SetOffice   |
                   MkSetProj SetProj
-    deriving (Eq, Show)
+    deriving (Eq, Generic, Show)
 
+instance FromJSON WorkOption
+instance ToJSON WorkOption
 
 -- | Get out the first element of a list which return Just 
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
