@@ -2,12 +2,6 @@
 module CommandLine
     ( Cmd(..)
     , Options(..)
-    , SetArrived(..)
-    , SetLeft(..)
-    , SetNotes(..)
-    , SetOffice(..)
-    , SetProj(..)
-    , WorkOption(..)
     , opts
     ) where
 
@@ -51,6 +45,14 @@ import           Options.Applicative as Opt
     )
 
 import qualified App.CustomDay as CD (CustomDay(..), parser)
+import           App.WorkOption 
+    ( WorkOption(..)
+    , SetProj(..)
+    , SetNotes(..)
+    , SetArrived(..)
+    , SetLeft(..)
+    , SetOffice(..)
+    )
 import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
 import           Db.Notes (Notes, mkNotes)
 import qualified Db.Office as Office (Office(..), parser)
@@ -72,28 +74,6 @@ data Cmd = Migrate                                             |
            ProjList                                            |
            ProjRename Project Project                          |
            ProjRm Project
-    deriving (Eq, Show)
-
-newtype SetProj = SetProj Project
-    deriving (Eq, Show)
-
-newtype SetNotes = SetNotes Notes
-    deriving (Eq, Show)
-
-newtype SetArrived = SetArrived Time.TimeOfDay
-    deriving (Eq, Show)
-
-newtype SetLeft = SetLeft Time.TimeOfDay
-    deriving (Eq, Show)
-
-newtype SetOffice = SetOffice Office.Office
-    deriving (Eq, Show)
-
-data WorkOption = MkSetArrived SetArrived |
-                  MkSetLeft SetLeft       |
-                  MkSetNotes SetNotes     |
-                  MkSetOffice SetOffice   |
-                  MkSetProj SetProj
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a

@@ -9,14 +9,10 @@ import           RIO
 import           RIO.Orphans()
 import           RIO.Process (proc, runProcess)
 import qualified RIO.Text as Text (pack)
-import qualified RIO.Time as Time (Day)
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
-import           Database.Persist.Sqlite
-    ( SqlPersistT
-    , runMigration
-    )
+import           Database.Persist.Sqlite (runMigration)
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
@@ -29,22 +25,8 @@ import           App.App
     , HasProcessContext(..)
     , runDB
     )
-import           App.Config
-    ( Config(..)
-    , DefaultHours(..)
-    , DefaultHoursForDay(..)
-    )
-import           CommandLine 
-    ( Cmd(..)
-    , SetArrived(..)
-    , SetLeft(..)
-    , SetNotes(..)
-    , SetOffice(..)
-    , SetProj(..)
-    , WorkOption(..)
-    )
+import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)
 import           App.CustomDay(toDay)
-import           Editor(ParseError(..), hdAsText, parse)
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
 import           Db.Model
@@ -56,13 +38,6 @@ import           Db.Model
     , hdGet
     , hdRm
     , hdSetHoliday
-    , hdSetWork
-    , hdSetArrived
-    , hdSetArrivedAndLeft
-    , hdSetLeft
-    , hdSetNotes
-    , hdSetOffice
-    , hdSetProject
     , migrateAll
     , projAdd
     , projList
@@ -73,8 +48,10 @@ import           Db.Model
     )
 import           Db.Notes (unNotes)
 import           Db.Project (unProject)
-import           Db.TimeInDay (TimeInDay(..))
 import           Db.Worked (Worked(..))
+
+import           CommandLine (Cmd(..))
+import           Editor (ParseError(..), hdAsText, parse)
 
 -- | The editor returned an error
 newtype ProcessReturnedError = ProcessReturnedError String
@@ -84,101 +61,9 @@ instance Exception ProcessReturnedError
 instance Show ProcessReturnedError where
     show (ProcessReturnedError cmd) = "The process " <> cmd <> " returned an error"
 
--- | When setting a work HD, a project command is mandatory
-data ProjCmdIsMandatory = ProjCmdIsMandatory
-
-instance Exception ProjCmdIsMandatory
-
-instance Show ProjCmdIsMandatory where
-    show ProjCmdIsMandatory = "There should be one project command"
-
 -- | Print an exception 
 printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
 printException =  logError . displayShow
-
--- | Get out the first element of a list which return Just 
-partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
-partitionFirst _ [] = (Nothing, [])
-partitionFirst p (x:xs) =
-    case p x of 
-        r@(Just _) -> (r, xs)
-        Nothing    -> (r', x:xs')
-          where (r', xs') = partitionFirst p xs
-
--- | Find a SetProj command
-findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
-findProjCmd = partitionFirst getProj 
-  where getProj (MkSetProj s@(SetProj _)) = Just s
-        getProj _ = Nothing
-
--- | Find a SetArrived command
-findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
-findArrivedCmd = partitionFirst getArrived 
-  where getArrived (MkSetArrived s@(SetArrived _)) = Just s
-        getArrived _ = Nothing
-
--- | Find a SetLeft command
-findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
-findLeftCmd = partitionFirst getLeft 
-  where getLeft (MkSetLeft s@(SetLeft _)) = Just s
-        getLeft _ = Nothing
-
--- | Find both arrived and left command
-findArrivedAndLeftCmd 
-    :: [WorkOption] 
-    -> (Maybe (SetArrived, SetLeft), [WorkOption])
-findArrivedAndLeftCmd options = 
-    let (mbArrived, options')  = findArrivedCmd options
-        (mbLeft,    options'') = findLeftCmd options'
-    in case (mbArrived, mbLeft) of
-        (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
-        _                           -> (Nothing, options)
-
--- | Execute the work options. In order to do that, the fct checks if the record 
---   is already a work half-day. If not it searches the mandatory project 
---   command to be able to create it. It uses for that arrived and left times set 
---   in the config file or on the command line. Then it applies the remaining 
---   options. Error is handled with exceptions by the Model module and catch
---   by the caller.
-runWorkOptions :: (HasConnPool env, HasConfig env) 
-    => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()
-runWorkOptions day tid wopts = do
-    -- Get hdw
-    eiHd <- try $ runDB $ hdGet day tid
- 
-    -- Create it with a project if needed
-    otherOpts <- case (eiHd, findProjCmd wopts) of
-        -- Everything is there
-        (Right (MkHalfDayWorked _), _) -> return wopts 
-        -- Nothing or holiday but a project
-        (_, (Just (SetProj proj), otherOpts)) -> do
-            config <- view configL
-            -- Get the default times from the config file
-            let (DefaultHours dArrived dLeft) = case tid of
-                    Morning   -> morning (defaultHours config)
-                    Afternoon -> afternoon (defaultHours config)
-            -- Get the arrived and left commands if they exists, maintaining 
-            -- the other options
-                (mbArrived, otherOpts') = findArrivedCmd otherOpts
-                (mbLeft, otherOpts'') = findLeftCmd otherOpts'
-            -- Unwarp maybe and the newtype
-                arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
-                left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
-            -- Carry on, we have now everything to create the hwd
-            runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
-            return otherOpts''
-        -- Holiday but no project
-        (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
-        -- No hd, but no project either
-        (Left (HdNotFound _ _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
-
-    -- Apply set arrived set left when we have the two options
-    let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
-    case mbAL of
-        Just (SetArrived a, SetLeft l) -> runDB $ hdSetArrivedAndLeft day tid a l
-        Nothing -> return ()
-    -- Then apply remaining commands
-    runDB $ mapM_ (dispatchEdit day tid) otherOpts' 
 
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
@@ -281,19 +166,4 @@ run (DiaryRm cs tid) = do
     day <- toDay cs
     catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> printException e)
 
--- Dispatch edit
-dispatchEdit
-    :: (MonadUnliftIO m)
-    => Time.Day
-    -> TimeInDay
-    -> WorkOption
-    -> SqlPersistT m()
--- Set arrived time
-dispatchEdit day tid (MkSetArrived (SetArrived time)) = hdSetArrived day tid time
--- Set left time
-dispatchEdit day tid (MkSetLeft (SetLeft time))       = hdSetLeft day tid time
--- Simple actions handling
-dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdSetNotes day tid notes
-dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdSetOffice day tid office
-dispatchEdit day tid (MkSetProj (SetProj project))    = hdSetProject day tid project
 

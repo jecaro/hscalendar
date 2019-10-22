@@ -32,7 +32,7 @@ import           Data.Attoparsec.Text
     , takeText
     )
 
-import           CommandLine 
+import           App.WorkOption 
     ( SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
@@ -40,6 +40,7 @@ import           CommandLine
     , SetProj(..)
     , WorkOption(..)
     )
+
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
 import           Db.Model 
