@@ -62,7 +62,7 @@ initAppAndRun verbose level actions = do
             -- Got config file carry on
             Right config ->
                 -- Create the sql pool with RIO to handle log
-                runRIO lf $ withSqlitePool dbFile 3 $ \pool -> do
+                runRIO lf $ withSqlitePool dbFile 1 $ \pool -> do
                     pc <- mkDefaultProcessContext
                     -- Initialize the application
                     let app = App { appLogFunc        = lf
