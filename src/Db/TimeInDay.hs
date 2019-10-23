@@ -9,8 +9,9 @@ import           Data.Attoparsec.Text
     , asciiCI 
     )
 import           Database.Persist.TH (derivePersistField)
-
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
+import           Servant.API (FromHttpApiData(..), ToHttpApiData(..))
+import           Servant.API.Extended (runAtto)
 
 -- | Simple sum type of defining the time in the day
 data TimeInDay = Morning | Afternoon
@@ -23,6 +24,13 @@ instance Arbitrary TimeInDay where
 
 instance FromJSON TimeInDay
 instance ToJSON TimeInDay
+
+instance FromHttpApiData TimeInDay where
+    parseQueryParam = runAtto parser 
+
+instance ToHttpApiData TimeInDay where
+    toQueryParam Morning   = "morning"
+    toQueryParam Afternoon = "afternoon"
 
 -- | Switch to the other TimeInDay
 other :: TimeInDay -> TimeInDay

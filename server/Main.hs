@@ -1,17 +1,8 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 import           RIO
-import qualified RIO.Text                 as Text
-import qualified RIO.Time                 as Time (toGregorian)
 
 import           Control.Monad.Except     (ExceptT(..))
-import           Data.Attoparsec.Text
-    ( Parser
-    , parseOnly
-    , endOfInput
-    )
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
-import           Formatting.Extended (formatTwoDigitsPadZero)
 import           Network.Wai.Handler.Warp (run)
 import           Servant.API              
     ( Get
@@ -23,8 +14,6 @@ import           Servant.API
     , PutNoContent
     , ReqBody
     , Summary
-    , FromHttpApiData(..)
-    , ToHttpApiData(..)
     , (:>)
     , (:<|>)(..))
 import           Servant.Server          
@@ -41,7 +30,7 @@ import           Servant.Server
 import qualified Servant.Server as Server (Handler(..))         
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
-import qualified App.CustomDay as CD (CustomDay(..), parser, toDay)
+import           App.CustomDay (CustomDay(..), toDay)
 import           App.WorkOption 
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
@@ -64,7 +53,7 @@ import           Db.Model
     , TimesAreWrong(..)
     )
 import           Db.Project (Project)
-import qualified Db.TimeInDay as TID (TimeInDay(..), parser)
+import           Db.TimeInDay (TimeInDay(..))
 
 
 data RenameArgs = MkRenameArgs { from :: Project, to :: Project }
@@ -72,26 +61,6 @@ data RenameArgs = MkRenameArgs { from :: Project, to :: Project }
 
 instance FromJSON RenameArgs
 instance ToJSON RenameArgs
-
-instance FromHttpApiData CD.CustomDay where
-    parseQueryParam = runAtto CD.parser
-
-instance ToHttpApiData CD.CustomDay where
-    toQueryParam (CD.MkDay day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
-        where (y, m, d) = Time.toGregorian day
-              intY = fromIntegral y
-    toQueryParam (CD.MkDayNum d)        = formatTwoDigitsPadZero d        
-    toQueryParam (CD.MkDayMonthNum d m) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m]) 
-    toQueryParam CD.Today               = "today"   
-    toQueryParam CD.Yesterday           = "yesterday"   
-    toQueryParam CD.Tomorrow            = "tomorrow"
-
-instance FromHttpApiData TID.TimeInDay where
-    parseQueryParam = runAtto TID.parser 
-
-instance ToHttpApiData TID.TimeInDay where
-    toQueryParam TID.Morning   = "morning"
-    toQueryParam TID.Afternoon = "afternoon"
 
 type HSCalendarApi =
         Summary "List all projects"
@@ -111,33 +80,27 @@ type HSCalendarApi =
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Display a half-day"
            :> "diary"
-           :> Capture "day" CD.CustomDay
-           :> Capture "time in day" TID.TimeInDay
+           :> Capture "day" CustomDay
+           :> Capture "time in day" TimeInDay
            :> Get '[JSON] HalfDay
    :<|> Summary "Set a non-working half-day"
            :> "diary"
            :> "idle"
-           :> Capture "day" CD.CustomDay
-           :> Capture "time in day" TID.TimeInDay
+           :> Capture "day" CustomDay
+           :> Capture "time in day" TimeInDay
            :> ReqBody '[JSON] IdleDayType
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Set a working half-day"
            :> "diary"
-           :> Capture "day" CD.CustomDay
-           :> Capture "time in day" TID.TimeInDay
+           :> Capture "day" CustomDay
+           :> Capture "time in day" TimeInDay
            :> ReqBody '[JSON] [WorkOption]
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Delete a half-day"
            :> "diary"
-           :> Capture "day" CD.CustomDay
-           :> Capture "time in day" TID.TimeInDay
+           :> Capture "day" CustomDay
+           :> Capture "time in day" TimeInDay
            :> DeleteNoContent '[JSON] NoContent
-
--- | Taken from Web.Internal.HttpApiData
-runAtto :: Parser a -> Text -> Either Text a
-runAtto p t = case parseOnly (p <* endOfInput) t of
-    Left err -> Left (Text.pack err)
-    Right x  -> Right x
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    projectAll
@@ -181,10 +144,10 @@ projectRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-diaryDisplay :: HasConnPool env => CD.CustomDay -> TID.TimeInDay -> RIO env HalfDay
+diaryDisplay :: HasConnPool env => CustomDay -> TimeInDay -> RIO env HalfDay
 diaryDisplay cd tid = do
     -- Get actual day
-    day <- CD.toDay cd
+    day <- toDay cd
     -- Get half-day
     try (runDB $ hdGet day tid) >>=
         \case
@@ -193,23 +156,23 @@ diaryDisplay cd tid = do
 
 diarySetIdleDay 
     :: HasConnPool env 
-    => CD.CustomDay -> TID.TimeInDay -> IdleDayType -> RIO env NoContent
+    => CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
 diarySetIdleDay cd tid idt = do
-    day <- CD.toDay cd
+    day <- toDay cd
     runDB $ hdSetHoliday day tid idt
     return NoContent
 
-diaryRm :: HasConnPool env => CD.CustomDay -> TID.TimeInDay  -> RIO env NoContent
+diaryRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
 diaryRm cd tid = do
-    day <- CD.toDay cd
+    day <- toDay cd
     catch (runDB (hdRm day tid) >> return NoContent) 
         (\(HdNotFound _ _) -> throwM err404)
 
 diarySetWork 
     :: (HasConnPool env, HasConfig env)
-    => CD.CustomDay -> TID.TimeInDay -> [WorkOption] -> RIO env NoContent
+    => CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
 diarySetWork cd tid wopts = do
-    day <- CD.toDay cd
+    day <- toDay cd
     -- Create the record in DB
     catches (runWorkOptions day tid wopts >> return NoContent)
         [ Handler (\e@TimesAreWrong      -> throwM err409 { errBody = DBLC.pack $ show e } )

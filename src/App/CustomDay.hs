@@ -8,6 +8,7 @@ module App.CustomDay
     ) where
 
 import           RIO
+import qualified RIO.Text as Text (intercalate)
 import qualified RIO.Time as Time 
     ( Day
     , addDays
@@ -18,13 +19,17 @@ import qualified RIO.Time as Time
     , zonedTimeToLocalTime
     )
 
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Attoparsec.Text
     ( Parser
     , asciiCI 
     , decimal
     , char
     )
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Formatting.Extended (formatTwoDigitsPadZero)
+import           Servant.API (FromHttpApiData(..), ToHttpApiData(..))
+import           Servant.API.Extended (runAtto)
+
 
 -- | The custom day
 data CustomDay = MkDay Time.Day        | -- ^ Fully defined day
@@ -34,6 +39,19 @@ data CustomDay = MkDay Time.Day        | -- ^ Fully defined day
                  Yesterday             |
                  Tomorrow
     deriving (Eq, Show)
+
+instance FromHttpApiData CustomDay where
+    parseQueryParam = runAtto parser
+
+instance ToHttpApiData CustomDay where
+    toQueryParam (MkDay day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
+        where (y, m, d) = Time.toGregorian day
+              intY = fromIntegral y
+    toQueryParam (MkDayNum d)        = formatTwoDigitsPadZero d        
+    toQueryParam (MkDayMonthNum d m) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m]) 
+    toQueryParam Today               = "today"   
+    toQueryParam Yesterday           = "yesterday"   
+    toQueryParam Tomorrow            = "tomorrow"
 
 -- | Get today
 today :: (MonadIO m) => m Time.Day
