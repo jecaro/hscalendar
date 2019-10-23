@@ -14,7 +14,7 @@ import           RIO
 import qualified RIO.Time as Time
 
 import           Data.Aeson (FromJSON, ToJSON)
-import           Database.Persist.Sqlite (SqlPersistT)
+import           Database.Persist.Sql (SqlPersistT)
 
 import           App.App 
     ( HasConfig(..)

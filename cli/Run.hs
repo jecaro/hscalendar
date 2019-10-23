@@ -12,7 +12,7 @@ import qualified RIO.Text as Text (pack)
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
-import           Database.Persist.Sqlite (runMigration)
+import           Database.Persist.Sql (runMigration)
 import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)

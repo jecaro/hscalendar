@@ -59,11 +59,10 @@ import           Database.Esqueleto
     , (^.)
     , (==.)
     )
-import           Database.Persist.Sqlite 
+import           Database.Persist 
     ( Entity(..)
     , Filter
     , SelectOpt(Asc)
-    , SqlPersistT
     , Key
     , delete
     , deleteWhere
@@ -72,11 +71,11 @@ import           Database.Persist.Sqlite
     , replace
     , selectList
     , selectFirst
-    , toSqlKey
     , update
     , (=.)
     )
-import qualified Database.Persist.Sqlite as P ((==.))
+import qualified Database.Persist as P ((==.))
+import           Database.Persist.Sql (SqlPersistT, toSqlKey) 
 
 import           Data.Maybe (isJust)
 import           Formatting.Extended (formatTwoDigitsPadZero)

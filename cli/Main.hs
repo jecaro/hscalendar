@@ -33,8 +33,10 @@ import           Run (run)
 -- - Make diary date/TimeInDay optional default today
 -- - Put defaults values in config file for a week
 -- - Add unit test for editor features
--- - Add cleanUp command
+-- - Add cleanUp command in cli and in web api
 -- - Make FromJSON instance safe for Project/Note
+-- - Add haddock comments for all modules
+-- - Add migrate command in web api
 
 -- | Main function
 main :: IO ()

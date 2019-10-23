@@ -9,14 +9,14 @@ import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 import           Control.Monad (ap)
 import           Control.Monad.Logger (runNoLoggingT)
 
-import           Database.Persist.Sqlite
+import           Database.Persist.Sql
     ( runMigration
     , runSqlPersistM
-    , withSqliteConn
     , runSqlPersistM
     , SqlPersistM
     , SqlPersistT
     )
+import           Database.Persist.Sqlite (withSqliteConn)
 import           Refined (refineTH)
 import           Test.Hspec
     ( after_
