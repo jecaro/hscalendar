@@ -1,4 +1,4 @@
--- | This is the internal Model. It defines the persistent data types with
+-- | This is the internal model. It defines the persistent data types with
 -- template haskell.
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -32,6 +32,7 @@ DBProject
     name       Text
     -- Constraint
     UniqueName name 
+    -- Type classes
     deriving Show
     deriving Ord
     deriving Eq
@@ -39,23 +40,25 @@ DBProject
 DBHalfDay
     -- Fields
     day             Time.Day        
-    timeInDay       TimeInDay     -- morning/afternoon
-    type            DBHalfDayType -- worked/parttime/paidleave etc...
+    timeInDay       TimeInDay     
+    type            DBHalfDayType 
     -- Constraint
-    DayAndTimeInDay day timeInDay   -- One morning, one afternoon everyday
+    DayAndTimeInDay day timeInDay
+    -- Type classes
     deriving Show
     deriving Eq
 DBHalfDayWorked -- Only for WorkedOpenDay
     -- Fields
-    notes     Text -- default empty string
+    notes     Text 
     arrived   Time.TimeOfDay 
-    left      Time.TimeOfDay --Constraint Left > Arrived
+    left      Time.TimeOfDay 
     office    Office
     -- Foreign keys
     projectId DBProjectId 
     halfDayId DBHalfDayId
     -- Constraints
     UniqueHalfDayId halfDayId
+    -- Type classes
     deriving Show
     deriving Eq
 |]

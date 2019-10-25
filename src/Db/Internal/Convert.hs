@@ -21,12 +21,15 @@ import           Db.Worked (Worked(..))
 
 -- Conversion functions
 
+-- | Convert from business to db
 projectToDb :: Project -> DBProject
 projectToDb project = DBProject $ unProject project
 
+-- | Convert from the db to business. May fail.
 dbToProject :: DBProject -> Maybe Project
 dbToProject project = mkProject $ dBProjectName project
 
+-- | Convert from db to business. May fail.
 dbToIdle :: DBHalfDay -> Maybe Idle
 dbToIdle (DBHalfDay day timeInDay halfDayType) = 
     mkIdle <$> dbToIdleDayType halfDayType
@@ -35,6 +38,7 @@ dbToIdle (DBHalfDay day timeInDay halfDayType) =
           , _idleTimeInDay = timeInDay
           , _idleDayType   = halfDayType' }
 
+-- | Convert an 'IdleDayType' to a 'DBHalfDayType'
 idleDayTypeToDb :: IdleDayType -> DBHalfDayType
 idleDayTypeToDb PayedLeave    = DBPayedLeave
 idleDayTypeToDb FamilyEvent   = DBFamilyEvent
@@ -44,6 +48,7 @@ idleDayTypeToDb UnpayedLeave  = DBUnpayedLeave
 idleDayTypeToDb PublicHoliday = DBPublicHoliday
 idleDayTypeToDb PartTime      = DBPartTime
 
+-- | Convert a 'DBHalfDayType' to an 'IdleDayType'. May fail.
 dbToIdleDayType :: DBHalfDayType -> Maybe IdleDayType
 dbToIdleDayType DBPayedLeave    = Just PayedLeave
 dbToIdleDayType DBFamilyEvent   = Just FamilyEvent
@@ -54,6 +59,7 @@ dbToIdleDayType DBPublicHoliday = Just PublicHoliday
 dbToIdleDayType DBPartTime      = Just PartTime
 dbToIdleDayType DBWorked        = Nothing
 
+-- | Create a 'Worked' with the information in the db. May fail.
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
 dbToWorked (DBHalfDay day timeInDay DBWorked)
     (DBHalfDayWorked dbNotes arrived left office _ _) dbProject = do

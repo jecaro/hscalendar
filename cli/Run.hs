@@ -6,8 +6,8 @@ module Run
 where
 
 import           RIO
-import           RIO.Orphans()
-import           RIO.Process (proc, runProcess)
+import           RIO.Orphans ()
+import           RIO.Process (HasProcessContext, proc, runProcess)
 import qualified RIO.Text as Text (pack)
 
 import           Control.Monad (void)
@@ -22,7 +22,6 @@ import           App.App
     ( App(..)
     , HasConfig(..)
     , HasConnPool(..)
-    , HasProcessContext(..)
     , runDB
     )
 import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)

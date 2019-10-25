@@ -1,3 +1,4 @@
+-- | Functions related to the type 'Idle'
 {-# LANGUAGE TemplateHaskell #-}
 module Db.Idle 
 where
@@ -12,10 +13,11 @@ import           Lens.Micro.Platform (makeFields)
 import           Db.IdleDayType
 import           Db.TimeInDay (TimeInDay)
 
+-- | Simple type for a non-working half-day
 data Idle = MkIdle
-    { _idleDay       :: !Time.Day
-    , _idleTimeInDay :: !TimeInDay
-    , _idleDayType   :: !IdleDayType
+    { _idleDay       :: !Time.Day    -- ^ The day
+    , _idleTimeInDay :: !TimeInDay   -- ^ morning/afternoon
+    , _idleDayType   :: !IdleDayType -- ^ The type of the non working half-day
     }
     deriving (Eq, Generic, Show)
 makeFields ''Idle

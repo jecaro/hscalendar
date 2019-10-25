@@ -1,4 +1,4 @@
--- | Functions related to the Project type
+-- | Functions related to the 'Project' type
 module Db.Project
     ( Project
     , mkProject
@@ -34,7 +34,10 @@ import           Test.QuickCheck
     )
 import           Test.QuickCheck.Instances.Text()
 
-newtype Project = MkProject { unProject :: Text.Text }
+-- | A type for a project name
+newtype Project = MkProject 
+    { unProject :: Text.Text -- ^ Unwrap
+    }
     deriving (Eq, Generic, Show, Ord)
 
 instance ToJSON Project
@@ -62,7 +65,7 @@ instance Arbitrary Project where
         xs <- vectorOf n (elements projNameAllowedChars)
         return (MkProject (Text.pack xs))
 
--- | Simple type to refine Text for project names
+-- | Simple type to refine 'Text' for project names
 data ProjName
 
 -- | The actual refined type
@@ -81,6 +84,7 @@ mkProjectLit = MkProject . unrefine
 mkProject :: Text -> Maybe Project
 mkProject name = mkProjectLit <$> rightToMaybe (refine name)
 
+-- | Reader for a "Project" which may fail
 readProject :: ReadM Project
 readProject = maybeReader $ mkProject . Text.pack
 

@@ -1,4 +1,4 @@
--- | Functions related to Notes
+-- | Functions related to 'Notes'
 module Db.Notes
     ( Notes
     , mkNotes
@@ -34,10 +34,12 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances.Text()
 
 -- | The type for storing notes
-newtype Notes = MkNotes { unNotes :: Text.Text }
+newtype Notes = MkNotes 
+    { unNotes :: Text.Text -- ^ Unwrap the content
+    } 
     deriving (Generic, Eq, Show)
 
--- | Simple type to refine Text for Notes
+-- | Simple type to refine 'Text' for 'Notes'
 data NotesData
 
 -- | The actual refined type

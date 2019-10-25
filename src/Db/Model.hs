@@ -126,7 +126,7 @@ instance Show ProjHasHd where
     show (ProjHasHd project) = "The project " <> name <> " has associated half-day work"
       where name = Text.unpack (unProject project)
 
--- | There is no record for specified HD
+-- | There is no record for specified half-day
 data HdNotFound = HdNotFound Time.Day TimeInDay
 
 instance Exception HdNotFound
@@ -154,7 +154,7 @@ instance Show DbInconsistency where
 
 -- Misc 
 
--- | Convert a Day to a string in the form dd-mm-yyyy weekday
+-- | Convert a 'Time.Day' to a string in the form dd-mm-yyyy weekday
 showDay :: Time.Day -> Text
 showDay day =  Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY]) 
             <> " " 

@@ -1,4 +1,4 @@
--- | Contains functions related to CustomDay: a data type which can handle
+-- | Contains functions related to 'CustomDay': a data type which can handle
 --   any calendar day or today, yesterday and tomorrow. It can also use an easy
 --   numbering system.
 module App.CustomDay
@@ -57,7 +57,7 @@ instance ToHttpApiData CustomDay where
 today :: (MonadIO m) => m Time.Day
 today = liftIO $ Time.localDay . Time.zonedTimeToLocalTime <$> Time.getZonedTime
 
--- | Convert CustomDay to Day
+-- | Convert 'CustomDay' to 'Time.Day'
 toDay :: (MonadIO m) => CustomDay -> m Time.Day 
 toDay Today        = today
 toDay Yesterday    = Time.addDays (-1) <$> today
@@ -70,6 +70,7 @@ toDay (MkDayMonthNum d m) = do
     (y, _, _) <- Time.toGregorian <$> today
     return $ Time.fromGregorian y m d
 
+-- | Parser for a 'CustomDay'
 parser :: Parser CustomDay
 parser =   asciiCI "today"     $> Today
        <|> asciiCI "yesterday" $> Yesterday

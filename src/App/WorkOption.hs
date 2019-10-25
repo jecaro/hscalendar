@@ -1,3 +1,4 @@
+-- | Set of options operating on a working half-day
 module App.WorkOption 
     ( SetArrived(..)
     , SetLeft(..)
@@ -44,7 +45,7 @@ import           Db.Office (Office(..))
 import           Db.Project (Project(..))
 import           Db.TimeInDay (TimeInDay(..))
 
--- | When setting a work HD, a project command is mandatory
+-- | When setting a work half-day, a project command is mandatory
 data ProjCmdIsMandatory = ProjCmdIsMandatory
 
 instance Exception ProjCmdIsMandatory
@@ -52,36 +53,42 @@ instance Exception ProjCmdIsMandatory
 instance Show ProjCmdIsMandatory where
     show ProjCmdIsMandatory = "There should be one project command"
 
+-- | Command for setting the project
 newtype SetProj = SetProj Project
     deriving (Eq, Generic, Show)
 
 instance FromJSON SetProj
 instance ToJSON SetProj
 
+-- | Command for setting the notes
 newtype SetNotes = SetNotes Notes
     deriving (Eq, Generic, Show)
 
 instance FromJSON SetNotes
 instance ToJSON SetNotes
 
+-- | Command for changing the time of arrival
 newtype SetArrived = SetArrived Time.TimeOfDay
     deriving (Eq, Generic, Show)
 
 instance FromJSON SetArrived
 instance ToJSON SetArrived
 
+-- | Command for changing the departure time
 newtype SetLeft = SetLeft Time.TimeOfDay
     deriving (Eq, Generic, Show)
 
 instance FromJSON SetLeft
 instance ToJSON SetLeft
 
+-- | Command for setting the office
 newtype SetOffice = SetOffice Office
     deriving (Eq, Generic, Show)
 
 instance FromJSON SetOffice
 instance ToJSON SetOffice
 
+-- | Sum type to contains all these commands
 data WorkOption = MkSetArrived SetArrived |
                   MkSetLeft SetLeft       |
                   MkSetNotes SetNotes     |
@@ -92,7 +99,7 @@ data WorkOption = MkSetArrived SetArrived |
 instance FromJSON WorkOption
 instance ToJSON WorkOption
 
--- | Get out the first element of a list which return Just 
+-- | Get out the first element of a list which return 'Just'
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
 partitionFirst _ [] = (Nothing, [])
 partitionFirst p (x:xs) =
@@ -101,19 +108,19 @@ partitionFirst p (x:xs) =
         Nothing    -> (r', x:xs')
           where (r', xs') = partitionFirst p xs
 
--- | Find a SetProj command
+-- | Find a 'SetProj' command
 findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
 findProjCmd = partitionFirst getProj 
   where getProj (MkSetProj s@(SetProj _)) = Just s
         getProj _ = Nothing
 
--- | Find a SetArrived command
+-- | Find a 'SetArrived' command
 findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
 findArrivedCmd = partitionFirst getArrived 
   where getArrived (MkSetArrived s@(SetArrived _)) = Just s
         getArrived _ = Nothing
 
--- | Find a SetLeft command
+-- | Find a 'SetLeft' command
 findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
 findLeftCmd = partitionFirst getLeft 
   where getLeft (MkSetLeft s@(SetLeft _)) = Just s
@@ -130,7 +137,7 @@ findArrivedAndLeftCmd options =
         (Just tArrived, Just tLeft) -> (Just (tArrived, tLeft), options'')
         _                           -> (Nothing, options)
 
--- Dispatch edit
+-- | Dispatch edit
 dispatchEdit
     :: (MonadUnliftIO m)
     => Time.Day
@@ -150,7 +157,7 @@ dispatchEdit day tid (MkSetProj (SetProj project))    = hdSetProject day tid pro
 --   is already a work half-day. If not it searches the mandatory project 
 --   command to be able to create it. It uses for that arrived and left times set 
 --   in the config file or on the command line. Then it applies the remaining 
---   options. Error is handled with exceptions by the Model module and catch
+--   options. Error is handled with exceptions by the "Db.Model" module and catch
 --   by the caller.
 runWorkOptions :: (HasConnPool env, HasConfig env) 
     => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()

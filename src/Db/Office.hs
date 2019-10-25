@@ -1,3 +1,4 @@
+-- | Type to define the office used on working half-day
 {-# LANGUAGE TemplateHaskell #-}
 module Db.Office 
     ( Office(..)
@@ -29,6 +30,7 @@ instance ToJSON Office
 instance Arbitrary Office where
     arbitrary = arbitraryBoundedEnum
 
+-- | Parser for the 'Office' type
 parser :: Parser Office
 parser =   asciiCI "home"   $> Home
        <|> asciiCI "out"    $> OutOfOffice

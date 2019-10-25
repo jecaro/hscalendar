@@ -3,7 +3,6 @@ module App.App
     ( App(..)
     , HasConnPool(..)
     , HasConfig(..)
-    , HasProcessContext(..)
     , initAppAndRun
     , runDB
     )
@@ -30,6 +29,7 @@ data App = App
     , appProcessContext :: !ProcessContext -- ^ Context to start processes
     }
 
+-- | Constraint for functions doing sql requests
 class HasConnPool env where
     connPoolL :: Lens' env ConnectionPool
 
@@ -39,16 +39,18 @@ instance HasConnPool App where
 instance HasLogFunc App where
     logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
 
+-- | Constraint for functions needing access to the config
 class HasConfig env where
     configL :: Lens' env Config
 
 instance HasConfig App where
     configL = lens appConfig (\x y -> x { appConfig = y })
 
+-- | Constraint for functions needing to start a process
 instance HasProcessContext App where
     processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })
 
-
+-- | Init the application and run the rio actions
 initAppAndRun :: MonadUnliftIO m => Bool -> LogLevel -> RIO App b -> m b
 initAppAndRun verbose level actions = do
     logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose 

@@ -1,3 +1,4 @@
+-- | Simple sum type to define the time in the day
 {-# LANGUAGE TemplateHaskell #-}
 module Db.TimeInDay where
 
@@ -32,11 +33,12 @@ instance ToHttpApiData TimeInDay where
     toQueryParam Morning   = "morning"
     toQueryParam Afternoon = "afternoon"
 
--- | Switch to the other TimeInDay
+-- | Switch to the other 'TimeInDay'
 other :: TimeInDay -> TimeInDay
 other Morning   = Afternoon
 other Afternoon = Morning
 
+-- | Parser for the 'TimeInDay' type
 parser :: Parser TimeInDay
 parser =   asciiCI "morning"   $> Morning
        <|> asciiCI "afternoon" $> Afternoon

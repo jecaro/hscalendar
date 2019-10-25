@@ -1,3 +1,4 @@
+-- | A type for a non-working day, version used in the db schema
 {-# LANGUAGE TemplateHaskell #-}
 module Db.Internal.DBHalfDayType 
     ( DBHalfDayType(..)

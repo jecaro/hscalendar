@@ -1,3 +1,4 @@
+-- | Functions related to the type 'Worked'
 {-# LANGUAGE TemplateHaskell #-}
 module Db.Worked
 where
@@ -14,14 +15,15 @@ import           Db.Project(Project)
 import           Db.Office (Office)
 import           Db.TimeInDay (TimeInDay)
 
+-- | Data associated with a half-day worked
 data Worked = MkWorked
-    { _workedDay       :: !Time.Day
-    , _workedTimeInDay :: !TimeInDay
-    , _workedArrived   :: !Time.TimeOfDay
-    , _workedLeft      :: !Time.TimeOfDay
-    , _workedOffice    :: !Office
-    , _workedNotes     :: !Notes
-    , _workedProject   :: !Project
+    { _workedDay       :: !Time.Day       -- ^ The day
+    , _workedTimeInDay :: !TimeInDay      -- ^ Morning/Afternoon ?
+    , _workedArrived   :: !Time.TimeOfDay -- ^ Arrival time
+    , _workedLeft      :: !Time.TimeOfDay -- ^ Departure time
+    , _workedOffice    :: !Office         -- ^ Which office
+    , _workedNotes     :: !Notes          -- ^ Some notes
+    , _workedProject   :: !Project        -- ^ And the project
     }
     deriving (Eq, Generic, Show)
 makeFields ''Worked

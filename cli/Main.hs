@@ -36,6 +36,7 @@ import           Run (run)
 -- - Add cleanUp command in cli and in web api
 -- - Make FromJSON instance safe for Project/Note
 -- - Add haddock comments for all modules
+-- - Remove spaces at eol
 -- - Add migrate command in web api
 
 -- | Main function

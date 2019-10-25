@@ -1,3 +1,4 @@
+-- | A type for a non-working day
 module Db.IdleDayType
 where
 
@@ -10,6 +11,7 @@ import           Data.Attoparsec.Text
     )
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
+-- | All the different kinds of non-working half-day
 data IdleDayType = PayedLeave
                  | FamilyEvent
                  | RTTE
@@ -26,6 +28,7 @@ instance Arbitrary IdleDayType where
 instance ToJSON IdleDayType
 instance FromJSON IdleDayType
 
+-- | Parser for this type
 parser :: Parser IdleDayType
 parser =   asciiCI "pl"   $> PayedLeave
        <|> asciiCI "fe"   $> FamilyEvent

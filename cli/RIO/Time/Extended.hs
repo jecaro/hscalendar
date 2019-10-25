@@ -1,4 +1,4 @@
--- | Additional functions related to RIO.Time
+-- | Additional functions related to "RIO.Time"
 module RIO.Time.Extended (parser)
 where
 
@@ -11,6 +11,6 @@ import           Data.Attoparsec.Text
     , char
     )
 
--- | Parse a TimeOfDay without handling the seconds
+-- | Parse a 'Time.TimeOfDay' without handling the seconds
 parser :: Parser Time.TimeOfDay
 parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
