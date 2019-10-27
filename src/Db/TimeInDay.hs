@@ -7,7 +7,7 @@ import           RIO
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Attoparsec.Text
     ( Parser
-    , asciiCI 
+    , asciiCI
     )
 import           Database.Persist.TH (derivePersistField)
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
@@ -27,7 +27,7 @@ instance FromJSON TimeInDay
 instance ToJSON TimeInDay
 
 instance FromHttpApiData TimeInDay where
-    parseQueryParam = runAtto parser 
+    parseQueryParam = runAtto parser
 
 instance ToHttpApiData TimeInDay where
     toQueryParam Morning   = "morning"

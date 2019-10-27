@@ -53,10 +53,10 @@ instance HasProcessContext App where
 -- | Init the application and run the rio actions
 initAppAndRun :: MonadUnliftIO m => Bool -> LogLevel -> RIO App b -> m b
 initAppAndRun verbose level actions = do
-    logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose 
+    logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose
     -- Read config file with logger
-    withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>= 
-        \case 
+    withLogFunc logOptions $ \lf -> try (runRIO lf getConfig) >>=
+        \case
             -- Error with the config file end of the program
             Left e -> runRIO lf $ do
                 logError $ display $ Text.pack (prettyPrintParseException e)
@@ -68,11 +68,11 @@ initAppAndRun verbose level actions = do
                     pc <- mkDefaultProcessContext
                     -- Initialize the application
                     let app = App { appLogFunc        = lf
-                                  , appConnPool       = pool 
+                                  , appConnPool       = pool
                                   , appConfig         = config
                                   , appProcessContext = pc }
 
-                    -- Run the app, handle exceptions 
+                    -- Run the app, handle exceptions
                     liftIO $ runRIO app $ catch actions (\e -> do
                         logError ("Error: " <> display (e :: SomeException))
                         liftIO exitFailure)

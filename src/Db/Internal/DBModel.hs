@@ -31,7 +31,7 @@ DBProject
     -- Fields
     name       Text
     -- Constraint
-    UniqueName name 
+    UniqueName name
     -- Type classes
     deriving Show
     deriving Ord
@@ -39,9 +39,9 @@ DBProject
     deriving Generic
 DBHalfDay
     -- Fields
-    day             Time.Day        
-    timeInDay       TimeInDay     
-    type            DBHalfDayType 
+    day             Time.Day
+    timeInDay       TimeInDay
+    type            DBHalfDayType
     -- Constraint
     DayAndTimeInDay day timeInDay
     -- Type classes
@@ -49,12 +49,12 @@ DBHalfDay
     deriving Eq
 DBHalfDayWorked -- Only for WorkedOpenDay
     -- Fields
-    notes     Text 
-    arrived   Time.TimeOfDay 
-    left      Time.TimeOfDay 
+    notes     Text
+    arrived   Time.TimeOfDay
+    left      Time.TimeOfDay
     office    Office
     -- Foreign keys
-    projectId DBProjectId 
+    projectId DBProjectId
     halfDayId DBHalfDayId
     -- Constraints
     UniqueHalfDayId halfDayId

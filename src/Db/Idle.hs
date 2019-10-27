@@ -1,6 +1,6 @@
 -- | Functions related to the type 'Idle'
 {-# LANGUAGE TemplateHaskell #-}
-module Db.Idle 
+module Db.Idle
 where
 
 import           RIO

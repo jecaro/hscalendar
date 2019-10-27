@@ -1,5 +1,5 @@
 -- | Implement all the commands
-module Run 
+module Run
   ( App(..)
   , run
   )
@@ -18,7 +18,7 @@ import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
 
 
-import           App.App 
+import           App.App
     ( App(..)
     , HasConfig(..)
     , HasConnPool(..)
@@ -60,27 +60,27 @@ instance Exception ProcessReturnedError
 instance Show ProcessReturnedError where
     show (ProcessReturnedError cmd) = "The process " <> cmd <> " returned an error"
 
--- | Print an exception 
+-- | Print an exception
 printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
 printException =  logError . displayShow
 
 -- | Execute the command
-run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env) 
-    => Cmd 
+run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env)
+    => Cmd
     -> RIO env ()
 
 -- Migrate the database
 run Migrate = runDB $ runMigration migrateAll
 
 -- List the projects
-run ProjList = runDB projList >>= mapM_ (logInfo . display . unProject) 
+run ProjList = runDB projList >>= mapM_ (logInfo . display . unProject)
 
 -- Add a project
-run (ProjAdd project) = catch (void $ runDB $ projAdd project) 
+run (ProjAdd project) = catch (void $ runDB $ projAdd project)
                            (\e@(ProjExists _) -> printException e)
 
 -- Remove a project
-run (ProjRm project) = catches (runDB $ projRm project) 
+run (ProjRm project) = catches (runDB $ projRm project)
     [ Handler (\e@(ProjHasHd _)    -> printException e)
     , Handler (\e@(ProjNotFound _) -> printException e)
     ]
@@ -118,8 +118,8 @@ run (DiaryEdit cd tid) = do
     day <- toDay cd
     oldRecord <- hdAsText <$> try (runDB $ hdGet day tid)
     -- Bracket to make sure the temporary file will be deleted no matter what
-    fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar") 
-        (liftIO . removeFile) 
+    fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar")
+        (liftIO . removeFile)
         (\filename -> do
             -- Write old record
             writeFileUtf8 filename oldRecord
@@ -132,7 +132,7 @@ run (DiaryEdit cd tid) = do
             -- Read file content
             readFileUtf8 filename
         )
-    if fileContent == oldRecord 
+    if fileContent == oldRecord
         then nothingToDo
         else case parse fileContent of
             Left e@(ParserError _) -> throwIO e
@@ -140,7 +140,7 @@ run (DiaryEdit cd tid) = do
             Right options          -> run $ DiaryWork cd tid options
   where nothingToDo = logWarn "Nothing to do"
 
--- Set a work entry 
+-- Set a work entry
 run (DiaryWork cd tid wopts) = do
     -- Get actual day
     day <- toDay cd
@@ -152,7 +152,7 @@ run (DiaryWork cd tid wopts) = do
         ]
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
- 
+
 -- Set a holiday entry
 run (DiaryHoliday cd tid hdt) = do
     day <- toDay cd

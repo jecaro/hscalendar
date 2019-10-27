@@ -1,15 +1,15 @@
 -- | Type to define the office used on working half-day
 {-# LANGUAGE TemplateHaskell #-}
-module Db.Office 
+module Db.Office
     ( Office(..)
-    , parser 
+    , parser
     ) where
 import           RIO
 import           Data.Attoparsec.Text
     ( Parser
-    , asciiCI 
+    , asciiCI
     )
-import           Data.Yaml 
+import           Data.Yaml
     ( FromJSON
     , ToJSON
     )

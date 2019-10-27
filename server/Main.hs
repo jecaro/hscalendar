@@ -4,7 +4,7 @@ import           Control.Monad.Except     (ExceptT(..))
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Network.Wai.Handler.Warp (run)
-import           Servant.API              
+import           Servant.API
     ( Get
     , Capture
     , DeleteNoContent
@@ -16,7 +16,7 @@ import           Servant.API
     , Summary
     , (:>)
     , (:<|>)(..))
-import           Servant.Server          
+import           Servant.Server
     ( Application
     , ServantErr(..)
     , Server
@@ -27,18 +27,18 @@ import           Servant.Server
     , hoistServer
     , serve
     )
-import qualified Servant.Server as Server (Handler(..))         
+import qualified Servant.Server as Server (Handler(..))
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.CustomDay (CustomDay(..), toDay)
-import           App.WorkOption 
+import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
     , WorkOption(..)
     )
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
-import           Db.Model 
+import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
@@ -104,7 +104,7 @@ type HSCalendarApi =
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =    projectAll
-          :<|> projectAdd 
+          :<|> projectAdd
           :<|> projectRm
           :<|> projectRename
           :<|> diaryDisplay
@@ -126,16 +126,16 @@ server :: App -> Application
 server app = serve hscalendarApi (mainServer app)
 
 projectAll :: HasConnPool env => RIO env [Project]
-projectAll = runDB projList 
+projectAll = runDB projList
 
 projectRm :: HasConnPool env => Project -> RIO env NoContent
-projectRm project = catches (runDB (projRm project) >> return NoContent) 
+projectRm project = catches (runDB (projRm project) >> return NoContent)
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
 projectAdd :: HasConnPool env => Project -> RIO env NoContent
-projectAdd project = catch (runDB (projAdd project) >> return NoContent) 
+projectAdd project = catch (runDB (projAdd project) >> return NoContent)
         (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
 
 projectRename :: HasConnPool env => RenameArgs -> RIO env NoContent
@@ -154,8 +154,8 @@ diaryDisplay cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-diarySetIdleDay 
-    :: HasConnPool env 
+diarySetIdleDay
+    :: HasConnPool env
     => CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
 diarySetIdleDay cd tid idt = do
     day <- toDay cd
@@ -165,10 +165,10 @@ diarySetIdleDay cd tid idt = do
 diaryRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
 diaryRm cd tid = do
     day <- toDay cd
-    catch (runDB (hdRm day tid) >> return NoContent) 
+    catch (runDB (hdRm day tid) >> return NoContent)
         (\(HdNotFound _ _) -> throwM err404)
 
-diarySetWork 
+diarySetWork
     :: (HasConnPool env, HasConfig env)
     => CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
 diarySetWork cd tid wopts = do

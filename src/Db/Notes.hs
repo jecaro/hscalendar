@@ -23,7 +23,7 @@ import           Refined
     , unrefine
     , validate
     )
-import           Test.QuickCheck 
+import           Test.QuickCheck
     ( Arbitrary
     , arbitrary
     , choose
@@ -34,9 +34,9 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances.Text()
 
 -- | The type for storing notes
-newtype Notes = MkNotes 
+newtype Notes = MkNotes
     { unNotes :: Text.Text -- ^ Unwrap the content
-    } 
+    }
     deriving (Generic, Eq, Show)
 
 -- | Simple type to refine 'Text' for 'Notes'
@@ -71,7 +71,7 @@ printableOrEOLOrTab x = isPrint x || elem x ['\n', '\t']
 -- | Check the validity of a note
 notesValid :: Text -> Bool
 notesValid name = Text.length name <= notesMaxLength &&
-    Text.all printableOrEOLOrTab name 
+    Text.all printableOrEOLOrTab name
 
 -- | Smart constructor which cannot fail
 mkNotesLit :: NotesText -> Notes

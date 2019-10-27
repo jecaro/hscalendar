@@ -1,6 +1,6 @@
 -- | A type for a non-working day, version used in the db schema
 {-# LANGUAGE TemplateHaskell #-}
-module Db.Internal.DBHalfDayType 
+module Db.Internal.DBHalfDayType
     ( DBHalfDayType(..)
     ) where
 
@@ -14,7 +14,7 @@ data DBHalfDayType = DBPayedLeave
                    | DBRTTE
                    | DBRTTS
                    | DBUnpayedLeave
-                   | DBPublicHoliday 
+                   | DBPublicHoliday
                    | DBPartTime
                    | DBWorked
     deriving (Bounded, Enum, Eq, Generic, Ord, Read, Show)

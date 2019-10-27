@@ -3,7 +3,7 @@ import           RIO
 import           Options.Applicative (execParser)
 
 import           App.App (initAppAndRun)
-import           CommandLine 
+import           CommandLine
     ( Options(..)
     , opts
     )
@@ -11,8 +11,8 @@ import           Run (run)
 
 -- Synopsis
 -- hsmaster diary work date -m|-a [commands]
---   commands: 
---     -p project   set the project name 
+--   commands:
+--     -p project   set the project name
 --     -n note      set note
 --     -a 00:00     set arrived time
 --     -l 00:00     set left time
@@ -23,7 +23,7 @@ import           Run (run)
 -- hsmaster project list
 -- hsmaster project rm project
 -- hsmaster project add project
--- hsmaster project rename project1 project2 
+-- hsmaster project rename project1 project2
 
 -- TODO:
 -- - Add import CSV

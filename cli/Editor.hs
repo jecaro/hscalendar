@@ -20,7 +20,7 @@ import qualified RIO.Time.Extended as Time(parser)
 
 import           Lens.Micro.Platform (makeFields)
 
-import           Data.Attoparsec.Text 
+import           Data.Attoparsec.Text
     ( Parser
     , endOfLine
     , endOfInput
@@ -32,7 +32,7 @@ import           Data.Attoparsec.Text
     , takeText
     )
 
-import           App.WorkOption 
+import           App.WorkOption
     ( SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
@@ -43,21 +43,21 @@ import           App.WorkOption
 
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
-import           Db.Model 
+import           Db.Model
     ( HdNotFound(..)
     , showDay
     , showTime
-    ) 
+    )
 import           Db.Notes (Notes, mkNotes, unNotes)
-import qualified Db.Office as Office (Office(..), parser) 
+import qualified Db.Office as Office (Office(..), parser)
 import           Db.Project (Project, mkProject, unProject)
 import           Db.TimeInDay
 import           Db.Worked (Worked(..))
 
 -- Example of data
--- 
+--
 -- # Worked day -> create half-day half-day worked
--- # 22/03/1979 morning 
+-- # 22/03/1979 morning
 -- COMAREM
 -- rennes 9:00 12:00
 -- these are the notes
@@ -101,8 +101,8 @@ notesTextParser = do
 fileParser :: Parser FileWorked
 fileParser = FileWorked
     <$> projectParser <* skipHorizontalSpaces <* endOfLine
-    <*> Office.parser <* skipHorizontalSpaces 
-    <*> Time.parser   <* skipHorizontalSpaces 
+    <*> Office.parser <* skipHorizontalSpaces
+    <*> Time.parser   <* skipHorizontalSpaces
     <*> Time.parser   <* skipHorizontalSpaces <* endOfLine
     <*> notesTextParser
 
@@ -114,25 +114,25 @@ parse fileContent = do
     if Text.null prunedContent
         then Left EmptyFileError
         -- Parse the lines
-        else case parseOnly (fileParser <* endOfInput) prunedContent of 
+        else case parseOnly (fileParser <* endOfInput) prunedContent of
             Left msg         -> Left  $ ParserError $ Text.pack msg
             Right fileWorked -> Right $ toOptions fileWorked
   where notComment text = not $ Text.isPrefixOf "#" text
 
 toOptions :: FileWorked -> [WorkOption]
-toOptions file = [ MkSetProj    . SetProj    $ file ^. project 
-                 , MkSetOffice  . SetOffice  $ file ^. office 
+toOptions file = [ MkSetProj    . SetProj    $ file ^. project
+                 , MkSetOffice  . SetOffice  $ file ^. office
                  , MkSetArrived . SetArrived $ file ^. arrived
                  , MkSetLeft    . SetLeft    $ file ^. left
-                 , MkSetNotes   . SetNotes   $ file ^. notes 
+                 , MkSetNotes   . SetNotes   $ file ^. notes
                  ]
 
 header :: Time.Day -> TimeInDay -> Text
 header day tid = "# " <> showDay day <> " " <> packShow tid
-        
+
 packShow :: Show a => a -> Text
 packShow = Text.pack . show
-        
+
 hdAsText :: Either HdNotFound HalfDay -> Text
 hdAsText (Left (HdNotFound day tid)) = header day tid <> " Nothing\n"
 hdAsText (Right (MkHalfDayIdle (MkIdle day tid hdt))) = header day tid <> " " <> packShow hdt <> "\n"

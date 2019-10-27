@@ -12,7 +12,7 @@ where
 import           RIO
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
-import           Db.Internal.DBModel 
+import           Db.Internal.DBModel
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Idle (Idle(..))
 import           Db.Notes (mkNotes)
@@ -31,7 +31,7 @@ dbToProject project = mkProject $ dBProjectName project
 
 -- | Convert from db to business. May fail.
 dbToIdle :: DBHalfDay -> Maybe Idle
-dbToIdle (DBHalfDay day timeInDay halfDayType) = 
+dbToIdle (DBHalfDay day timeInDay halfDayType) =
     mkIdle <$> dbToIdleDayType halfDayType
   where mkIdle halfDayType' = MkIdle
           { _idleDay       = day

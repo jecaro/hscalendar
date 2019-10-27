@@ -210,13 +210,13 @@ cmd = hsubparser
     )
 
 options :: Opt.Parser Options
-options = Options 
+options = Options
     <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
-    <*> option readLevel 
-        (  long "level" 
-        <> short 'l' 
-        <> metavar "LEVEL" 
-        <> help "log level" 
+    <*> option readLevel
+        (  long "level"
+        <> short 'l'
+        <> metavar "LEVEL"
+        <> help "log level"
         <> value LevelInfo
         )
 

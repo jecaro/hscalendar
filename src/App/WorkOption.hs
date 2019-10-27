@@ -1,5 +1,5 @@
 -- | Set of options operating on a working half-day
-module App.WorkOption 
+module App.WorkOption
     ( SetArrived(..)
     , SetLeft(..)
     , SetNotes(..)
@@ -17,7 +17,7 @@ import qualified RIO.Time as Time
 import           Data.Aeson (FromJSON, ToJSON)
 import           Database.Persist.Sql (SqlPersistT)
 
-import           App.App 
+import           App.App
     ( HasConfig(..)
     , HasConnPool(..)
     , runDB
@@ -29,7 +29,7 @@ import           App.Config
     )
 
 import           Db.HalfDay (HalfDay(..))
-import           Db.Model 
+import           Db.Model
     ( HdNotFound(..)
     , hdGet
     , hdSetArrived
@@ -103,34 +103,34 @@ instance ToJSON WorkOption
 partitionFirst :: (a -> Maybe b) -> [a] -> (Maybe b, [a])
 partitionFirst _ [] = (Nothing, [])
 partitionFirst p (x:xs) =
-    case p x of 
+    case p x of
         r@(Just _) -> (r, xs)
         Nothing    -> (r', x:xs')
           where (r', xs') = partitionFirst p xs
 
 -- | Find a 'SetProj' command
 findProjCmd :: [WorkOption] -> (Maybe SetProj, [WorkOption])
-findProjCmd = partitionFirst getProj 
+findProjCmd = partitionFirst getProj
   where getProj (MkSetProj s@(SetProj _)) = Just s
         getProj _ = Nothing
 
 -- | Find a 'SetArrived' command
 findArrivedCmd :: [WorkOption] -> (Maybe SetArrived, [WorkOption])
-findArrivedCmd = partitionFirst getArrived 
+findArrivedCmd = partitionFirst getArrived
   where getArrived (MkSetArrived s@(SetArrived _)) = Just s
         getArrived _ = Nothing
 
 -- | Find a 'SetLeft' command
 findLeftCmd :: [WorkOption] -> (Maybe SetLeft, [WorkOption])
-findLeftCmd = partitionFirst getLeft 
+findLeftCmd = partitionFirst getLeft
   where getLeft (MkSetLeft s@(SetLeft _)) = Just s
         getLeft _ = Nothing
 
 -- | Find both arrived and left command
-findArrivedAndLeftCmd 
-    :: [WorkOption] 
+findArrivedAndLeftCmd
+    :: [WorkOption]
     -> (Maybe (SetArrived, SetLeft), [WorkOption])
-findArrivedAndLeftCmd options = 
+findArrivedAndLeftCmd options =
     let (mbArrived, options')  = findArrivedCmd options
         (mbLeft,    options'') = findLeftCmd options'
     in case (mbArrived, mbLeft) of
@@ -153,22 +153,22 @@ dispatchEdit day tid (MkSetNotes (SetNotes notes))    = hdSetNotes day tid notes
 dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdSetOffice day tid office
 dispatchEdit day tid (MkSetProj (SetProj project))    = hdSetProject day tid project
 
--- | Execute the work options. In order to do that, the fct checks if the record 
---   is already a work half-day. If not it searches the mandatory project 
---   command to be able to create it. It uses for that arrived and left times set 
---   in the config file or on the command line. Then it applies the remaining 
+-- | Execute the work options. In order to do that, the fct checks if the record
+--   is already a work half-day. If not it searches the mandatory project
+--   command to be able to create it. It uses for that arrived and left times set
+--   in the config file or on the command line. Then it applies the remaining
 --   options. Error is handled with exceptions by the "Db.Model" module and catch
 --   by the caller.
-runWorkOptions :: (HasConnPool env, HasConfig env) 
+runWorkOptions :: (HasConnPool env, HasConfig env)
     => Time.Day -> TimeInDay -> [WorkOption] -> RIO env ()
 runWorkOptions day tid wopts = do
     -- Get hdw
     eiHd <- try $ runDB $ hdGet day tid
- 
+
     -- Create it with a project if needed
     otherOpts <- case (eiHd, findProjCmd wopts) of
         -- Everything is there
-        (Right (MkHalfDayWorked _), _) -> return wopts 
+        (Right (MkHalfDayWorked _), _) -> return wopts
         -- Nothing or holiday but a project
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
@@ -176,7 +176,7 @@ runWorkOptions day tid wopts = do
             let (DefaultHours dArrived dLeft) = case tid of
                     Morning   -> morning (defaultHours config)
                     Afternoon -> afternoon (defaultHours config)
-            -- Get the arrived and left commands if they exists, maintaining 
+            -- Get the arrived and left commands if they exists, maintaining
             -- the other options
                 (mbArrived, otherOpts') = findArrivedCmd otherOpts
                 (mbLeft, otherOpts'') = findLeftCmd otherOpts'
@@ -197,4 +197,4 @@ runWorkOptions day tid wopts = do
         Just (SetArrived a, SetLeft l) -> runDB $ hdSetArrivedAndLeft day tid a l
         Nothing -> return ()
     -- Then apply remaining commands
-    runDB $ mapM_ (dispatchEdit day tid) otherOpts' 
+    runDB $ mapM_ (dispatchEdit day tid) otherOpts'

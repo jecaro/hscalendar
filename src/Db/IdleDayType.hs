@@ -7,7 +7,7 @@ import RIO
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Attoparsec.Text
     ( Parser
-    , asciiCI 
+    , asciiCI
     )
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
@@ -17,7 +17,7 @@ data IdleDayType = PayedLeave
                  | RTTE
                  | RTTS
                  | UnpayedLeave
-                 | PublicHoliday 
+                 | PublicHoliday
                  | PartTime
     deriving (Bounded, Enum, Eq, Generic, Show)
 

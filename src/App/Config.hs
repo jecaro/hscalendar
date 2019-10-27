@@ -1,7 +1,7 @@
 -- | The configuration file in yaml format
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Config 
+module App.Config
     ( Config(..)
     , DefaultHours(..)
     , DefaultHoursForDay(..)
@@ -11,13 +11,13 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (TimeOfDay(..))
-import           Data.Yaml 
+import           Data.Yaml
     ( FromJSON
     , ToJSON
     , encodeFile
     , decodeFileThrow
     )
-import           Path 
+import           Path
     ( Abs
     , Dir
     , File
@@ -28,7 +28,7 @@ import           Path
     , toFilePath
     , (</>)
     )
-import           Path.IO 
+import           Path.IO
     ( XdgDirectory(XdgConfig)
     , doesFileExist
     , ensureDir
@@ -54,10 +54,10 @@ instance FromJSON DefaultHoursForDay
 instance ToJSON DefaultHoursForDay
 
 -- | Simple configuration stored in the config file
-data Config = Config { db            :: !(Path Abs File) 
-                     , defaultHours  :: !DefaultHoursForDay 
+data Config = Config { db            :: !(Path Abs File)
+                     , defaultHours  :: !DefaultHoursForDay
                      , defaultOffice :: !Office
-                     } 
+                     }
     deriving (Show, Generic)
 
 instance FromJSON Config
@@ -75,23 +75,23 @@ getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
-    let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0) 
-        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0) 
+    let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0)
+        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0)
     return $ Config { db = defaultDb
-                    , defaultHours = DefaultHoursForDay morning afternoon 
-                    , defaultOffice = Rennes 
+                    , defaultHours = DefaultHoursForDay morning afternoon
+                    , defaultOffice = Rennes
                     }
 
 -- | Read the configuration from the config file, create it if it doesn't exist
 getConfig :: HasLogFunc m => RIO m Config
 getConfig = do
     -- Create config file directory
-    getConfigDir >>= ensureDir 
+    getConfigDir >>= ensureDir
     -- Config file
-    fc <- getFileInConfigDir $(mkRelFile "config.yml") 
+    fc <- getFileInConfigDir $(mkRelFile "config.yml")
     -- Create it if it doesn't exist
     exists <- doesFileExist fc
-    unless exists (do 
+    unless exists (do
         logDebug "The config file doesn't exist, create it."
         liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
     -- Read config from the file

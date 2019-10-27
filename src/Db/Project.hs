@@ -7,7 +7,7 @@ module Db.Project
     , unProject
     )
 where
-    
+
 import           RIO
 
 import qualified RIO.Text as Text (Text, all, length, pack)
@@ -24,7 +24,7 @@ import           Refined
     , unrefine
     , validate
     )
-import           Test.QuickCheck 
+import           Test.QuickCheck
     ( Arbitrary
     , arbitrary
     , elements
@@ -35,7 +35,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances.Text()
 
 -- | A type for a project name
-newtype Project = MkProject 
+newtype Project = MkProject
     { unProject :: Text.Text -- ^ Unwrap
     }
     deriving (Eq, Generic, Show, Ord)
@@ -53,8 +53,8 @@ projNameAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
 
 -- | Predicate to check if the project is valid
 projNameValid :: Text -> Bool
-projNameValid name =  Text.length name > 0 
-                   && Text.length name <= projNameMaxLength 
+projNameValid name =  Text.length name > 0
+                   && Text.length name <= projNameMaxLength
                    && Text.all (`elem` projNameAllowedChars) name
 
 -- | Arbitrary instance for project. Only project with allowed characters
