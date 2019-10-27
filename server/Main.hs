@@ -1,6 +1,6 @@
 import           RIO
 
-import           Control.Monad.Except     (ExceptT(..))
+import           Control.Monad.Except (ExceptT(..))
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Network.Wai.Handler.Warp (run)
@@ -28,6 +28,7 @@ import           Servant.Server
     , serve
     )
 import qualified Servant.Server as Server (Handler(..))
+import           System.Environment (lookupEnv)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.CustomDay (CustomDay(..), toDay)
@@ -180,7 +181,14 @@ diarySetWork cd tid wopts = do
         , Handler (\(ProjNotFound _)     -> throwM err404)
         ]
 
+getPortFromEnv :: RIO env Int
+getPortFromEnv = do
+    maybePortStr <- liftIO $ lookupEnv "PORT"
+    let maybePortInt = readMaybe =<< maybePortStr
+    return $ fromMaybe 8081 maybePortInt
+
 main :: IO ()
 main = initAppAndRun False LevelInfo $ do
-        app <- ask
-        liftIO . run 8081 $ server app
+    port <- getPortFromEnv
+    app <- ask
+    liftIO . run port $ server app
