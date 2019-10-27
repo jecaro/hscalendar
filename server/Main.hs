@@ -3,6 +3,7 @@ import           RIO
 import           Control.Monad.Except (ExceptT(..))
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
+import           Database.Persist.Sql (runMigration)
 import           Network.Wai.Handler.Warp (run)
 import           Servant.API
     ( Get
@@ -47,6 +48,7 @@ import           Db.Model
     , hdGet
     , hdRm
     , hdSetHoliday
+    , migrateAll
     , projAdd
     , projList
     , projRename
@@ -64,7 +66,10 @@ instance FromJSON RenameArgs
 instance ToJSON RenameArgs
 
 type HSCalendarApi =
-        Summary "List all projects"
+        Summary "Initialize the database"
+           :> "migrate"
+           :> PutNoContent '[JSON] NoContent
+   :<|> Summary "List all projects"
            :> "project"
            :> Get '[JSON] [Project]
    :<|> Summary "Add a project"
@@ -104,7 +109,8 @@ type HSCalendarApi =
            :> DeleteNoContent '[JSON] NoContent
 
 rioServer :: ServerT HSCalendarApi (RIO App)
-rioServer =    projectAll
+rioServer =    migrate
+          :<|> projectAll
           :<|> projectAdd
           :<|> projectRm
           :<|> projectRename
@@ -125,6 +131,9 @@ nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Application
 server app = serve hscalendarApi (mainServer app)
+
+migrate :: HasConnPool env => RIO env NoContent
+migrate = runDB $ runMigration migrateAll >> return NoContent
 
 projectAll :: HasConnPool env => RIO env [Project]
 projectAll = runDB projList
