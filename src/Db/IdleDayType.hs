@@ -12,11 +12,11 @@ import           Data.Attoparsec.Text
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
 -- | All the different kinds of non-working half-day
-data IdleDayType = PayedLeave
+data IdleDayType = PaidLeave
                  | FamilyEvent
                  | RTTE
                  | RTTS
-                 | UnpayedLeave
+                 | UnpaidLeave
                  | PublicHoliday
                  | PartTime
     deriving (Bounded, Enum, Eq, Generic, Show)
@@ -30,11 +30,11 @@ instance FromJSON IdleDayType
 
 -- | Parser for this type
 parser :: Parser IdleDayType
-parser =   asciiCI "pl"   $> PayedLeave
+parser =   asciiCI "pl"   $> PaidLeave
        <|> asciiCI "fe"   $> FamilyEvent
        <|> asciiCI "rtte" $> RTTE
        <|> asciiCI "rtts" $> RTTS
-       <|> asciiCI "ul"   $> UnpayedLeave
+       <|> asciiCI "ul"   $> UnpaidLeave
        <|> asciiCI "ph"   $> PublicHoliday
        <|> asciiCI "pt"   $> PartTime
 

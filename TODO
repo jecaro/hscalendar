@@ -9,4 +9,3 @@
 - Make FromJSON instance safe for Project/Note
 - Add documentation for editor
 - Add documentation for the configuration file
-- Change mispelling payed -> paid

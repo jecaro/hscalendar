@@ -124,10 +124,10 @@ office1 :: Office
 office1 = Home
 
 hdt1 :: IDT.IdleDayType
-hdt1 = IDT.PayedLeave
+hdt1 = IDT.PaidLeave
 
 hdt1' :: IDT.IdleDayType
-hdt1' = IDT.PayedLeave
+hdt1' = IDT.PaidLeave
 
 arrived1 :: TimeInDay -> Time.TimeOfDay
 arrived1 Morning   = Time.TimeOfDay 8 30 0

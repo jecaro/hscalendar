@@ -9,11 +9,11 @@ import           RIO
 import           Database.Persist.TH (derivePersistField)
 
 -- | Simple sum type for setting the kind of halfday
-data DBHalfDayType = DBPayedLeave
+data DBHalfDayType = DBPaidLeave
                    | DBFamilyEvent
                    | DBRTTE
                    | DBRTTS
-                   | DBUnpayedLeave
+                   | DBUnpaidLeave
                    | DBPublicHoliday
                    | DBPartTime
                    | DBWorked

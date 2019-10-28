@@ -40,21 +40,21 @@ dbToIdle (DBHalfDay day timeInDay halfDayType) =
 
 -- | Convert an 'IdleDayType' to a 'DBHalfDayType'
 idleDayTypeToDb :: IdleDayType -> DBHalfDayType
-idleDayTypeToDb PayedLeave    = DBPayedLeave
+idleDayTypeToDb PaidLeave     = DBPaidLeave
 idleDayTypeToDb FamilyEvent   = DBFamilyEvent
 idleDayTypeToDb RTTE          = DBRTTE
 idleDayTypeToDb RTTS          = DBRTTS
-idleDayTypeToDb UnpayedLeave  = DBUnpayedLeave
+idleDayTypeToDb UnpaidLeave   = DBUnpaidLeave
 idleDayTypeToDb PublicHoliday = DBPublicHoliday
 idleDayTypeToDb PartTime      = DBPartTime
 
 -- | Convert a 'DBHalfDayType' to an 'IdleDayType'. May fail.
 dbToIdleDayType :: DBHalfDayType -> Maybe IdleDayType
-dbToIdleDayType DBPayedLeave    = Just PayedLeave
+dbToIdleDayType DBPaidLeave     = Just PaidLeave
 dbToIdleDayType DBFamilyEvent   = Just FamilyEvent
 dbToIdleDayType DBRTTE          = Just RTTE
 dbToIdleDayType DBRTTS          = Just RTTS
-dbToIdleDayType DBUnpayedLeave  = Just UnpayedLeave
+dbToIdleDayType DBUnpaidLeave   = Just UnpaidLeave
 dbToIdleDayType DBPublicHoliday = Just PublicHoliday
 dbToIdleDayType DBPartTime      = Just PartTime
 dbToIdleDayType DBWorked        = Nothing
