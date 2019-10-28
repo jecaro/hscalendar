@@ -45,7 +45,7 @@ import           Options.Applicative as Opt
     )
 
 import qualified App.CustomDay as CD (CustomDay(..), parser)
-import           App.WorkOption 
+import           App.WorkOption
     ( WorkOption(..)
     , SetProj(..)
     , SetNotes(..)
