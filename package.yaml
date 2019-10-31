@@ -20,6 +20,7 @@ dependencies:
 - path-io
 - persistent
 - persistent-sqlite
+- persistent-postgresql
 - persistent-template
 - quickcheck-instances
 - refined
