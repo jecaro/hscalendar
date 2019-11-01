@@ -3,6 +3,8 @@
 
 module App.Config
     ( Config(..)
+    , DBConfig(..)
+    , DBBackend(..)
     , DefaultHours(..)
     , DefaultHoursForDay(..)
     , getConfig
@@ -10,6 +12,7 @@ module App.Config
 where
 
 import           RIO
+import qualified RIO.Text as Text
 import qualified RIO.Time as Time (TimeOfDay(..))
 import           Data.Yaml
     ( FromJSON
@@ -20,7 +23,6 @@ import           Data.Yaml
 import           Path
     ( Abs
     , Dir
-    , File
     , Path
     , Rel
     , mkRelDir
@@ -53,8 +55,24 @@ data DefaultHoursForDay = DefaultHoursForDay { morning   :: !DefaultHours
 instance FromJSON DefaultHoursForDay
 instance ToJSON DefaultHoursForDay
 
+-- | Database backends supported
+data DBBackend = Sqlite | Postgresql
+    deriving (Show, Generic)
+
+instance FromJSON DBBackend
+instance ToJSON DBBackend
+
+-- | Settings for database access
+data DBConfig = DBConfig { backend          :: !DBBackend
+                         , connectionString :: !Text
+                         , nbConnections    :: !Int}
+    deriving (Show, Generic)
+
+instance FromJSON DBConfig
+instance ToJSON DBConfig
+
 -- | Simple configuration stored in the config file
-data Config = Config { db            :: !(Path Abs File)
+data Config = Config { dbConfig      :: !DBConfig
                      , defaultHours  :: !DefaultHoursForDay
                      , defaultOffice :: !Office
                      }
@@ -74,10 +92,13 @@ getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 -- | Create a default configuration
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
-    defaultDb <- getFileInConfigDir $(mkRelFile "database.db")
+    defaultSqliteFile <- getFileInConfigDir $(mkRelFile "database.db")
     let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0)
         afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0)
-    return $ Config { db = defaultDb
+    return $ Config { dbConfig = DBConfig { backend          = Sqlite
+                                          , connectionString = Text.pack $ toFilePath defaultSqliteFile
+                                          , nbConnections    = 1
+                                          }
                     , defaultHours = DefaultHoursForDay morning afternoon
                     , defaultOffice = Rennes
                     }

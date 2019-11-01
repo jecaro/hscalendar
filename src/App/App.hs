@@ -14,12 +14,12 @@ import           RIO.Process (HasProcessContext(..), ProcessContext, mkDefaultPr
 import           RIO.Text as Text (pack)
 
 import           Database.Persist.Sqlite (withSqlitePool)
+import           Database.Persist.Postgresql (withPostgresqlPool)
 import           Database.Persist.Sql (ConnectionPool, SqlPersistM, runSqlPersistMPool)
 import           Data.Yaml (prettyPrintParseException)
 import           System.Exit (exitFailure)
-import           Path (toFilePath)
 
-import           App.Config(Config(..), getConfig)
+import           App.Config(Config(..), DBConfig(..), DBBackend(..), getConfig)
 
 -- | The app data
 data App = App
@@ -64,7 +64,7 @@ initAppAndRun verbose level actions = do
             -- Got config file carry on
             Right config ->
                 -- Create the sql pool with RIO to handle log
-                runRIO lf $ withSqlitePool dbFile 1 $ \pool -> do
+                runRIO lf $ withPool $ \pool -> do
                     pc <- mkDefaultProcessContext
                     -- Initialize the application
                     let app = App { appLogFunc        = lf
@@ -76,7 +76,14 @@ initAppAndRun verbose level actions = do
                     liftIO $ runRIO app $ catch actions (\e -> do
                         logError ("Error: " <> display (e :: SomeException))
                         liftIO exitFailure)
-              where dbFile = Text.pack $ toFilePath $ db config
+              where
+                  withPool =
+                      let connectionStringTxt = connectionString (dbConfig config)
+                          connectionStringBS = encodeUtf8 connectionStringTxt
+                          nbConnections' = nbConnections (dbConfig config)
+                       in case backend (dbConfig config) of
+                              Sqlite     -> withSqlitePool connectionStringTxt nbConnections'
+                              Postgresql -> withPostgresqlPool connectionStringBS nbConnections'
 
 -- | Run sql actions with the pool
 runDB :: (HasConnPool env) => SqlPersistM a-> RIO env a
