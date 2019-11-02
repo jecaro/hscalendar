@@ -81,6 +81,7 @@ initAppAndRun verbose level actions = do
                                   , appProcessContext = pc }
 
                     -- Run the app, handle exceptions
+                    logDebug $ "Start app with config: " <> displayShow config
                     liftIO $ runRIO app $ catch actions (\e -> do
                         logError ("Error: " <> display (e :: SomeException))
                         liftIO exitFailure)
