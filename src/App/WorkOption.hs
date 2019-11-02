@@ -23,9 +23,11 @@ import           App.App
     , runDB
     )
 import           App.Config
-    ( Config(..)
+    ( afternoon
+    , defaultHours
     , DefaultHours(..)
-    , DefaultHoursForDay(..)
+    , defaultOffice
+    , morning
     )
 
 import           Db.HalfDay (HalfDay(..))
@@ -174,8 +176,8 @@ runWorkOptions day tid wopts = do
             config <- view configL
             -- Get the default times from the config file
             let (DefaultHours dArrived dLeft) = case tid of
-                    Morning   -> morning (defaultHours config)
-                    Afternoon -> afternoon (defaultHours config)
+                    Morning   -> config ^. defaultHours . morning
+                    Afternoon -> config ^. defaultHours . afternoon
             -- Get the arrived and left commands if they exists, maintaining
             -- the other options
                 (mbArrived, otherOpts') = findArrivedCmd otherOpts
@@ -184,7 +186,7 @@ runWorkOptions day tid wopts = do
                 arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
                 left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
             -- Carry on, we have now everything to create the hwd
-            runDB $ hdSetWork day tid proj (defaultOffice config) arrived left
+            runDB $ hdSetWork day tid proj (config ^. defaultOffice) arrived left
             return otherOpts''
         -- Holiday but no project
         (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory

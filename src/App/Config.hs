@@ -2,12 +2,22 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Config
-    ( Config(..)
-    , DBConfig(..)
-    , DBBackend(..)
+    ( afternoon
+    , arrived
+    , backend
+    , Config(..)
+    , connectionString
+    , DbBackend(..)
+    , dbConfig
+    , DbConfig(..)
+    , defaultHours
     , DefaultHours(..)
     , DefaultHoursForDay(..)
+    , defaultOffice
     , getConfig
+    , left
+    , morning
+    , nbConnections
     )
 where
 
@@ -20,6 +30,7 @@ import           Data.Yaml
     , encodeFile
     , decodeFileThrow
     )
+import           Lens.Micro.Platform (makeFields)
 import           Path
     ( Abs
     , Dir
@@ -40,43 +51,48 @@ import           Path.IO
 import           Db.Office(Office(..))
 
 -- | Two default hours for a half-day worked
-data DefaultHours = DefaultHours { arrived :: !Time.TimeOfDay
-                                 , left    :: !Time.TimeOfDay }
+data DefaultHours = DefaultHours { _defaultHoursArrived :: !Time.TimeOfDay
+                                 , _defaultHoursLeft    :: !Time.TimeOfDay }
     deriving (Show, Generic)
+makeFields ''DefaultHours
 
 instance FromJSON DefaultHours
 instance ToJSON DefaultHours
 
 -- | The default hours for a full day worked
-data DefaultHoursForDay = DefaultHoursForDay { morning   :: !DefaultHours
-                                             , afternoon :: !DefaultHours }
+data DefaultHoursForDay = DefaultHoursForDay
+    { _defaultHoursForDayMorning   :: !DefaultHours
+    , _defaultHoursForDayAfternoon :: !DefaultHours }
     deriving (Show, Generic)
+makeFields ''DefaultHoursForDay
 
 instance FromJSON DefaultHoursForDay
 instance ToJSON DefaultHoursForDay
 
 -- | Database backends supported
-data DBBackend = Sqlite | Postgresql
+data DbBackend = Sqlite | Postgresql
     deriving (Show, Generic)
 
-instance FromJSON DBBackend
-instance ToJSON DBBackend
+instance FromJSON DbBackend
+instance ToJSON DbBackend
 
 -- | Settings for database access
-data DBConfig = DBConfig { backend          :: !DBBackend
-                         , connectionString :: !Text
-                         , nbConnections    :: !Int}
+data DbConfig = DBConfig { _dbConfigBackend          :: !DbBackend
+                         , _dbConfigConnectionString :: !Text
+                         , _dbConfigNbConnections    :: !Int}
     deriving (Show, Generic)
+makeFields ''DbConfig
 
-instance FromJSON DBConfig
-instance ToJSON DBConfig
+instance FromJSON DbConfig
+instance ToJSON DbConfig
 
 -- | Simple configuration stored in the config file
-data Config = Config { dbConfig      :: !DBConfig
-                     , defaultHours  :: !DefaultHoursForDay
-                     , defaultOffice :: !Office
+data Config = Config { _configDbConfig      :: !DbConfig
+                     , _configDefaultHours  :: !DefaultHoursForDay
+                     , _configDefaultOffice :: !Office
                      }
     deriving (Show, Generic)
+makeFields ''Config
 
 instance FromJSON Config
 instance ToJSON Config
@@ -93,14 +109,15 @@ getConfigDir = getXdgDir XdgConfig $ Just $(mkRelDir "hscalendar")
 defaultConfig :: MonadIO m => m Config
 defaultConfig = do
     defaultSqliteFile <- getFileInConfigDir $(mkRelFile "database.db")
-    let morning   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0)
-        afternoon = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0)
-    return $ Config { dbConfig = DBConfig { backend          = Sqlite
-                                          , connectionString = Text.pack $ toFilePath defaultSqliteFile
-                                          , nbConnections    = 1
-                                          }
-                    , defaultHours = DefaultHoursForDay morning afternoon
-                    , defaultOffice = Rennes
+    let morning'   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0)
+        afternoon' = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0)
+    return $ Config { _configDbConfig =
+                          DBConfig { _dbConfigBackend          = Sqlite
+                                   , _dbConfigConnectionString = Text.pack $ toFilePath defaultSqliteFile
+                                   , _dbConfigNbConnections    = 1
+                                   }
+                    , _configDefaultHours = DefaultHoursForDay morning' afternoon'
+                    , _configDefaultOffice = Rennes
                     }
 
 -- | Read the configuration from the config file, create it if it doesn't exist

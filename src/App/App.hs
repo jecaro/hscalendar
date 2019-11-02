@@ -19,7 +19,15 @@ import           Database.Persist.Sql (ConnectionPool, SqlPersistM, runSqlPersis
 import           Data.Yaml (prettyPrintParseException)
 import           System.Exit (exitFailure)
 
-import           App.Config(Config(..), DBConfig(..), DBBackend(..), getConfig)
+import           App.Config
+    ( backend
+    , Config(..)
+    , connectionString
+    , DbBackend(..)
+    , dbConfig
+    , getConfig
+    , nbConnections
+    )
 
 -- | The app data
 data App = App
@@ -78,10 +86,11 @@ initAppAndRun verbose level actions = do
                         liftIO exitFailure)
               where
                   withPool =
-                      let connectionStringTxt = connectionString (dbConfig config)
+                      let dbConfig' = config ^. dbConfig
+                          connectionStringTxt = dbConfig' ^. connectionString
                           connectionStringBS = encodeUtf8 connectionStringTxt
-                          nbConnections' = nbConnections (dbConfig config)
-                       in case backend (dbConfig config) of
+                          nbConnections' = dbConfig' ^. nbConnections
+                       in case dbConfig' ^. backend of
                               Sqlite     -> withSqlitePool connectionStringTxt nbConnections'
                               Postgresql -> withPostgresqlPool connectionStringBS nbConnections'
 
