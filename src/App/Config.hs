@@ -24,13 +24,21 @@ where
 import           RIO
 import qualified RIO.Text as Text
 import qualified RIO.Time as Time (TimeOfDay(..))
+
+import           Data.Attoparsec.Text
+    ( asciiCI
+    , endOfInput
+    , parseOnly
+    , Parser
+    )
+import           Data.Either.Combinators (rightToMaybe)
 import           Data.Yaml
     ( FromJSON
     , ToJSON
     , encodeFile
     , decodeFileThrow
     )
-import           Lens.Micro.Platform (makeFields)
+import           Lens.Micro.Platform (makeFields, (%~))
 import           Path
     ( Abs
     , Dir
@@ -47,6 +55,8 @@ import           Path.IO
     , ensureDir
     , getXdgDir
     )
+import           System.Environment (lookupEnv)
+import           Text.Read (readMaybe)
 
 import           Db.Office(Office(..))
 
@@ -97,6 +107,11 @@ makeFields ''Config
 instance FromJSON Config
 instance ToJSON Config
 
+-- | Parser for a  backend
+parser :: Parser DbBackend
+parser =   asciiCI "sqlite"     $> Sqlite
+       <|> asciiCI "postgresql" $> Postgresql
+
 -- | Get a path from a file in the config directory
 getFileInConfigDir :: MonadIO m => Path Rel t -> m (Path Abs t)
 getFileInConfigDir file = flip (</>) file <$> getConfigDir
@@ -133,5 +148,19 @@ getConfig = do
         logDebug "The config file doesn't exist, create it."
         liftIO $ defaultConfig >>= encodeFile (toFilePath fc))
     -- Read config from the file
-    decodeFileThrow $ toFilePath fc
+    config <- decodeFileThrow $ toFilePath fc
+    -- Override with environment variables - the connection string
+    mbDatabaseUrlStr <- liftIO $ lookupEnv "DATABASE_URL"
+    let mbDatabaseUrl = Text.pack <$> mbDatabaseUrlStr
+    -- The backend
+    mbBackendStr <- liftIO $ lookupEnv "BACKEND"
+    let mbBackendTxt = Text.pack <$> mbBackendStr
+        mbBackend = (rightToMaybe . parseOnly (parser <* endOfInput)) =<< mbBackendTxt
+    -- And the number of connections
+    mbNbConnectionsStr <- liftIO $ lookupEnv "NB_CONNECTIONS"
+    let mbNbConnections = readMaybe =<< mbNbConnectionsStr
+    -- Update the config with that
+    return $ config & dbConfig %~ (connectionString %~ (`fromMaybe` mbDatabaseUrl))
+                                . (backend          %~ (`fromMaybe` mbBackend))
+                                . (nbConnections    %~ (`fromMaybe` mbNbConnections))
 
