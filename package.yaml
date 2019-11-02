@@ -77,8 +77,8 @@ executables:
 tests:
   hscalendar-test:
     main: Spec.hs
-    source-dirs: 
-    - test 
+    source-dirs:
+    - test
     - src
     ghc-options:
     - -threaded
@@ -108,4 +108,4 @@ default-extensions:
   - RankNTypes
   - TypeOperators
   - TypeSynonymInstances
- 
+
