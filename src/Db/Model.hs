@@ -7,6 +7,7 @@ module Db.Model
     , ProjNotFound(..)
     , HdNotFound(..)
     , TimesAreWrong(..)
+    , UserNotFound(..)
     -- * Half-day functions
     , hdGet
     , hdRm
@@ -24,6 +25,12 @@ module Db.Model
     , projList
     , projRename
     , projRm
+    -- * User functions
+    , userAdd
+    , userChangePassword
+    , userCheck
+    , userList
+    , userRm
     -- * Misc
     , cleanDB
     , migrateAll
@@ -46,6 +53,8 @@ import qualified RIO.Time as Time
 
 import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
+import           Crypto.KDF.BCrypt (hashPassword, validatePassword)
+import           Crypto.Random.Types (MonadRandom)
 import           Database.Esqueleto
     ( LeftOuterJoin(..)
     , from
@@ -126,6 +135,22 @@ instance Show ProjHasHd where
     show (ProjHasHd project) = "The project " <> name <> " has associated half-day work"
       where name = Text.unpack (unProject project)
 
+-- | Requested user does not exist
+newtype UserNotFound = UserNotFound Text
+
+instance Exception UserNotFound
+
+instance Show UserNotFound where
+    show (UserNotFound user) = "The user " <> Text.unpack user <> " is not in the database"
+
+-- | A user with the same login already exists in the db
+newtype UserExists = UserExists Text
+
+instance Exception UserExists
+
+instance Show UserExists where
+    show (UserExists login) = "The user " <> Text.unpack login <> " exists in the database"
+
 -- | There is no record for specified half-day
 data HdNotFound = HdNotFound Time.Day TimeInDay
 
@@ -174,6 +199,59 @@ cleanDB = do
     deleteWhere ([] :: [Filter DBHalfDayWorked])
     deleteWhere ([] :: [Filter DBHalfDay])
     deleteWhere ([] :: [Filter DBProject])
+
+-- Exported user functions
+
+-- | Check the password of a user
+userCheck :: (MonadIO m) => Text -> Text -> SqlPersistT m Bool
+userCheck login password = do
+    (Entity _ (DBUser _ hash)) <- userGetInt login
+    return $ validatePassword (encodeUtf8 password) (encodeUtf8 hash)
+
+-- | Add a new user
+userAdd
+    :: (MonadIO m, MonadRandom (SqlPersistT m))
+    => Text -> Text -> SqlPersistT m ()
+userAdd login password = do
+    exists <- isJust <$> getBy (UniqueLogin login)
+    when exists (throwIO $ UserExists login)
+    hash <- hashTxt password
+    void $ insert (DBUser login hash)
+
+-- | Delete a user
+userRm :: (MonadIO m) => Text -> SqlPersistT m ()
+userRm login = delete . entityKey =<< userGetInt login
+
+-- | Display the list of users
+userList :: (MonadIO m) => SqlPersistT m [Text]
+userList = (fmap .fmap) (dBUserLogin . entityVal) (selectList [] [Asc DBUserLogin])
+
+-- | Change the password for a user
+userChangePassword
+    :: (MonadIO m, MonadRandom (SqlPersistT m))
+    => Text -> Text -> Text -> SqlPersistT m Bool
+userChangePassword login old new = do
+    check <- userCheck login old
+    when check $ do
+        (Entity uId _) <- userGetInt login
+        hash <- hashTxt new
+        update uId [DBUserHash =. hash]
+    return check
+
+-- Private user functions
+
+-- | Get a user by its login
+userGetInt :: (MonadIO m) => Text -> SqlPersistT m (Entity DBUser)
+userGetInt login = getBy (UniqueLogin login) >>=
+    \case
+        Nothing -> throwIO $ UserNotFound login
+        Just e -> return e
+
+-- | Hash function operating on 'Text'
+hashTxt :: MonadRandom m => Text -> m Text
+hashTxt password = do
+    hash <- hashPassword 12 (encodeUtf8 password)
+    return $ decodeUtf8With lenientDecode hash
 
 -- Exported project functions
 

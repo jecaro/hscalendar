@@ -61,5 +61,12 @@ DBHalfDayWorked -- Only for WorkedOpenDay
     -- Type classes
     deriving Show
     deriving Eq
+DBUser
+    login   Text
+    hash    Text
+    UniqueLogin login
+    -- Type classes
+    deriving Show
+    deriving Eq
 |]
 

@@ -6,6 +6,7 @@ dependencies:
 - attoparsec
 - base >= 4.7 && < 5
 - bytestring
+- cryptonite
 - directory
 - either
 - esqueleto
@@ -97,6 +98,7 @@ tests:
 default-extensions:
   - DataKinds
   - DeriveGeneric
+  - FlexibleContexts
   - FlexibleInstances
   - FunctionalDependencies
   - GADTs
