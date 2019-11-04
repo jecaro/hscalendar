@@ -53,6 +53,8 @@ import           Db.Model
     , ProjHasHd(..)
     , ProjNotFound(..)
     , TimesAreWrong(..)
+    , UserExists(..)
+    , UserNotFound(..)
     , cleanDB
     , hdGet
     , hdRm
@@ -70,6 +72,12 @@ import           Db.Model
     , projList
     , projRename
     , projRm
+    , userAdd
+    , userChangePassword
+    , userCheck
+    , userExists
+    , userList
+    , userRm
     )
 import          Db.Notes (Notes(..), mkNotesLit)
 import          Db.Office (Office(..))
@@ -89,21 +97,29 @@ instance Arbitrary ProjectUniqueList where
     arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
       where hasNoDups x = length x == length (Set.fromList x)
 
--- | hspec selector for ProjExists exception
+-- | hspec selector for 'ProjExists' exception
 projExistsException :: Selector ProjExists
 projExistsException = const True
 
--- | hspec selector for ProjNotFound exception
+-- | hspec selector for 'ProjNotFound' exception
 projNotFoundException :: Selector ProjNotFound
 projNotFoundException = const True
 
--- | hspec selector for ProjHasHd exception
+-- | hspec selector for 'ProjHasHd' exception
 projHasHDWException :: Selector ProjHasHd
 projHasHDWException = const True
 
--- | hspec selector for HdNotFound exception
+-- | hspec selector for 'HdNotFound' exception
 hdNotFoundException :: Selector HdNotFound
 hdNotFoundException = const True
+
+-- | hspec selector for 'UserExists' exception
+userExistsException :: Selector UserExists
+userExistsException = const True
+
+-- | hspec selector for 'UserNotFound exception
+userNotFoundException :: Selector UserNotFound
+userNotFoundException = const True
 
 -- Some constants for the specs
 
@@ -136,6 +152,15 @@ arrived1 Afternoon = Time.TimeOfDay 13 30 0
 left1 :: TimeInDay -> Time.TimeOfDay
 left1 Morning   = Time.TimeOfDay 12 0 0
 left1 Afternoon = Time.TimeOfDay 17 0 0
+
+user1 :: Text
+user1 = "login"
+
+password1 :: Text
+password1 = "We@kP@ssw0rd"
+
+password2 :: Text
+password2 = "@n0therWe@kP@ssw0rd"
 
 defaultWorked :: Time.Day -> TimeInDay -> Project -> HalfDay
 defaultWorked day tid project = MkHalfDayWorked (MkWorked
@@ -574,6 +599,50 @@ testHdAPI runDB =
     projShouldBe mbHdwProj proj = mbHdwProj `shouldSatisfy` checkProj proj
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False pred
 
+-- | Test the user API
+testUserAPI :: RunDB -> Spec
+testUserAPI runDB =
+    describe "Test the user API" $ do
+        context "When the DB is empty" $ do
+            it "tests the uniqueness of the login" $
+                runDB (userAdd user1 password1 >> userAdd user1 password1)
+                    `shouldThrow` userExistsException
+            it "tests if a user does not exists" $
+                runDB (userExists user1) `shouldReturn` False
+            it "tests if we can remove a user" $
+                runDB (userRm user1) `shouldThrow` userNotFoundException
+            it "tests if we can check the password of a user not present in the db" $
+                runDB (userCheck user1 password1)
+                    `shouldThrow` userNotFoundException
+            it "tests if we can change the password of a user not present in the db" $
+                runDB (userChangePassword user1 password1 password2)
+                    `shouldThrow` userNotFoundException
+            it "tests the list of users" $
+                runDB userList `shouldReturn` []
+        context "One user in the DB" $
+            before_ (runDB (userAdd user1 password1)) $
+            after_ (runDB cleanDB) $ do
+            it "tests if the user exists" $
+                runDB (userExists user1) `shouldReturn` True
+            it "tests if we can remove the user" $  do
+                exists <- runDB $ do
+                    userRm user1
+                    userExists user1
+                exists `shouldBe` False
+            it "check a good password" $
+                runDB (userCheck user1 password1) `shouldReturn` True
+            it "check a wrong password" $
+                runDB (userCheck user1 password2) `shouldReturn` False
+            it "tests password change with the right password" $ do
+                runDB (userChangePassword user1 password1 password2)
+                    `shouldReturn` True
+                runDB (userCheck user1 password2) `shouldReturn` True
+            it "tests password change with a wrong password" $
+                runDB (userChangePassword user1 password2 password2)
+                    `shouldReturn` False
+            it "tests the list of users" $
+                runDB userList `shouldReturn` [ user1 ]
+
 -- | Main function
 main :: IO ()
 main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
@@ -582,6 +651,7 @@ main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
         runDB actions = runSqlPersistM actions conn
     -- Launch the tests
     hspec $ beforeAll (runDB $ runMigration migrateAll) $ do
+        testUserAPI runDB
         testProjAPI runDB
         testHdAPI runDB
 

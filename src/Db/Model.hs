@@ -7,6 +7,7 @@ module Db.Model
     , ProjNotFound(..)
     , HdNotFound(..)
     , TimesAreWrong(..)
+    , UserExists(..)
     , UserNotFound(..)
     -- * Half-day functions
     , hdGet
@@ -29,6 +30,7 @@ module Db.Model
     , userAdd
     , userChangePassword
     , userCheck
+    , userExists
     , userList
     , userRm
     -- * Misc
@@ -199,6 +201,7 @@ cleanDB = do
     deleteWhere ([] :: [Filter DBHalfDayWorked])
     deleteWhere ([] :: [Filter DBHalfDay])
     deleteWhere ([] :: [Filter DBProject])
+    deleteWhere ([] :: [Filter DBUser])
 
 -- Exported user functions
 
@@ -210,13 +213,17 @@ userCheck login password = do
 
 -- | Add a new user
 userAdd
-    :: (MonadIO m, MonadRandom (SqlPersistT m))
+    :: (MonadIO m)
     => Text -> Text -> SqlPersistT m ()
 userAdd login password = do
     exists <- isJust <$> getBy (UniqueLogin login)
     when exists (throwIO $ UserExists login)
-    hash <- hashTxt password
+    hash <- liftIO $ hashTxt password
     void $ insert (DBUser login hash)
+
+-- | Check if a user exists in the DB
+userExists :: (MonadIO m) => Text -> SqlPersistT m Bool
+userExists login = isJust <$> getBy (UniqueLogin login)
 
 -- | Delete a user
 userRm :: (MonadIO m) => Text -> SqlPersistT m ()
@@ -228,13 +235,13 @@ userList = (fmap .fmap) (dBUserLogin . entityVal) (selectList [] [Asc DBUserLogi
 
 -- | Change the password for a user
 userChangePassword
-    :: (MonadIO m, MonadRandom (SqlPersistT m))
+    :: (MonadIO m)
     => Text -> Text -> Text -> SqlPersistT m Bool
 userChangePassword login old new = do
     check <- userCheck login old
     when check $ do
         (Entity uId _) <- userGetInt login
-        hash <- hashTxt new
+        hash <- liftIO $ hashTxt new
         update uId [DBUserHash =. hash]
     return check
 
