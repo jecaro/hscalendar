@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           RIO
-import           RIO.List as L (sort)
+import qualified RIO.List as L (sort)
 import qualified RIO.Set as Set (fromList)
 import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 
@@ -96,6 +96,16 @@ newtype ProjectUniqueList = ProjectUniqueList [Project]
 instance Arbitrary ProjectUniqueList where
     arbitrary = ProjectUniqueList <$> listOf arbitrary `suchThat` hasNoDups
       where hasNoDups x = length x == length (Set.fromList x)
+
+-- | New type for a unique list of users to add in the DB: a tuple with a login
+-- first then the password
+newtype UserUniqueList = UserUniqueList [(Text, Text)]
+    deriving Show
+
+-- | Its arbitrary instance, make sure there is no duplicate login
+instance Arbitrary UserUniqueList where
+    arbitrary = UserUniqueList <$> listOf arbitrary `suchThat` hasNoDups
+      where hasNoDups x = length x == length (Set.fromList (fst <$> x))
 
 -- | hspec selector for 'ProjExists' exception
 projExistsException :: Selector ProjExists
@@ -216,7 +226,7 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
         cleanDB
         return res
 
-    Q.assert $ dbProjects == sort projects
+    Q.assert $ dbProjects == L.sort projects
 
 -- | Test the presence of a holiday entry
 prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> IDT.IdleDayType -> Property
@@ -467,6 +477,17 @@ prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
 
     Q.assert exceptionRaised
 
+-- | Test if userList return the actual list of the users added to the DB
+prop_userList :: RunDB -> UserUniqueList -> Property
+prop_userList runDB (UserUniqueList users) = Q.monadic (ioProperty . runDB) $ do
+    dbUsers <- Q.run $ do
+        mapM_ (uncurry userAdd) users
+        res <- userList
+        cleanDB
+        return res
+
+    Q.assert $ dbUsers == L.sort (fst <$> users)
+
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -672,6 +693,8 @@ testUserAPI runDB =
                 property (prop_userAddUserExists runDB)
             it "userAdd userAdd" $
                 property (prop_userAddUserAdd runDB)
+            it "userList" $
+                property (prop_userList runDB)
 
 -- | Main function
 main :: IO ()
