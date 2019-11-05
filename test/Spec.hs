@@ -442,6 +442,31 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
 
     Q.assert $ inDB /= exceptionRaised
 
+-- | Test adding a user and testing if it exists
+prop_userAddUserExists :: RunDB -> Text -> Text -> Property
+prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ do
+    (exists, checks, noExists) <- Q.run $ do
+        userAdd login password
+        exists <- userExists login
+        checks <- userCheck login password
+        userRm login
+        noExists <- userExists login
+        cleanDB
+        return (exists, checks, noExists)
+
+    Q.assert (exists && checks && not noExists)
+
+-- | Make sure it raises an exception when we add twice the same user
+prop_userAddUserAdd :: RunDB -> Text -> Text -> Property
+prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
+    exceptionRaised <- Q.run $ do
+        userAdd login password
+        res <- catch (userAdd login password >> return False) (\(UserExists _) -> return True)
+        cleanDB
+        return res
+
+    Q.assert exceptionRaised
+
 -- | Test the project API
 testProjAPI :: RunDB -> Spec
 testProjAPI runDB =
@@ -642,6 +667,11 @@ testUserAPI runDB =
                     `shouldReturn` False
             it "tests the list of users" $
                 runDB userList `shouldReturn` [ user1 ]
+        context "Test properties" $ do
+            it "userAdd userExists" $
+                property (prop_userAddUserExists runDB)
+            it "userAdd userAdd" $
+                property (prop_userAddUserAdd runDB)
 
 -- | Main function
 main :: IO ()
@@ -651,7 +681,7 @@ main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
         runDB actions = runSqlPersistM actions conn
     -- Launch the tests
     hspec $ beforeAll (runDB $ runMigration migrateAll) $ do
-        testUserAPI runDB
         testProjAPI runDB
         testHdAPI runDB
+        testUserAPI runDB
 
