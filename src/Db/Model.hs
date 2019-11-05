@@ -93,9 +93,10 @@ import           Formatting.Extended (formatTwoDigitsPadZero)
 
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
-import           Db.Project (Project, unProject)
+import           Db.Login (Login, mkLogin, unLogin)
 import           Db.Notes (Notes, unNotes)
 import           Db.Office (Office(..))
+import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay(..), other)
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
@@ -138,12 +139,12 @@ instance Show ProjHasHd where
       where name = Text.unpack (unProject project)
 
 -- | Requested user does not exist
-newtype UserNotFound = UserNotFound Text
+newtype UserNotFound = UserNotFound Login
 
 instance Exception UserNotFound
 
 instance Show UserNotFound where
-    show (UserNotFound user) = "The user " <> Text.unpack user <> " is not in the database"
+    show (UserNotFound user) = "The user " <> Text.unpack (unLogin user) <> " is not in the database"
 
 -- | A user with the same login already exists in the db
 newtype UserExists = UserExists Text
@@ -206,7 +207,7 @@ cleanDB = do
 -- Exported user functions
 
 -- | Check the password of a user
-userCheck :: (MonadIO m) => Text -> Text -> SqlPersistT m Bool
+userCheck :: (MonadIO m) => Login -> Text -> SqlPersistT m Bool
 userCheck login password = do
     (Entity _ (DBUser _ hash)) <- userGetInt login
     return $ validatePassword (encodeUtf8 password) (encodeUtf8 hash)
@@ -214,29 +215,29 @@ userCheck login password = do
 -- | Add a new user
 userAdd
     :: (MonadIO m)
-    => Text -> Text -> SqlPersistT m ()
+    => Login -> Text -> SqlPersistT m ()
 userAdd login password = do
-    exists <- isJust <$> getBy (UniqueLogin login)
-    when exists (throwIO $ UserExists login)
+    exists <- isJust <$> getBy (UniqueLogin $ unLogin login)
+    when exists (throwIO $ UserExists $ unLogin login)
     hash <- liftIO $ hashTxt password
-    void $ insert (DBUser login hash)
+    void $ insert (DBUser (unLogin login) hash)
 
 -- | Check if a user exists in the DB
-userExists :: (MonadIO m) => Text -> SqlPersistT m Bool
-userExists login = isJust <$> getBy (UniqueLogin login)
+userExists :: (MonadIO m) => Login -> SqlPersistT m Bool
+userExists login = isJust <$> getBy (UniqueLogin $ unLogin login)
 
 -- | Delete a user
-userRm :: (MonadIO m) => Text -> SqlPersistT m ()
+userRm :: (MonadIO m) => Login -> SqlPersistT m ()
 userRm login = delete . entityKey =<< userGetInt login
 
 -- | Display the list of users
-userList :: (MonadIO m) => SqlPersistT m [Text]
-userList = (fmap .fmap) (dBUserLogin . entityVal) (selectList [] [Asc DBUserLogin])
+userList :: (MonadIO m) => SqlPersistT m [Login]
+userList = mapMaybe (mkLogin . dBUserLogin . entityVal) <$> selectList [] [Asc DBUserLogin]
 
 -- | Change the password for a user
 userChangePassword
     :: (MonadIO m)
-    => Text -> Text -> Text -> SqlPersistT m Bool
+    => Login -> Text -> Text -> SqlPersistT m Bool
 userChangePassword login old new = do
     check <- userCheck login old
     when check $ do
@@ -248,8 +249,8 @@ userChangePassword login old new = do
 -- Private user functions
 
 -- | Get a user by its login
-userGetInt :: (MonadIO m) => Text -> SqlPersistT m (Entity DBUser)
-userGetInt login = getBy (UniqueLogin login) >>=
+userGetInt :: (MonadIO m) => Login -> SqlPersistT m (Entity DBUser)
+userGetInt login = getBy (UniqueLogin $ unLogin login) >>=
     \case
         Nothing -> throwIO $ UserNotFound login
         Just e -> return e
