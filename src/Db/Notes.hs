@@ -47,8 +47,8 @@ type NotesText = Refined NotesData Text
 
 -- | Predicate instance to validate what is allowable for notes
 instance Predicate NotesData Text where
-    validate p name = unless (notesValid name) $
-            throwRefineOtherException (typeOf p) "Not alpha num text"
+    validate p notes = unless (notesValid notes) $
+        throwRefineOtherException (typeOf p) "Not a valid note"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Notes where
@@ -70,8 +70,8 @@ printableOrEOLOrTab x = isPrint x || elem x ['\n', '\t']
 
 -- | Check the validity of a note
 notesValid :: Text -> Bool
-notesValid name = Text.length name <= notesMaxLength &&
-    Text.all printableOrEOLOrTab name
+notesValid notes = Text.length notes <= notesMaxLength &&
+    Text.all printableOrEOLOrTab notes
 
 -- | Smart constructor which cannot fail
 mkNotesLit :: NotesText -> Notes
@@ -79,5 +79,5 @@ mkNotesLit = MkNotes . unrefine
 
 -- | Smart constructor which can fail
 mkNotes :: Text -> Maybe Notes
-mkNotes name = mkNotesLit <$> rightToMaybe (refine name)
+mkNotes notes = mkNotesLit <$> rightToMaybe (refine notes)
 

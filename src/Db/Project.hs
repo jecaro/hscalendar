@@ -74,7 +74,7 @@ type ProjNameText = Refined ProjName Text
 -- | Predicate instance to validate what is allowable for a project name
 instance Predicate ProjName Text where
     validate p name = unless (projNameValid name) $
-            throwRefineOtherException (typeOf p) "Not alpha num text"
+        throwRefineOtherException (typeOf p) "Not a valid project name"
 
 -- | Smart constructor which cannot fail
 mkProjectLit :: ProjNameText -> Project

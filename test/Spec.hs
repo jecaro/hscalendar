@@ -82,6 +82,7 @@ import           Db.Model
 import          Db.Login (Login, mkLoginLit)
 import          Db.Notes (Notes, mkNotesLit)
 import          Db.Office (Office(..))
+import          Db.Password (Password, mkPasswordLit)
 import          Db.Project (Project, mkProjectLit)
 import          Db.TimeInDay (TimeInDay(..), other)
 import          Db.Worked (Worked(..))
@@ -100,7 +101,7 @@ instance Arbitrary ProjectUniqueList where
 
 -- | New type for a unique list of users to add in the DB: a tuple with a login
 -- first then the password
-newtype UserUniqueList = UserUniqueList [(Login, Text)]
+newtype UserUniqueList = UserUniqueList [(Login, Password)]
     deriving Show
 
 -- | Its arbitrary instance, make sure there is no duplicate login
@@ -167,11 +168,11 @@ left1 Afternoon = Time.TimeOfDay 17 0 0
 user1 :: Login
 user1 = mkLoginLit $$(refineTH "login")
 
-password1 :: Text
-password1 = "We@kP@ssw0rd"
+password1 :: Password
+password1 = mkPasswordLit $$(refineTH "We@kP@ssw0rd")
 
-password2 :: Text
-password2 = "@n0therWe@kP@ssw0rd"
+password2 :: Password
+password2 = mkPasswordLit $$(refineTH "@n0therWe@kP@ssw0rd")
 
 defaultWorked :: Time.Day -> TimeInDay -> Project -> HalfDay
 defaultWorked day tid project = MkHalfDayWorked (MkWorked
@@ -454,7 +455,7 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
     Q.assert $ inDB /= exceptionRaised
 
 -- | Test adding a user and testing if it exists
-prop_userAddUserExists :: RunDB -> Login -> Text -> Property
+prop_userAddUserExists :: RunDB -> Login -> Password -> Property
 prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ do
     (exists, checks, noExists) <- Q.run $ do
         userAdd login password
@@ -468,7 +469,7 @@ prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ d
     Q.assert (exists && checks && not noExists)
 
 -- | Make sure it raises an exception when we add twice the same user
-prop_userAddUserAdd :: RunDB -> Login -> Text -> Property
+prop_userAddUserAdd :: RunDB -> Login -> Password -> Property
 prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         userAdd login password

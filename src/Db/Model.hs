@@ -96,6 +96,7 @@ import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
 import           Db.Notes (Notes, unNotes)
 import           Db.Office (Office(..))
+import           Db.Password (Password, unPassword)
 import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay(..), other)
 
@@ -207,15 +208,15 @@ cleanDB = do
 -- Exported user functions
 
 -- | Check the password of a user
-userCheck :: (MonadIO m) => Login -> Text -> SqlPersistT m Bool
+userCheck :: (MonadIO m) => Login -> Password -> SqlPersistT m Bool
 userCheck login password = do
     (Entity _ (DBUser _ hash)) <- userGetInt login
-    return $ validatePassword (encodeUtf8 password) (encodeUtf8 hash)
+    return $ validatePassword (encodeUtf8 $ unPassword password) (encodeUtf8 hash)
 
 -- | Add a new user
 userAdd
     :: (MonadIO m)
-    => Login -> Text -> SqlPersistT m ()
+    => Login -> Password -> SqlPersistT m ()
 userAdd login password = do
     exists <- isJust <$> getBy (UniqueLogin $ unLogin login)
     when exists (throwIO $ UserExists $ unLogin login)
@@ -237,7 +238,7 @@ userList = mapMaybe (mkLogin . dBUserLogin . entityVal) <$> selectList [] [Asc D
 -- | Change the password for a user
 userChangePassword
     :: (MonadIO m)
-    => Login -> Text -> Text -> SqlPersistT m Bool
+    => Login -> Password -> Password -> SqlPersistT m Bool
 userChangePassword login old new = do
     check <- userCheck login old
     when check $ do
@@ -256,9 +257,9 @@ userGetInt login = getBy (UniqueLogin $ unLogin login) >>=
         Just e -> return e
 
 -- | Hash function operating on 'Text'
-hashTxt :: MonadRandom m => Text -> m Text
+hashTxt :: MonadRandom m => Password -> m Text
 hashTxt password = do
-    hash <- hashPassword 12 (encodeUtf8 password)
+    hash <- hashPassword 12 (encodeUtf8 $ unPassword password)
     return $ decodeUtf8With lenientDecode hash
 
 -- Exported project functions

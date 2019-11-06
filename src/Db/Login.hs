@@ -46,8 +46,8 @@ type LoginText = Refined LoginData Text
 
 -- | Predicate instance to validate what is allowable for login
 instance Predicate LoginData Text where
-    validate p name = unless (loginValid name) $
-            throwRefineOtherException (typeOf p) "Not alpha num text"
+    validate p login = unless (loginValid login) $
+        throwRefineOtherException (typeOf p) "Not a valid login"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Login where
@@ -69,8 +69,8 @@ loginAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
 
 -- | Check the validity of a login
 loginValid :: Text -> Bool
-loginValid name = Text.length name <= loginMaxLength &&
-    Text.all (`elem` loginAllowedChars) name
+loginValid login = Text.length login <= loginMaxLength &&
+    Text.all (`elem` loginAllowedChars) login
 
 -- | Smart constructor which cannot fail
 mkLoginLit :: LoginText -> Login
@@ -78,5 +78,5 @@ mkLoginLit = MkLogin . unrefine
 
 -- | Smart constructor which can fail
 mkLogin :: Text -> Maybe Login
-mkLogin name = mkLoginLit <$> rightToMaybe (refine name)
+mkLogin login = mkLoginLit <$> rightToMaybe (refine login)
 
