@@ -129,7 +129,7 @@ rioServer =    migrate
           :<|> diarySetWork
           :<|> diaryRm
 
-authCheckInRIO :: BasicAuthData -> RIO App (BasicAuthResult Login)
+authCheckInRIO :: HasConnPool env => BasicAuthData -> RIO env (BasicAuthResult Login)
 authCheckInRIO (BasicAuthData authName authPass) = do
     let mbLogin = mkLogin $ decodeUtf8With lenientDecode authName
         mbPassword = mkPassword $ decodeUtf8With lenientDecode authPass
@@ -160,7 +160,7 @@ server :: App -> Application
 server app = serveWithContext hscalendarApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
-migrate :: Login -> RIO App NoContent
+migrate :: HasConnPool env => Login -> RIO env NoContent
 migrate _ = runDB $ runMigration migrateAll >> return NoContent
 
 projectAll :: HasConnPool env => RIO env [Project]
