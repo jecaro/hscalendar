@@ -5,8 +5,10 @@ import           Data.Aeson (FromJSON, ToJSON)
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Database.Persist.Sql (runMigration)
 import           Network.Wai.Handler.Warp (run)
+import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
 import           Servant.API
-    ( Get
+    ( BasicAuth
+    , Get
     , Capture
     , DeleteNoContent
     , JSON
@@ -19,14 +21,17 @@ import           Servant.API
     , (:<|>)(..))
 import           Servant.Server
     ( Application
+    , BasicAuthCheck (BasicAuthCheck)
+    , BasicAuthResult(..)
+    , Context ((:.), EmptyContext)
     , ServantErr(..)
     , Server
     , ServerT
     , err404
     , err409
     , err409
-    , hoistServer
-    , serve
+    , hoistServerWithContext
+    , serveWithContext
     )
 import qualified Servant.Server as Server (Handler(..))
 import           System.Environment (lookupEnv)
@@ -40,11 +45,14 @@ import           App.WorkOption
     )
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
+import           Db.Login (Login, mkLogin)
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
     , ProjHasHd(..)
     , ProjNotFound(..)
+    , TimesAreWrong(..)
+    , UserNotFound(..)
     , hdGet
     , hdRm
     , hdSetHoliday
@@ -53,8 +61,9 @@ import           Db.Model
     , projList
     , projRename
     , projRm
-    , TimesAreWrong(..)
+    , userCheck
     )
+import           Db.Password (mkPassword)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
 
@@ -67,6 +76,7 @@ instance ToJSON RenameArgs
 
 type HSCalendarApi =
         Summary "Initialize the database"
+           :> BasicAuth "basic-realm" Login
            :> "migrate"
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "List all projects"
@@ -119,21 +129,39 @@ rioServer =    migrate
           :<|> diarySetWork
           :<|> diaryRm
 
+authCheckInRIO :: BasicAuthData -> RIO App (BasicAuthResult Login)
+authCheckInRIO (BasicAuthData authName authPass) = do
+    let mbLogin = mkLogin $ decodeUtf8With lenientDecode authName
+        mbPassword = mkPassword $ decodeUtf8With lenientDecode authPass
+    case (mbLogin, mbPassword) of
+        (Just login, Just password) -> do
+            eiAuthenticated <- try $ runDB $ userCheck login password
+            case eiAuthenticated of
+                Left (UserNotFound _) -> return NoSuchUser
+                Right authenticated -> if authenticated
+                                           then return (Authorized login)
+                                           else return BadPassword
+        _ -> return Unauthorized
+
+authCheck :: App -> BasicAuthCheck Login
+authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
+
 hscalendarApi :: Proxy HSCalendarApi
 hscalendarApi = Proxy
 
 mainServer :: App -> Server HSCalendarApi
-mainServer app = hoistServer hscalendarApi (nt app) rioServer
+mainServer app = hoistServerWithContext hscalendarApi (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) rioServer
 
 -- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
 nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Application
-server app = serve hscalendarApi (mainServer app)
+server app = serveWithContext hscalendarApi context (mainServer app)
+    where context = authCheck app :. EmptyContext
 
-migrate :: HasConnPool env => RIO env NoContent
-migrate = runDB $ runMigration migrateAll >> return NoContent
+migrate :: Login -> RIO App NoContent
+migrate _ = runDB $ runMigration migrateAll >> return NoContent
 
 projectAll :: HasConnPool env => RIO env [Project]
 projectAll = runDB projList
