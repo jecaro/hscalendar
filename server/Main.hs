@@ -76,7 +76,6 @@ instance ToJSON RenameArgs
 
 type HSCalendarApi =
         Summary "Initialize the database"
-           :> BasicAuth "basic-realm" Login
            :> "migrate"
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "List all projects"
@@ -118,8 +117,10 @@ type HSCalendarApi =
            :> Capture "time in day" TimeInDay
            :> DeleteNoContent '[JSON] NoContent
 
-rioServer :: ServerT HSCalendarApi (RIO App)
-rioServer =    migrate
+type ProtectedHSCalendarApi = BasicAuth "basic-realm" Login :> HSCalendarApi
+
+rioServer :: ServerT ProtectedHSCalendarApi (RIO App)
+rioServer _ =    migrate
           :<|> projectAll
           :<|> projectAdd
           :<|> projectRm
@@ -146,10 +147,10 @@ authCheckInRIO (BasicAuthData authName authPass) = do
 authCheck :: App -> BasicAuthCheck Login
 authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
 
-hscalendarApi :: Proxy HSCalendarApi
+hscalendarApi :: Proxy ProtectedHSCalendarApi
 hscalendarApi = Proxy
 
-mainServer :: App -> Server HSCalendarApi
+mainServer :: App -> Server ProtectedHSCalendarApi
 mainServer app = hoistServerWithContext hscalendarApi (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) rioServer
 
 -- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
@@ -160,8 +161,8 @@ server :: App -> Application
 server app = serveWithContext hscalendarApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
-migrate :: HasConnPool env => Login -> RIO env NoContent
-migrate _ = runDB $ runMigration migrateAll >> return NoContent
+migrate :: HasConnPool env => RIO env NoContent
+migrate = runDB $ runMigration migrateAll >> return NoContent
 
 projectAll :: HasConnPool env => RIO env [Project]
 projectAll = runDB projList
