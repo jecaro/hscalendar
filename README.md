@@ -22,6 +22,7 @@ This simple program can demonstrate the use of the following libraries:
 - [optparse-applicative][optparse-applicative]
 - [persistent][persistent]
 - [refined][refined]
+- [servant][servant]
 - [yaml][yaml]
 
 If you do find some of this code useful, please, let me know by sending me an
@@ -123,8 +124,8 @@ hscalendar-cli project rename project1 project2
 - ~~Unit tests with [hspec][hspec]~~
 - ~~[QuickCheck][quickcheck] property based testing~~
 - ~~CI with [travis][status]~~
-- web server with [servant][servant]: in progress
-- deployement on [heroku][heroku]: in progress
+- ~~web server with [servant][servant]~~
+- ~~deployement on [heroku][heroku]~~
 - web frontend: technology not choosen yet
 - gtk frontend with [haskell-gi][haskell-gi]
 
