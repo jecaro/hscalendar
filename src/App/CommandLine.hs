@@ -1,5 +1,5 @@
 -- | Command line options using optparse-applicative
-module CommandLine
+module App.CommandLine
     ( Cmd(..)
     , Options(..)
     , opts

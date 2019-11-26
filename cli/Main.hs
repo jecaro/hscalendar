@@ -3,10 +3,7 @@ import           RIO
 import           Options.Applicative (execParser)
 
 import           App.App (initAppAndRun)
-import           CommandLine
-    ( Options(..)
-    , opts
-    )
+import           App.CommandLine (Options(..), opts)
 import           Run (run)
 
 -- | Main function

@@ -24,9 +24,10 @@ import           App.App
     , HasConnPool(..)
     , runDB
     )
-import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)
+import           App.CommandLine (Cmd(..))
 import           App.CustomDay(toDay)
 import           Db.HalfDay (HalfDay(..))
+import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)
 import           Db.Idle (Idle(..))
 import           Db.Model
     ( HdNotFound(..)
@@ -49,7 +50,6 @@ import           Db.Notes (unNotes)
 import           Db.Project (unProject)
 import           Db.Worked (Worked(..))
 
-import           CommandLine (Cmd(..))
 import           Editor (ParseError(..), hdAsText, parse)
 
 -- | The editor returned an error
