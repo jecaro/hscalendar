@@ -1,4 +1,17 @@
 import           RIO
 
+import           Options.Applicative (execParser)
+
+import           App.App (initAppAndRun)
+import           App.CommandLine (Options(..), Cmd, opts)
+
+-- | Main function
 main :: IO ()
-main = runSimpleApp $ logInfo "Hello from client"
+main = do
+    -- Parse command line
+    (Options verbose level, cmd) <- execParser opts
+    initAppAndRun verbose level (run cmd)
+
+
+run :: HasLogFunc env => Cmd -> RIO env ()
+run _ = logInfo "Not implemented yet"
