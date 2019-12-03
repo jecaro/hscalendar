@@ -14,4 +14,3 @@
 - Make the client not depend on App
 - Parse url for host port user password
 - Handle auth error from the client
-- Factor out the proxy from client and server

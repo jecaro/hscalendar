@@ -24,7 +24,11 @@ import qualified Servant.Server as Server (Handler(..))
 import           System.Environment (lookupEnv)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
-import           App.API (ProtectedHSCalendarApi, RenameArgs(..))
+import           App.API
+    ( ProtectedHSCalendarApi
+    , protectedHSCalendarApi
+    , RenameArgs(..)
+    )
 import           App.CustomDay (CustomDay(..), toDay)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
@@ -83,11 +87,8 @@ authCheckInRIO (BasicAuthData authName authPass) = do
 authCheck :: App -> BasicAuthCheck Login
 authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
 
-hscalendarApi :: Proxy ProtectedHSCalendarApi
-hscalendarApi = Proxy
-
 mainServer :: App -> Server ProtectedHSCalendarApi
-mainServer app = hoistServerWithContext hscalendarApi
+mainServer app = hoistServerWithContext protectedHSCalendarApi
     (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) rioServer
 
 -- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
@@ -95,7 +96,7 @@ nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Application
-server app = serveWithContext hscalendarApi context (mainServer app)
+server app = serveWithContext protectedHSCalendarApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
 migrate :: HasConnPool env => RIO env NoContent

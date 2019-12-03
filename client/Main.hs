@@ -17,7 +17,7 @@ import           Servant.Client
     , runClientM
     )
 
-import           App.API (ProtectedHSCalendarApi, RenameArgs)
+import           App.API (protectedHSCalendarApi, RenameArgs)
 import           App.App (initAppAndRun)
 import           App.CustomDay (CustomDay)
 import           App.CommandLine (Options(..), Cmd(..), opts)
@@ -56,9 +56,6 @@ mkProtectedApi env ad =
         = hoistClient protectedHSCalendarApi (nt env) (client protectedHSCalendarApi) ad
   in
     ProtectedClient{..}
-
-protectedHSCalendarApi :: Proxy ProtectedHSCalendarApi
-protectedHSCalendarApi = Proxy :: Proxy ProtectedHSCalendarApi
 
 -- | Natural transformation between ClientM and RIO
 nt :: ClientEnv -> ClientM a -> RIO env a
