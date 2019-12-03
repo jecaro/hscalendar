@@ -18,7 +18,6 @@ import           Servant.Client
     )
 
 import           App.API (protectedHSCalendarApi, RenameArgs)
-import           App.App (initAppAndRun)
 import           App.CustomDay (CustomDay)
 import           App.CommandLine (Options(..), Cmd(..), opts)
 import           App.WorkOption (WorkOption)
@@ -73,7 +72,8 @@ main = do
         api = mkProtectedApi clientEnv $ BasicAuthData "jc" "jc"
     -- Parse command line
     (Options verbose level, cmd) <- execParser opts
-    initAppAndRun verbose level $ run api cmd
+    logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose
+    withLogFunc logOptions $ \lf -> runRIO lf $ run api cmd
 
 run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
 run ProtectedClient{..} ProjList = do

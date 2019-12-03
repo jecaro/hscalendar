@@ -11,6 +11,5 @@
 - Add documentation for the configuration file
 - Add documentation about logger
 - Add documentation about postgres and environment variables
-- Make the client not depend on App
 - Parse url for host port user password
 - Handle auth error from the client
