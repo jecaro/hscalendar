@@ -1,4 +1,4 @@
-module App.API (ProtectedHSCalendarApi, RenameArgs(..))
+module App.API (HSCalendarApi, ProtectedHSCalendarApi, RenameArgs(..))
 where
 
 import           RIO
