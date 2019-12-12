@@ -1,8 +1,30 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import           RIO
+import qualified RIO.Text as Text
 
-import           Options.Applicative (execParser)
+import           Control.Applicative (many)
+import           Data.Attoparsec.Text as Att
+    ( Parser
+    , decimal
+    , string
+    , letter
+    , digit
+    , char
+    )
+import           Options.Applicative as Opt
+    ( Parser
+    , ParserInfo
+    , ReadM
+    , argument
+    , execParser
+    , helper
+    , idm
+    , info
+    , metavar
+    , (<**>)
+    , (<|>)
+    )
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Servant.API (NoContent, (:<|>)(..))
 import           Servant.API.BasicAuth (BasicAuthData(..))
@@ -10,16 +32,22 @@ import           Servant.Client
     ( BaseUrl(..)
     , ClientEnv
     , ClientM
+    , Scheme(..)
     , client
     , hoistClient
-    , Scheme(Http)
     , mkClientEnv
     , runClientM
     )
 
 import           App.API (protectedHSCalendarApi, RenameArgs)
 import           App.CustomDay (CustomDay)
-import           App.CommandLine (Options(..), Cmd(..), opts)
+import           App.CommandLine
+    ( Cmd(..)
+    , Options(..)
+    , attoReadM
+    , cmd
+    , options
+    )
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
@@ -63,17 +91,53 @@ nt clientEnv actions = liftIO (runClientM actions clientEnv) >>=
         Left err -> throwIO err
         Right res -> return res
 
+baseUrlAndBasicAuthData :: Opt.Parser (BaseUrl, BasicAuthData)
+baseUrlAndBasicAuthData = argument readUrlAndAuthData (metavar "URL...")
+
+parseScheme :: Att.Parser Scheme
+parseScheme = string "http://" $> Http <|> string "https://" $> Https
+
+parseAuthData :: Att.Parser BasicAuthData
+parseAuthData = do
+    login <- many (letter <|> digit)
+    _ <- char ':'
+    password <- many (letter <|> digit) -- printable
+    return $ BasicAuthData
+        (encodeUtf8 $ Text.pack login) (encodeUtf8 $ Text.pack password)
+
+parseBaseUrlAndAuthData :: Att.Parser (BaseUrl, BasicAuthData)
+parseBaseUrlAndAuthData = do
+    scheme <- parseScheme
+    authData <- parseAuthData
+    _ <- char '@'
+    host <- many (letter <|> digit <|> char '.')
+    _ <- char ':'
+    port <- decimal
+    let baseUrl = BaseUrl scheme host port ""
+    return (baseUrl, authData)
+
+readUrlAndAuthData :: ReadM (BaseUrl, BasicAuthData)
+readUrlAndAuthData = attoReadM parseBaseUrlAndAuthData
+
+optionsAndURI :: Opt.Parser (Options, BaseUrl, BasicAuthData, Cmd)
+optionsAndURI = rewrap <$> options <*> baseUrlAndBasicAuthData <*> cmd
+    where rewrap x (y, y') z = (x, y, y', z)
+
+optionsInfo :: ParserInfo (Options, BaseUrl, BasicAuthData, Cmd)
+optionsInfo = info (optionsAndURI <**> helper) idm
+
 -- | Main function
 main :: IO ()
 main = do
+    -- Parse command line
+    (Options verbose level, url, auth, cmd') <- execParser optionsInfo
     -- Init the client
     manager <- newManager defaultManagerSettings
-    let clientEnv = mkClientEnv manager (BaseUrl Http "localhost" 8081 "")
-        api = mkProtectedApi clientEnv $ BasicAuthData "jc" "jc"
-    -- Parse command line
-    (Options verbose level, cmd) <- execParser opts
+    let clientEnv = mkClientEnv manager url
+        api = mkProtectedApi clientEnv auth
+    -- Setup log options and run the command
     logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose
-    withLogFunc logOptions $ \lf -> runRIO lf $ run api cmd
+    withLogFunc logOptions $ \lf -> runRIO lf $ run api cmd'
 
 run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
 run ProtectedClient{..} ProjList = do

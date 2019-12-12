@@ -13,3 +13,5 @@
 - Add documentation about postgres and environment variables
 - Parse url for host port user password
 - Handle auth error from the client
+- Move optionsAndCommand and opts (rename to optInfo) to cli/Main
+- Move parsers from existing type to Extended like module

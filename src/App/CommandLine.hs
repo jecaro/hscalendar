@@ -2,6 +2,9 @@
 module App.CommandLine
     ( Cmd(..)
     , Options(..)
+    , attoReadM
+    , cmd
+    , options
     , opts
     ) where
 
