@@ -12,3 +12,4 @@
 - Add documentation about logger
 - Add documentation about postgres and environment variables
 - Handle auth error from the client
+- Handle server return status in the client

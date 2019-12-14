@@ -136,4 +136,6 @@ run ProtectedClient{..} ProjList =
 
 run ProtectedClient{..} (ProjAdd project) = void $ projectAdd project
 
+run ProtectedClient{..} (ProjRm project) = void $ projectRm project
+
 run _ _ = logInfo "Not implemented yet"
