@@ -50,7 +50,7 @@ import           App.CommandLine
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
-import           Db.Project (Project)
+import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay)
 
 
@@ -128,8 +128,8 @@ main = do
     withLogFunc logOptions $ \lf -> runRIO lf $ run api cmd'
 
 run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
-run ProtectedClient{..} ProjList = do
-  res <- projectAll
-  logInfo $ displayShow res
-  return ()
+
+run ProtectedClient{..} ProjList =
+    projectAll >>= mapM_ (logInfo . display . unProject)
+
 run _ _ = logInfo "Not implemented yet"
