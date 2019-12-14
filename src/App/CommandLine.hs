@@ -5,7 +5,6 @@ module App.CommandLine
     , attoReadM
     , cmd
     , options
-    , opts
     ) where
 
 import           RIO
@@ -22,16 +21,13 @@ import           Data.Attoparsec.Text as Atto
 import           Data.Functor (($>))
 import           Options.Applicative as Opt
     ( Parser
-    , ParserInfo
     , ReadM
     , argument
     , command
     , eitherReader
     , flag'
     , help
-    , helper
     , hsubparser
-    , idm
     , info
     , long
     , maybeReader
@@ -43,7 +39,6 @@ import           Options.Applicative as Opt
     , subparser
     , switch
     , value
-    , (<**>)
     , (<|>)
     )
 
@@ -223,9 +218,4 @@ options = Options
         <> value LevelInfo
         )
 
-optionsAndCmd :: Opt.Parser (Options, Cmd)
-optionsAndCmd = curry id <$> options <*> cmd
-
-opts :: ParserInfo (Options, Cmd)
-opts = info (optionsAndCmd <**> helper) idm
 

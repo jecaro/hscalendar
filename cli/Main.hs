@@ -1,14 +1,28 @@
 import           RIO
 
-import           Options.Applicative (execParser)
+import           Options.Applicative
+    ( Parser
+    , ParserInfo
+    , execParser
+    , helper
+    , info
+    , idm
+    , (<**>)
+    )
 
 import           App.App (initAppAndRun)
-import           App.CommandLine (Options(..), opts)
+import           App.CommandLine (Cmd, Options(..), cmd, options)
 import           Run (run)
+
+optionsAndCmd :: Parser (Options, Cmd)
+optionsAndCmd = curry id <$> options <*> cmd
+
+optionsInfo :: ParserInfo (Options, Cmd)
+optionsInfo = info (optionsAndCmd <**> helper) idm
 
 -- | Main function
 main :: IO ()
 main = do
     -- Parse command line
-    (Options verbose level, cmd) <- execParser opts
-    initAppAndRun verbose level (run cmd)
+    (Options verbose level, cmd') <- execParser optionsInfo
+    initAppAndRun verbose level (run cmd')
