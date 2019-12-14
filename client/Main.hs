@@ -38,7 +38,7 @@ import           Servant.Client
     )
 import qualified Servant.Client.Extended as CE (parse)
 
-import           App.API (protectedHSCalendarApi, RenameArgs)
+import           App.API (protectedHSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay)
 import           App.CommandLine
     ( Cmd(..)
@@ -137,5 +137,8 @@ run ProtectedClient{..} ProjList =
 run ProtectedClient{..} (ProjAdd project) = void $ projectAdd project
 
 run ProtectedClient{..} (ProjRm project) = void $ projectRm project
+
+run ProtectedClient{..} (ProjRename p1 p2) =
+    void $ projectRename $ MkRenameArgs p1 p2
 
 run _ _ = logInfo "Not implemented yet"
