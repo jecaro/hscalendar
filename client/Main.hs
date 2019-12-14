@@ -129,6 +129,8 @@ main = do
 
 run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
 
+run ProtectedClient{..} Migrate = void migrate
+
 run ProtectedClient{..} ProjList =
     projectAll >>= mapM_ (logInfo . display . unProject)
 
