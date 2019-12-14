@@ -12,4 +12,4 @@
 - Add documentation about logger
 - Add documentation about postgres and environment variables
 - Handle auth error from the client
-- Move parsers from existing type to Extended like module
+- Add printable char to password parser

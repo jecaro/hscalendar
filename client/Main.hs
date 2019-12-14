@@ -1,13 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import           RIO
-import qualified RIO.Text as Text
 
 import           Control.Applicative (many)
 import           Data.Attoparsec.Text as Att
     ( Parser
     , decimal
-    , string
     , letter
     , digit
     , char
@@ -28,16 +26,17 @@ import           Options.Applicative as Opt
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Servant.API (NoContent, (:<|>)(..))
 import           Servant.API.BasicAuth (BasicAuthData(..))
+import qualified Servant.API.BasicAuth.Extended as BAE (parse)
 import           Servant.Client
     ( BaseUrl(..)
     , ClientEnv
     , ClientM
-    , Scheme(..)
     , client
     , hoistClient
     , mkClientEnv
     , runClientM
     )
+import qualified Servant.Client.Extended as CE (parse)
 
 import           App.API (protectedHSCalendarApi, RenameArgs)
 import           App.CustomDay (CustomDay)
@@ -94,21 +93,10 @@ nt clientEnv actions = liftIO (runClientM actions clientEnv) >>=
 baseUrlAndBasicAuthData :: Opt.Parser (BaseUrl, BasicAuthData)
 baseUrlAndBasicAuthData = argument readUrlAndAuthData (metavar "URL...")
 
-parseScheme :: Att.Parser Scheme
-parseScheme = string "http://" $> Http <|> string "https://" $> Https
-
-parseAuthData :: Att.Parser BasicAuthData
-parseAuthData = do
-    login <- many (letter <|> digit)
-    _ <- char ':'
-    password <- many (letter <|> digit) -- printable
-    return $ BasicAuthData
-        (encodeUtf8 $ Text.pack login) (encodeUtf8 $ Text.pack password)
-
 parseBaseUrlAndAuthData :: Att.Parser (BaseUrl, BasicAuthData)
 parseBaseUrlAndAuthData = do
-    scheme <- parseScheme
-    authData <- parseAuthData
+    scheme <- CE.parse
+    authData <- BAE.parse
     _ <- char '@'
     host <- many (letter <|> digit <|> char '.')
     _ <- char ':'
