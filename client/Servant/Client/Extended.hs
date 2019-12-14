@@ -3,7 +3,6 @@ module Servant.Client.Extended
     )
 where
 
-
 import           Data.Functor (($>))
 import           Control.Applicative ((<|>))
 import           Data.Attoparsec.Text (Parser, string)
