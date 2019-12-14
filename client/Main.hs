@@ -134,4 +134,6 @@ run ProtectedClient{..} Migrate = void migrate
 run ProtectedClient{..} ProjList =
     projectAll >>= mapM_ (logInfo . display . unProject)
 
+run ProtectedClient{..} (ProjAdd project) = void $ projectAdd project
+
 run _ _ = logInfo "Not implemented yet"
