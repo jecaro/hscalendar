@@ -141,4 +141,7 @@ run ProtectedClient{..} (ProjRm project) = void $ projectRm project
 run ProtectedClient{..} (ProjRename p1 p2) =
     void $ projectRename $ MkRenameArgs p1 p2
 
+run ProtectedClient{..} (DiaryDisplay cd tid) =
+    diaryDisplay cd tid >>= logInfo . displayShow
+
 run _ _ = logInfo "Not implemented yet"
