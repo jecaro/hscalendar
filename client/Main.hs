@@ -50,7 +50,7 @@ import           App.CommandLine
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
-import           Db.Project (Project, unProject)
+import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
 
 
@@ -132,7 +132,7 @@ run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
 run ProtectedClient{..} Migrate = void migrate
 
 run ProtectedClient{..} ProjList =
-    projectAll >>= mapM_ (logInfo . display . unProject)
+    projectAll >>= mapM_ (logInfo . display)
 
 run ProtectedClient{..} (ProjAdd project) = void $ projectAdd project
 
@@ -142,7 +142,7 @@ run ProtectedClient{..} (ProjRename p1 p2) =
     void $ projectRename $ MkRenameArgs p1 p2
 
 run ProtectedClient{..} (DiaryDisplay cd tid) =
-    diaryDisplay cd tid >>= logInfo . displayShow
+    diaryDisplay cd tid >>= logInfo . display
 
 run ProtectedClient{..} (DiaryWork cd tid wopts) =
     void $ diarySetWork cd tid wopts

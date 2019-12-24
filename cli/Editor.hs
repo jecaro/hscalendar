@@ -43,11 +43,7 @@ import           App.WorkOption
 
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
-import           Db.Model
-    ( HdNotFound(..)
-    , showDay
-    , showTime
-    )
+import           Db.Model (HdNotFound(..))
 import           Db.Notes (Notes, mkNotes, unNotes)
 import qualified Db.Office as Office (Office(..), parser)
 import           Db.Project (Project, mkProject, unProject)
@@ -128,7 +124,7 @@ toOptions file = [ MkSetProj    . SetProj    $ file ^. project
                  ]
 
 header :: Time.Day -> TimeInDay -> Text
-header day tid = "# " <> showDay day <> " " <> packShow tid
+header day tid = "# " <> textDisplay day <> " " <> packShow tid
 
 packShow :: Show a => a -> Text
 packShow = Text.pack . show
@@ -139,6 +135,6 @@ hdAsText (Right (MkHalfDayIdle (MkIdle day tid hdt))) = header day tid <> " " <>
 hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNotes wProject))) =
     header wDay wTid <> "\n"
                    <> unProject wProject <> "\n"
-                   <> packShow wOffice <> " " <> showTime wArrived <> " " <> showTime wLeft <> "\n"
+                   <> packShow wOffice <> " " <> textDisplay wArrived <> " " <> textDisplay wLeft <> "\n"
                    <> unNotes wNotes
 

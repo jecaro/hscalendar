@@ -5,7 +5,9 @@ where
 
 import           RIO
 
+import qualified RIO.Text as Text (unlines)
 import qualified RIO.Time as Time (Day)
+import           RIO.Time.Extended ()
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
@@ -24,3 +26,9 @@ makeFields ''Idle
 
 instance ToJSON Idle
 instance FromJSON Idle
+
+instance Display Idle where
+    textDisplay idle = Text.unlines
+        [ textDisplay (idle ^. day) <> " " <> textDisplay (idle ^. timeInDay)
+        , textDisplay (idle ^. dayType)
+        ]

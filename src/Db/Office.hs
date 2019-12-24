@@ -30,6 +30,12 @@ instance ToJSON Office
 instance Arbitrary Office where
     arbitrary = arbitraryBoundedEnum
 
+instance Display Office where
+    textDisplay Rennes = "Rennes"
+    textDisplay Home = "Home"
+    textDisplay OutOfOffice = "Out of office"
+    textDisplay Poool = "Poool"
+
 -- | Parser for the 'Office' type
 parser :: Parser Office
 parser =   asciiCI "home"   $> Home

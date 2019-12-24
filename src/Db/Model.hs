@@ -36,21 +36,16 @@ module Db.Model
     -- * Misc
     , cleanDB
     , migrateAll
-    , showDay
-    , showTime
     )
 
 where
 
 import           RIO hiding (on, (^.)) -- We use esqueleto symbols
 import           RIO.List as L (headMaybe)
-import qualified RIO.Text as Text (intercalate, pack, unpack)
+import qualified RIO.Text as Text (unpack)
 import qualified RIO.Time as Time
     ( Day
     , TimeOfDay(..)
-    , defaultTimeLocale
-    , formatTime
-    , toGregorian
     )
 
 import           Control.Monad (void, when)
@@ -89,7 +84,6 @@ import qualified Database.Persist as P ((==.))
 import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
-import           Formatting.Extended (formatTwoDigitsPadZero)
 
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
@@ -161,7 +155,7 @@ data HdNotFound = HdNotFound Time.Day TimeInDay
 instance Exception HdNotFound
 
 instance Show HdNotFound where
-    show (HdNotFound day tid) = "Nothing for " <> Text.unpack (showDay day) <> " " <> show tid
+    show (HdNotFound day tid) = "Nothing for " <> Text.unpack (textDisplay day) <> " " <> show tid
 
 -- | Given times are wrong
 data TimesAreWrong = TimesAreWrong
@@ -180,22 +174,6 @@ instance Exception DbInconsistency
 
 instance Show DbInconsistency where
     show _ = "Warning db inconsistency"
-
--- Misc
-
--- | Convert a 'Time.Day' to a string in the form dd-mm-yyyy weekday
-showDay :: Time.Day -> Text
-showDay day =  Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
-            <> " "
-            <> Text.pack weekDay
-  where (y, m, d) = Time.toGregorian day
-        intY = fromIntegral y
-        weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
-
--- | Print time in a friendly format ex 9:00
-showTime :: Time.TimeOfDay -> Text
-showTime (Time.TimeOfDay h m _) =
-            Text.intercalate ":" $ fmap formatTwoDigitsPadZero [h, m]
 
 -- | Clean up the db
 cleanDB :: (MonadIO m) => SqlPersistT m ()

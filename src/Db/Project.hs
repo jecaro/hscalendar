@@ -43,6 +43,9 @@ newtype Project = MkProject
 instance ToJSON Project
 instance FromJSON Project
 
+instance Display Project where
+    textDisplay = textDisplay . unProject
+
 -- | Max length of project name
 projNameMaxLength :: Int
 projNameMaxLength = 20

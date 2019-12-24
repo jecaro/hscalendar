@@ -28,6 +28,15 @@ instance Arbitrary IdleDayType where
 instance ToJSON IdleDayType
 instance FromJSON IdleDayType
 
+instance Display IdleDayType where
+    textDisplay PaidLeave = "Paid leave"
+    textDisplay FamilyEvent = "Family event"
+    textDisplay RTTE = "RTTE"
+    textDisplay RTTS = "RTTS"
+    textDisplay UnpaidLeave = "Unpaid leave"
+    textDisplay PublicHoliday = "Public holiday"
+    textDisplay PartTime = "Part time"
+
 -- | Parser for this type
 parser :: Parser IdleDayType
 parser =   asciiCI "pl"   $> PaidLeave

@@ -13,4 +13,4 @@
 - Add documentation about postgres and environment variables
 - Handle auth error from the client
 - Handle server return status in the client
-- Improve DiaryDisplay output on the client
+- Rework content of the file in editor command

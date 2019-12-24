@@ -60,6 +60,9 @@ instance Arbitrary Notes where
 instance FromJSON Notes
 instance ToJSON Notes
 
+instance Display Notes where
+    textDisplay = textDisplay . unNotes
+
 -- | Maximum length of a note
 notesMaxLength :: Int
 notesMaxLength = 500

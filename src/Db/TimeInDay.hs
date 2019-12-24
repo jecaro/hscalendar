@@ -26,6 +26,10 @@ instance Arbitrary TimeInDay where
 instance FromJSON TimeInDay
 instance ToJSON TimeInDay
 
+instance Display TimeInDay where
+    textDisplay Morning = "morning"
+    textDisplay Afternoon = "afternoon"
+
 instance FromHttpApiData TimeInDay where
     parseQueryParam = runAtto parser
 

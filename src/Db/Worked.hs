@@ -5,13 +5,15 @@ where
 
 import           RIO
 
+import qualified RIO.Text as Text (unlines)
 import qualified RIO.Time as Time (Day, TimeOfDay)
+import           RIO.Time.Extended ()
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
 
-import           Db.Notes(Notes)
-import           Db.Project(Project)
+import           Db.Notes (Notes)
+import           Db.Project (Project)
 import           Db.Office (Office)
 import           Db.TimeInDay (TimeInDay)
 
@@ -31,4 +33,14 @@ makeFields ''Worked
 instance FromJSON Worked
 instance ToJSON Worked
 
-
+instance Display Worked where
+    textDisplay worked = Text.unlines
+        [ textDisplay (worked ^. day) <> " " <> textDisplay (worked ^. timeInDay)
+        , textDisplay (worked ^. office)
+            <> ": "
+            <> textDisplay (worked ^. arrived)
+            <> " - "
+            <> textDisplay (worked ^. left)
+        , "Project: " <> textDisplay (worked ^. project)
+        , "Notes: " <> textDisplay (worked ^. notes)
+        ]

@@ -8,7 +8,6 @@ where
 import           RIO
 import           RIO.Orphans ()
 import           RIO.Process (HasProcessContext, proc, runProcess)
-import qualified RIO.Text as Text (pack)
 
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
@@ -26,9 +25,7 @@ import           App.App
     )
 import           App.CommandLine (Cmd(..))
 import           App.CustomDay(toDay)
-import           Db.HalfDay (HalfDay(..))
 import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)
-import           Db.Idle (Idle(..))
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
@@ -43,12 +40,8 @@ import           Db.Model
     , projList
     , projRename
     , projRm
-    , showDay
-    , showTime
     )
-import           Db.Notes (unNotes)
 import           Db.Project (unProject)
-import           Db.Worked (Worked(..))
 
 import           Editor (ParseError(..), hdAsText, parse)
 
@@ -95,22 +88,12 @@ run (ProjRename p1 p2) = catches (runDB $ projRename p1 p2)
 run (DiaryDisplay cd tid) = do
     -- Get actual day
     day <- toDay cd
-    -- Display input date
-    logInfo . display $ showDay day <> " " <> (Text.pack . show) tid
     -- Get half-day
     eiHd <- try $ runDB $ hdGet day tid
-    -- Analyse output to produce lines of text
-    let hdStr = case eiHd of
-           Left e@(HdNotFound _ _) -> [ (Text.pack . show) e ]
-           Right (MkHalfDayIdle (MkIdle _ _ hdt)) -> [ (Text.pack . show) hdt ]
-           Right (MkHalfDayWorked (MkWorked _ _ tArrived tLeft office notes project)) ->
-               [ (Text.pack . show) office <> ":  " <> showTime tArrived <> " - " <> showTime tLeft
-               , "Project: " <> unProject project
-               , "Notes:"
-               , unNotes notes
-               ]
-    -- Print it
-    mapM_ (logInfo . display) hdStr
+    -- Display output
+    case eiHd of
+       Left e@(HdNotFound _ _) -> logInfo $ displayShow e
+       Right hd -> logInfo $ display hd
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do

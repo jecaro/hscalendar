@@ -15,3 +15,7 @@ data HalfDay = MkHalfDayWorked Worked | MkHalfDayIdle Idle
 
 instance ToJSON HalfDay
 instance FromJSON HalfDay
+
+instance Display HalfDay where
+    textDisplay (MkHalfDayWorked worked) = textDisplay worked
+    textDisplay (MkHalfDayIdle idle) = textDisplay idle
