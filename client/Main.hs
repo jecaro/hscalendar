@@ -1,6 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE RecordWildCards #-}
 
 import           RIO
+import qualified RIO.Text as T
+import qualified RIO.ByteString.Lazy as BL
 
 import           Control.Applicative (many)
 import           Data.Attoparsec.Text as Att
@@ -10,6 +13,8 @@ import           Data.Attoparsec.Text as Att
     , digit
     , char
     )
+import qualified Data.CaseInsensitive as CI (CI(..))
+import           Data.Sequence (Seq(..))
 import           Options.Applicative as Opt
     ( Parser
     , ParserInfo
@@ -24,6 +29,8 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
+import           Network.HTTP.Types.Status (Status(..))
+import           Network.HTTP.Types.Header (Header)
 import           Servant.API (NoContent, (:<|>)(..))
 import           Servant.API.BasicAuth (BasicAuthData(..))
 import qualified Servant.API.BasicAuth.Extended as BAE (parse)
@@ -31,6 +38,9 @@ import           Servant.Client
     ( BaseUrl(..)
     , ClientEnv
     , ClientM
+    , GenResponse(..)
+    , Response
+    , ServantError(..)
     , client
     , hoistClient
     , mkClientEnv
@@ -114,6 +124,39 @@ optionsAndURI = rewrap <$> options <*> baseUrlAndBasicAuthData <*> cmd
 optionsInfo :: ParserInfo (Options, BaseUrl, BasicAuthData, Cmd)
 optionsInfo = info (optionsAndURI <**> helper) idm
 
+indent :: Text -> Text
+indent = T.unlines . map (T.cons '\t') . T.lines
+
+instance Display Status where
+    display Status { statusCode = code, statusMessage = message }
+        =  "Code: " <> display code <> "\n"
+        <> "Message: " <> displayBytesUtf8 message
+
+instance Display (Seq Header) where
+    display Empty = display T.empty
+    display ((name, content) :<| xs)
+        =  "Name: " <> displayBytesUtf8 (CI.original name) <> "\n"
+        <> "Content: " <> displayBytesUtf8 content <> "\n"
+        <> display xs
+
+instance Display Response where
+    display Response
+        { responseStatusCode = code
+        , responseHeaders = headers
+        , responseHttpVersion = version
+        , responseBody = body }
+            =  "Status: \n" <> display (indent $ textDisplay code)
+            <> "Headers: \n" <> display (indent $ textDisplay headers)
+            <> "Version: " <> displayShow version <> "\n"
+            <> "Body: " <> displayBytesUtf8 (BL.toStrict body)
+
+handleError :: (HasLogFunc env) => ServantError -> RIO env ()
+handleError (FailureResponse response) = logError $
+    "The server returns an error\n" <> display response
+handleError (ConnectionError text) = logError $
+    "Unable to connect to the server\n" <> display text
+handleError e = logError $ "Error\n" <> displayShow e
+
 -- | Main function
 main :: IO ()
 main = do
@@ -125,7 +168,8 @@ main = do
         api = mkProtectedApi clientEnv auth
     -- Setup log options and run the command
     logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose
-    withLogFunc logOptions $ \lf -> runRIO lf $ run api cmd'
+    withLogFunc logOptions $ \lf -> runRIO lf $
+        catch (run api cmd') handleError
 
 run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
 

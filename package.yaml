@@ -6,6 +6,8 @@ dependencies:
 - attoparsec
 - base >= 4.7 && < 5
 - bytestring
+- case-insensitive
+- containers
 - cryptonite
 - directory
 - either
@@ -13,6 +15,7 @@ dependencies:
 - formatting
 - hspec
 - http-client
+- http-types
 - microlens-platform
 - monad-logger # Only needed for runNoLoggingT from Spec.hs
 - mtl
