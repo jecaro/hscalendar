@@ -29,13 +29,13 @@ instance ToJSON IdleDayType
 instance FromJSON IdleDayType
 
 instance Display IdleDayType where
-    textDisplay PaidLeave = "Paid leave"
-    textDisplay FamilyEvent = "Family event"
-    textDisplay RTTE = "RTTE"
-    textDisplay RTTS = "RTTS"
-    textDisplay UnpaidLeave = "Unpaid leave"
-    textDisplay PublicHoliday = "Public holiday"
-    textDisplay PartTime = "Part time"
+    display PaidLeave = "Paid leave"
+    display FamilyEvent = "Family event"
+    display RTTE = "RTTE"
+    display RTTS = "RTTS"
+    display UnpaidLeave = "Unpaid leave"
+    display PublicHoliday = "Public holiday"
+    display PartTime = "Part time"
 
 -- | Parser for this type
 parser :: Parser IdleDayType

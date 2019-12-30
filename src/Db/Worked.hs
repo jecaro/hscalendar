@@ -5,7 +5,6 @@ where
 
 import           RIO
 
-import qualified RIO.Text as Text (unlines)
 import qualified RIO.Time as Time (Day, TimeOfDay)
 import           RIO.Time.Extended ()
 
@@ -34,13 +33,13 @@ instance FromJSON Worked
 instance ToJSON Worked
 
 instance Display Worked where
-    textDisplay worked = Text.unlines
-        [ textDisplay (worked ^. day) <> " " <> textDisplay (worked ^. timeInDay)
-        , textDisplay (worked ^. office)
+    display worked
+        =  display (worked ^. day) <> " " <> display (worked ^. timeInDay) <> "\n"
+        <> display (worked ^. office)
             <> ": "
-            <> textDisplay (worked ^. arrived)
+            <> display (worked ^. arrived)
             <> " - "
-            <> textDisplay (worked ^. left)
-        , "Project: " <> textDisplay (worked ^. project)
-        , "Notes: " <> textDisplay (worked ^. notes)
-        ]
+            <> display (worked ^. left)
+            <> "\n"
+        <> "Project: " <> display (worked ^. project) <> "\n"
+        <> "Notes: " <> display (worked ^. notes) <> "\n"

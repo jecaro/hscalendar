@@ -61,7 +61,7 @@ instance FromJSON Notes
 instance ToJSON Notes
 
 instance Display Notes where
-    textDisplay = textDisplay . unNotes
+    display = display . unNotes
 
 -- | Maximum length of a note
 notesMaxLength :: Int

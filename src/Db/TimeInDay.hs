@@ -27,8 +27,8 @@ instance FromJSON TimeInDay
 instance ToJSON TimeInDay
 
 instance Display TimeInDay where
-    textDisplay Morning = "morning"
-    textDisplay Afternoon = "afternoon"
+    display Morning = "morning"
+    display Afternoon = "afternoon"
 
 instance FromHttpApiData TimeInDay where
     parseQueryParam = runAtto parser

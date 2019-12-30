@@ -17,5 +17,5 @@ instance ToJSON HalfDay
 instance FromJSON HalfDay
 
 instance Display HalfDay where
-    textDisplay (MkHalfDayWorked worked) = textDisplay worked
-    textDisplay (MkHalfDayIdle idle) = textDisplay idle
+    display (MkHalfDayWorked worked) = display worked
+    display (MkHalfDayIdle idle) = display idle

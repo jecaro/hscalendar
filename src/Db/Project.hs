@@ -44,7 +44,7 @@ instance ToJSON Project
 instance FromJSON Project
 
 instance Display Project where
-    textDisplay = textDisplay . unProject
+    display = display . unProject
 
 -- | Max length of project name
 projNameMaxLength :: Int

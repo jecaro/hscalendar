@@ -31,10 +31,10 @@ instance Arbitrary Office where
     arbitrary = arbitraryBoundedEnum
 
 instance Display Office where
-    textDisplay Rennes = "Rennes"
-    textDisplay Home = "Home"
-    textDisplay OutOfOffice = "Out of office"
-    textDisplay Poool = "Poool"
+    display Rennes = "Rennes"
+    display Home = "Home"
+    display OutOfOffice = "Out of office"
+    display Poool = "Poool"
 
 -- | Parser for the 'Office' type
 parser :: Parser Office

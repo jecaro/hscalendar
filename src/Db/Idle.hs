@@ -5,7 +5,6 @@ where
 
 import           RIO
 
-import qualified RIO.Text as Text (unlines)
 import qualified RIO.Time as Time (Day)
 import           RIO.Time.Extended ()
 
@@ -28,7 +27,6 @@ instance ToJSON Idle
 instance FromJSON Idle
 
 instance Display Idle where
-    textDisplay idle = Text.unlines
-        [ textDisplay (idle ^. day) <> " " <> textDisplay (idle ^. timeInDay)
-        , textDisplay (idle ^. dayType)
-        ]
+    display idle
+        =  display (idle ^. day) <> " " <> display (idle ^. timeInDay) <> "\n"
+        <> display (idle ^. dayType)
