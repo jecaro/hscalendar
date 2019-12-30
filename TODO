@@ -13,5 +13,3 @@
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
 - Implements display function instead of textDisplay
-- Move Display instances in Extended module
-- Mode indent function in Extended module
