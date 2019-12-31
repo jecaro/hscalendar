@@ -73,29 +73,29 @@ instance HasProcessContext App where
 
 -- | The main API, available once authentication is passed
 data ProtectedClient env = ProtectedClient
-    { migrate :: RIO env NoContent
-    , projectAll :: RIO env [Project]
-    , projectAdd :: Project -> RIO env NoContent
-    , projectRm :: Project -> RIO env NoContent
-    , projectRename :: RenameArgs -> RIO env NoContent
-    , diaryDisplay :: CustomDay -> TimeInDay -> RIO env HalfDay
-    , diarySetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
-    , diarySetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
-    , diaryRm :: CustomDay -> TimeInDay -> RIO env NoContent
+    { migrateAll :: RIO env NoContent
+    , projList :: RIO env [Project]
+    , projAdd :: Project -> RIO env NoContent
+    , projRm :: Project -> RIO env NoContent
+    , projRename :: RenameArgs -> RIO env NoContent
+    , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
+    , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
+    , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
+    , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent
     }
 
 -- | Init the API with the client env and auth data
 mkProtectedApi :: ClientEnv -> BasicAuthData -> ProtectedClient a
 mkProtectedApi env ad =
-  let migrate
-        :<|> projectAll
-        :<|> projectAdd
-        :<|> projectRm
-        :<|> projectRename
-        :<|> diaryDisplay
-        :<|> diarySetIdleDay
-        :<|> diarySetWork
-        :<|> diaryRm
+  let migrateAll
+        :<|> projList
+        :<|> projAdd
+        :<|> projRm
+        :<|> projRename
+        :<|> hdGet
+        :<|> hdSetIdleDay
+        :<|> hdSetWork
+        :<|> hdRm
         = hoistClient protectedHSCalendarApi (nt env) (client protectedHSCalendarApi) ad
   in
     ProtectedClient{..}
@@ -158,29 +158,29 @@ main = do
 
 run :: (HasLogFunc env, HasProcessContext env) => ProtectedClient env -> Cmd -> RIO env ()
 
-run ProtectedClient{..} Migrate = void migrate
+run ProtectedClient{..} Migrate = void migrateAll
 
 run ProtectedClient{..} ProjList =
-    projectAll >>= mapM_ (logInfo . display)
+    projList >>= mapM_ (logInfo . display)
 
-run ProtectedClient{..} (ProjAdd project) = void $ projectAdd project
+run ProtectedClient{..} (ProjAdd project) = void $ projAdd project
 
-run ProtectedClient{..} (ProjRm project) = void $ projectRm project
+run ProtectedClient{..} (ProjRm project) = void $ projRm project
 
 run ProtectedClient{..} (ProjRename p1 p2) =
-    void $ projectRename $ MkRenameArgs p1 p2
+    void $ projRename $ MkRenameArgs p1 p2
 
 run ProtectedClient{..} (DiaryDisplay cd tid) =
-    diaryDisplay cd tid >>= logInfo . display
+    hdGet cd tid >>= logInfo . display
 
 run ProtectedClient{..} (DiaryWork cd tid wopts) =
-    void $ diarySetWork cd tid wopts
+    void $ hdSetWork cd tid wopts
 
 run ProtectedClient{..} (DiaryHoliday cd tid hdt) =
-    void $ diarySetIdleDay cd tid hdt
+    void $ hdSetIdleDay cd tid hdt
 
-run ProtectedClient{..} (DiaryRm cd tid) = void $ diaryRm cd tid
+run ProtectedClient{..} (DiaryRm cd tid) = void $ hdRm cd tid
 
 run api@ProtectedClient{..} (DiaryEdit cd tid) = do
-    workOptions <- editorToOptions diaryDisplay cd tid
+    workOptions <- editorToOptions hdGet cd tid
     run api (DiaryWork cd tid workOptions)

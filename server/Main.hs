@@ -60,15 +60,15 @@ import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
 
 rioServer :: ServerT ProtectedHSCalendarApi (RIO App)
-rioServer _ =    migrate
-          :<|> projectAll
-          :<|> projectAdd
-          :<|> projectRm
-          :<|> projectRename
-          :<|> diaryDisplay
-          :<|> diarySetIdleDay
-          :<|> diarySetWork
-          :<|> diaryRm
+rioServer _ =  hMigrateAll
+          :<|> hProjList
+          :<|> hProjAdd
+          :<|> hProjRm
+          :<|> hProjRename
+          :<|> hHdGet
+          :<|> hHdSetIdleDay
+          :<|> hHdSetWork
+          :<|> hHdRm
 
 authCheckInRIO :: HasConnPool env => BasicAuthData -> RIO env (BasicAuthResult Login)
 authCheckInRIO (BasicAuthData authName authPass) = do
@@ -99,30 +99,30 @@ server :: App -> Application
 server app = serveWithContext protectedHSCalendarApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
-migrate :: HasConnPool env => RIO env NoContent
-migrate = runDB $ runMigration migrateAll >> return NoContent
+hMigrateAll :: HasConnPool env => RIO env NoContent
+hMigrateAll = runDB $ runMigration migrateAll >> return NoContent
 
-projectAll :: HasConnPool env => RIO env [Project]
-projectAll = runDB projList
+hProjList :: HasConnPool env => RIO env [Project]
+hProjList = runDB projList
 
-projectRm :: HasConnPool env => Project -> RIO env NoContent
-projectRm project = catches (runDB (projRm project) >> return NoContent)
+hProjRm :: HasConnPool env => Project -> RIO env NoContent
+hProjRm project = catches (runDB (projRm project) >> return NoContent)
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
-projectAdd :: HasConnPool env => Project -> RIO env NoContent
-projectAdd project = catch (runDB (projAdd project) >> return NoContent)
+hProjAdd :: HasConnPool env => Project -> RIO env NoContent
+hProjAdd project = catch (runDB (projAdd project) >> return NoContent)
         (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
 
-projectRename :: HasConnPool env => RenameArgs -> RIO env NoContent
-projectRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
+hProjRename :: HasConnPool env => RenameArgs -> RIO env NoContent
+hProjRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
     [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-diaryDisplay :: HasConnPool env => CustomDay -> TimeInDay -> RIO env HalfDay
-diaryDisplay cd tid = do
+hHdGet :: HasConnPool env => CustomDay -> TimeInDay -> RIO env HalfDay
+hHdGet cd tid = do
     -- Get actual day
     day <- toDay cd
     -- Get half-day
@@ -131,24 +131,24 @@ diaryDisplay cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-diarySetIdleDay
+hHdSetIdleDay
     :: HasConnPool env
     => CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
-diarySetIdleDay cd tid idt = do
+hHdSetIdleDay cd tid idt = do
     day <- toDay cd
     runDB $ hdSetHoliday day tid idt
     return NoContent
 
-diaryRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
-diaryRm cd tid = do
+hHdRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
+hHdRm cd tid = do
     day <- toDay cd
     catch (runDB (hdRm day tid) >> return NoContent)
         (\(HdNotFound _ _) -> throwM err404)
 
-diarySetWork
+hHdSetWork
     :: (HasConnPool env, HasConfig env)
     => CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
-diarySetWork cd tid wopts = do
+hHdSetWork cd tid wopts = do
     day <- toDay cd
     -- Create the record in DB
     catches (runWorkOptions day tid wopts >> return NoContent)
