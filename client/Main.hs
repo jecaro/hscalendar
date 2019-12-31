@@ -115,7 +115,7 @@ parseBaseUrlAndAuthData = do
     scheme <- CE.parse
     authData <- BAE.parse
     _ <- char '@'
-    host <- many (letter <|> digit <|> char '.')
+    host <- many (letter <|> digit <|> char '.' <|> char '-')
     _ <- char ':'
     port <- decimal
     let baseUrl = BaseUrl scheme host port ""
