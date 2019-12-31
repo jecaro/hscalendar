@@ -13,4 +13,3 @@
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
 - Rename diaryDisplay function
-- Print notes better

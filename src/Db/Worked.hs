@@ -42,4 +42,5 @@ instance Display Worked where
             <> display (worked ^. left)
             <> "\n"
         <> "Project: " <> display (worked ^. project) <> "\n"
-        <> "Notes: " <> display (worked ^. notes) <> "\n"
+        <> "Notes:\n"
+        <> display (worked ^. notes)
