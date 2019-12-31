@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Editor
+module App.Editor
     ( ParseError(..)
     , editorToOptions
     , parse

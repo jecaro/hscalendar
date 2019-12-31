@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import           RIO
+import           RIO.Process (HasProcessContext(..), ProcessContext, mkDefaultProcessContext)
 
 import           Control.Applicative (many)
 import           Data.Attoparsec.Text as Att
@@ -50,11 +51,24 @@ import           App.CommandLine
     , cmd
     , options
     )
+import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
+
+data App = App
+    { appLogFunc        :: !LogFunc        -- ^ The log function
+    , appProcessContext :: !ProcessContext -- ^ Context to start processes
+    }
+
+instance HasLogFunc App where
+    logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
+
+-- | Constraint for functions needing to start a process
+instance HasProcessContext App where
+    processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })
 
 
 -- | The main API, available once authentication is passed
@@ -135,10 +149,14 @@ main = do
         api = mkProtectedApi clientEnv auth
     -- Setup log options and run the command
     logOptions <- setLogMinLevel level <$> logOptionsHandle stderr verbose
-    withLogFunc logOptions $ \lf -> runRIO lf $
-        catch (run api cmd') handleError
+    withLogFunc logOptions $ \lf -> do
+        pc <- mkDefaultProcessContext
+        -- Initialize the application
+        let app = App { appLogFunc = lf
+                      , appProcessContext = pc }
+        runRIO app $ catch (run api cmd') handleError
 
-run :: HasLogFunc env => ProtectedClient env -> Cmd -> RIO env ()
+run :: (HasLogFunc env, HasProcessContext env) => ProtectedClient env -> Cmd -> RIO env ()
 
 run ProtectedClient{..} Migrate = void migrate
 
@@ -163,4 +181,6 @@ run ProtectedClient{..} (DiaryHoliday cd tid hdt) =
 
 run ProtectedClient{..} (DiaryRm cd tid) = void $ diaryRm cd tid
 
-run _ _ = logInfo "Not implemented yet"
+run api@ProtectedClient{..} (DiaryEdit cd tid) = do
+    workOptions <- editorToOptions diaryDisplay cd tid
+    run api (DiaryWork cd tid workOptions)

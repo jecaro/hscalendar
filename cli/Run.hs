@@ -20,6 +20,7 @@ import           App.App
     )
 import           App.CommandLine (Cmd(..))
 import           App.CustomDay (toDay)
+import           App.Editor (editorToOptions)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
@@ -41,7 +42,6 @@ import           Db.Model
     )
 import           Db.Project (unProject)
 
-import           Editor (editorToOptions)
 
 -- | Print an exception
 printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()

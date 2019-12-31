@@ -1,4 +1,5 @@
--- | Application global read only state
+-- | Application global read only state. This is used by the server and the
+-- command line tool
 module App.App
     ( App(..)
     , HasConnPool(..)
