@@ -4,9 +4,8 @@
 - Show month
 - Make diary date/TimeInDay optional default today
 - Put defaults values in config file for a week
-- Add unit test for editor features
+- Add unit tests for editor features
 - Add cleanUp command in cli and in web api
-- Make FromJSON instance safe for Project/Note
 - Add documentation for editor
 - Add documentation for the configuration file
 - Add documentation about logger

@@ -12,7 +12,7 @@ import           RIO
 
 import qualified RIO.Text as Text (Text, all, length, pack)
 
-import           Data.Aeson (FromJSON, ToJSON)
+import           Data.Aeson (FromJSON(..), ToJSON, withObject, (.:))
 import           Data.Attoparsec.Text
     ( Parser
     , inClass
@@ -46,7 +46,12 @@ newtype Project = MkProject
     deriving (Eq, Generic, Show, Ord)
 
 instance ToJSON Project
-instance FromJSON Project
+instance FromJSON Project where
+    parseJSON = withObject "Project" $ \o -> do
+        p <- o .: "unProject"
+        case mkProject p of
+            Nothing -> fail "Bad project name"
+            Just project -> return project
 
 instance Display Project where
     display = display . unProject

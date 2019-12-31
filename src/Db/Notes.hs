@@ -13,7 +13,7 @@ import           RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Char (isPrint)
-import           Data.Aeson (FromJSON, ToJSON)
+import           Data.Aeson (FromJSON(..), ToJSON, withObject, (.:))
 import           Data.Attoparsec.Text
     ( Parser
     , many1
@@ -63,8 +63,13 @@ instance Arbitrary Notes where
         xs <- vectorOf n (arbitrary `suchThat` printableOrEOLOrTab)
         return $ MkNotes $ Text.pack xs
 
-instance FromJSON Notes
 instance ToJSON Notes
+instance FromJSON Notes where
+    parseJSON = withObject "Notes" $ \o -> do
+        n <- o .: "unNotes"
+        case mkNotes n of
+            Nothing -> fail "Bad notes content"
+            Just notes -> return notes
 
 instance Display Notes where
     display = display . unNotes
