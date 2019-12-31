@@ -1,12 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Editor
     ( ParseError(..)
+    , editorToOptions
     , parse
     , hdAsText
     )
 where
 
 import           RIO
+import           RIO.Process (HasProcessContext, proc, runProcess)
 import qualified RIO.Text as Text
     ( isPrefixOf
     , lines
@@ -17,8 +19,6 @@ import qualified RIO.Text as Text
     )
 import qualified RIO.Time as Time (TimeOfDay(..), Day(..))
 import qualified RIO.Time.Extended as Time(parser)
-
-import           Lens.Micro.Platform (makeFields)
 
 import           Data.Attoparsec.Text
     ( Parser
@@ -31,7 +31,12 @@ import           Data.Attoparsec.Text
     , skipWhile
     , takeText
     )
+import           Lens.Micro.Platform (makeFields)
+import           System.Directory (removeFile)
+import           System.Environment (lookupEnv)
+import           System.IO.Temp (emptySystemTempFile)
 
+import           App.CustomDay (CustomDay(..))
 import           App.WorkOption
     ( SetArrived(..)
     , SetLeft(..)
@@ -76,6 +81,14 @@ instance Exception ParseError
 instance Show ParseError where
     show EmptyFileError = "The file is empty"
     show (ParserError msg) = "Parse error: " <> Text.unpack msg
+
+-- | The editor returned an error
+newtype ProcessReturnedError = ProcessReturnedError String
+
+instance Exception ProcessReturnedError
+
+instance Show ProcessReturnedError where
+    show (ProcessReturnedError cmd) = "The process " <> cmd <> " returned an error"
 
 skipHorizontalSpaces :: Parser ()
 skipHorizontalSpaces = skipWhile isHorizontalSpace
@@ -137,4 +150,37 @@ hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNot
                    <> unProject wProject <> "\n"
                    <> packShow wOffice <> " " <> textDisplay wArrived <> " " <> textDisplay wLeft <> "\n"
                    <> unNotes wNotes
+
+-- | Launch an editor with the current occupation for the specified half-day.
+-- On return, parse the file to extract `[WorkOption]` to be applied to the
+-- current half-day.
+editorToOptions
+    :: (HasProcessContext env, HasLogFunc env)
+    => (CustomDay -> TimeInDay -> RIO env HalfDay)
+    -> CustomDay
+    -> TimeInDay
+    -> RIO env [App.WorkOption.WorkOption]
+editorToOptions hdGet cd tid = do
+    oldRecord <- hdAsText <$> try (hdGet cd tid)
+    -- Bracket to make sure the temporary file will be deleted no matter what
+    fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar")
+        (liftIO . removeFile)
+        (\filename -> do
+            -- Write old record
+            writeFileUtf8 filename oldRecord
+            -- Find an editor
+            editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
+            -- Launch process
+            exitCode <- proc editor [filename] runProcess
+            -- Handle error code
+            when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnedError editor)
+            -- Read file content
+            readFileUtf8 filename
+        )
+    if fileContent == oldRecord
+        then return []
+        else case parse fileContent of
+            Left e@(ParserError _) -> throwIO e
+            Left e@EmptyFileError  -> throwIO e
+            Right options          -> return options
 

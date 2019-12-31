@@ -7,15 +7,10 @@ where
 
 import           RIO
 import           RIO.Orphans ()
-import           RIO.Process (HasProcessContext, proc, runProcess)
+import           RIO.Process (HasProcessContext)
 
 import           Control.Monad (void)
-import           Control.Monad.IO.Class (liftIO)
 import           Database.Persist.Sql (runMigration)
-import           System.Directory (removeFile)
-import           System.Environment (lookupEnv)
-import           System.IO.Temp (emptySystemTempFile)
-
 
 import           App.App
     ( App(..)
@@ -24,8 +19,11 @@ import           App.App
     , runDB
     )
 import           App.CommandLine (Cmd(..))
-import           App.CustomDay(toDay)
-import           App.WorkOption (ProjCmdIsMandatory(..), runWorkOptions)
+import           App.CustomDay (toDay)
+import           App.WorkOption
+    ( ProjCmdIsMandatory(..)
+    , runWorkOptions
+    )
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
@@ -43,15 +41,7 @@ import           Db.Model
     )
 import           Db.Project (unProject)
 
-import           Editor (ParseError(..), hdAsText, parse)
-
--- | The editor returned an error
-newtype ProcessReturnedError = ProcessReturnedError String
-
-instance Exception ProcessReturnedError
-
-instance Show ProcessReturnedError where
-    show (ProcessReturnedError cmd) = "The process " <> cmd <> " returned an error"
+import           Editor (editorToOptions)
 
 -- | Print an exception
 printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
@@ -97,31 +87,11 @@ run (DiaryDisplay cd tid) = do
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
-    -- Get the old record to put as default in the file
-    day <- toDay cd
-    oldRecord <- hdAsText <$> try (runDB $ hdGet day tid)
-    -- Bracket to make sure the temporary file will be deleted no matter what
-    fileContent <- bracket (liftIO $ emptySystemTempFile "hscalendar")
-        (liftIO . removeFile)
-        (\filename -> do
-            -- Write old record
-            writeFileUtf8 filename oldRecord
-            -- Find an editor
-            editor <- liftIO $ fromMaybe "vim" <$> lookupEnv "EDITOR"
-            -- Launch process
-            exitCode <- proc editor [filename] runProcess
-            -- Handle error code
-            when (exitCode /= ExitSuccess) (throwIO $ ProcessReturnedError editor)
-            -- Read file content
-            readFileUtf8 filename
-        )
-    if fileContent == oldRecord
-        then nothingToDo
-        else case parse fileContent of
-            Left e@(ParserError _) -> throwIO e
-            Left EmptyFileError    -> nothingToDo
-            Right options          -> run $ DiaryWork cd tid options
-  where nothingToDo = logWarn "Nothing to do"
+    options <- editorToOptions hdGetFromDB cd tid
+    run $ DiaryWork cd tid options
+  where hdGetFromDB cd' tid' = do
+            day <- toDay cd'
+            runDB $ hdGet day tid'
 
 -- Set a work entry
 run (DiaryWork cd tid wopts) = do
