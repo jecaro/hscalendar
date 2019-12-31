@@ -1,4 +1,3 @@
--- | Command line options using optparse-applicative
 module App.CommandLine
     ( Cmd(..)
     , Options(..)
@@ -30,7 +29,6 @@ import           Options.Applicative as Opt
     , hsubparser
     , info
     , long
-    , maybeReader
     , metavar
     , option
     , progDesc
@@ -52,9 +50,9 @@ import           App.WorkOption
     , SetOffice(..)
     )
 import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
-import           Db.Notes (Notes, mkNotes)
+import qualified Db.Notes as Notes (Notes, parser)
 import qualified Db.Office as Office (Office(..), parser)
-import           Db.Project (Project, readProject)
+import qualified Db.Project as Project (Project, parser)
 import           Db.TimeInDay (TimeInDay(..))
 
 -- | Options for the log function
@@ -68,10 +66,10 @@ data Cmd = Migrate                                             |
            DiaryHoliday CD.CustomDay TimeInDay IDT.IdleDayType |
            DiaryRm CD.CustomDay TimeInDay                      |
            DiaryWork CD.CustomDay TimeInDay [WorkOption]       |
-           ProjAdd Project                                     |
+           ProjAdd Project.Project                             |
            ProjList                                            |
-           ProjRename Project Project                          |
-           ProjRm Project
+           ProjRename Project.Project Project.Project          |
+           ProjRm Project.Project
     deriving (Eq, Show)
 
 attoReadM :: Atto.Parser a -> ReadM a
@@ -95,6 +93,9 @@ readLevel = attoReadM parser
 
 readHalfDayType :: ReadM IDT.IdleDayType
 readHalfDayType = attoReadM IDT.parser
+
+readProject :: ReadM Project.Project
+readProject = attoReadM Project.parser
 
 projRm :: Opt.Parser Cmd
 projRm = ProjRm <$> argument readProject (metavar "PROJECT...")
@@ -142,8 +143,8 @@ diaryWork = DiaryWork
     <*> tidOption
     <*> some workOption
 
-readNotes :: ReadM Notes
-readNotes = maybeReader $ mkNotes . Text.pack
+readNotes :: ReadM Notes.Notes
+readNotes = attoReadM Notes.parser
 
 tidOption :: Opt.Parser TimeInDay
 tidOption =   flag' Morning (long "morning" <> short 'm')

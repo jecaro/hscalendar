@@ -3,7 +3,7 @@ module Db.Project
     ( Project
     , mkProject
     , mkProjectLit
-    , readProject
+    , parser
     , unProject
     )
 where
@@ -13,9 +13,14 @@ import           RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Aeson (FromJSON, ToJSON)
+import           Data.Attoparsec.Text
+    ( Parser
+    , inClass
+    , many1
+    , satisfy
+    )
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
-import           Options.Applicative (ReadM, maybeReader)
 import           Refined
     ( Predicate
     , Refined
@@ -87,7 +92,9 @@ mkProjectLit = MkProject . unrefine
 mkProject :: Text -> Maybe Project
 mkProject name = mkProjectLit <$> rightToMaybe (refine name)
 
--- | Reader for a "Project" which may fail
-readProject :: ReadM Project
-readProject = maybeReader $ mkProject . Text.pack
-
+parser :: Parser Project
+parser = do
+    str <- many1 $ satisfy $ inClass projNameAllowedChars
+    case mkProject (Text.pack str) of
+        Nothing -> fail "Unable to parse project"
+        Just p  -> return p

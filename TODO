@@ -13,4 +13,4 @@
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
 - Rename diaryDisplay function
-- Bug editor project name
+- Print notes better

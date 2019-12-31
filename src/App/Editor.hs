@@ -25,11 +25,8 @@ import           Data.Attoparsec.Text
     , endOfLine
     , endOfInput
     , isHorizontalSpace
-    , letter
-    , many1
     , parseOnly
     , skipWhile
-    , takeText
     )
 import           Lens.Micro.Platform (makeFields)
 import           System.Directory (removeFile)
@@ -49,9 +46,9 @@ import           App.WorkOption
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
 import           Db.Model (HdNotFound(..))
-import           Db.Notes (Notes, mkNotes, unNotes)
+import qualified Db.Notes as Notes (Notes, parser, unNotes)
 import qualified Db.Office as Office (Office(..), parser)
-import           Db.Project (Project, mkProject, unProject)
+import qualified Db.Project as Project (Project, parser, unProject)
 import           Db.TimeInDay
 import           Db.Worked (Worked(..))
 
@@ -64,11 +61,11 @@ import           Db.Worked (Worked(..))
 -- these are the notes
 
 data FileWorked = FileWorked
-    { _fileWorkedProject :: !Project
+    { _fileWorkedProject :: !Project.Project
     , _fileWorkedOffice  :: !Office.Office
     , _fileWorkedArrived :: !Time.TimeOfDay
     , _fileWorkedLeft    :: !Time.TimeOfDay
-    , _fileWorkedNotes   :: !Notes
+    , _fileWorkedNotes   :: !Notes.Notes
     }
   deriving Show
 makeFields ''FileWorked
@@ -93,27 +90,13 @@ instance Show ProcessReturnedError where
 skipHorizontalSpaces :: Parser ()
 skipHorizontalSpaces = skipWhile isHorizontalSpace
 
-projectParser :: Parser Project
-projectParser = do
-    str <- many1 letter
-    case mkProject (Text.pack str) of
-        Nothing -> fail "Unable to parse project"
-        Just p  -> return p
-
-notesTextParser :: Parser Notes
-notesTextParser = do
-    str <- takeText
-    case mkNotes str of
-        Nothing -> fail "Unable to parse notes"
-        Just p  -> return p
-
 fileParser :: Parser FileWorked
 fileParser = FileWorked
-    <$> projectParser <* skipHorizontalSpaces <* endOfLine
+    <$> Project.parser <* skipHorizontalSpaces <* endOfLine
     <*> Office.parser <* skipHorizontalSpaces
-    <*> Time.parser   <* skipHorizontalSpaces
-    <*> Time.parser   <* skipHorizontalSpaces <* endOfLine
-    <*> notesTextParser
+    <*> Time.parser <* skipHorizontalSpaces
+    <*> Time.parser <* skipHorizontalSpaces <* endOfLine
+    <*> Notes.parser
 
 parse :: Text -> Either ParseError [WorkOption]
 parse fileContent = do
@@ -147,9 +130,9 @@ hdAsText (Left (HdNotFound day tid)) = header day tid <> " Nothing\n"
 hdAsText (Right (MkHalfDayIdle (MkIdle day tid hdt))) = header day tid <> " " <> packShow hdt <> "\n"
 hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNotes wProject))) =
     header wDay wTid <> "\n"
-                   <> unProject wProject <> "\n"
+                   <> Project.unProject wProject <> "\n"
                    <> packShow wOffice <> " " <> textDisplay wArrived <> " " <> textDisplay wLeft <> "\n"
-                   <> unNotes wNotes
+                   <> Notes.unNotes wNotes
 
 -- | Launch an editor with the current occupation for the specified half-day.
 -- On return, parse the file to extract `[WorkOption]` to be applied to the
