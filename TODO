@@ -11,3 +11,4 @@
 - Add documentation about logger
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
+- Add a small cli tool to handle users
