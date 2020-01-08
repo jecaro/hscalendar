@@ -78,6 +78,7 @@ import           Db.Model
     , userExists
     , userList
     , userRm
+    , userRename
     )
 import          Db.Login (Login, mkLoginLit)
 import          Db.Notes (Notes, mkNotesLit)
@@ -166,7 +167,10 @@ left1 Morning   = Time.TimeOfDay 12 0 0
 left1 Afternoon = Time.TimeOfDay 17 0 0
 
 user1 :: Login
-user1 = mkLoginLit $$(refineTH "login")
+user1 = mkLoginLit $$(refineTH "login1")
+
+user2 :: Login
+user2 = mkLoginLit $$(refineTH "login2")
 
 password1 :: Password
 password1 = mkPasswordLit $$(refineTH "We@kP@ssw0rd")
@@ -659,11 +663,14 @@ testUserAPI runDB =
                 runDB (userExists user1) `shouldReturn` False
             it "tests if we can remove a user" $
                 runDB (userRm user1) `shouldThrow` userNotFoundException
+            it "tests if we can rename a user not present in the db" $
+                runDB (userRename user1 user2)
+                    `shouldThrow` userNotFoundException
             it "tests if we can check the password of a user not present in the db" $
                 runDB (userCheck user1 password1)
                     `shouldThrow` userNotFoundException
             it "tests if we can change the password of a user not present in the db" $
-                runDB (userChangePassword user1 password1 password2)
+                runDB (userChangePassword user1 password1)
                     `shouldThrow` userNotFoundException
             it "tests the list of users" $
                 runDB userList `shouldReturn` []
@@ -677,17 +684,19 @@ testUserAPI runDB =
                     userRm user1
                     userExists user1
                 exists `shouldBe` False
+            it "tests if we can rename it" $ do
+                runDB $ userRename user1 user2
+                user1Exists <- runDB (userExists user1)
+                user1Exists `shouldBe` False
+                user2Exists <- runDB (userExists user2)
+                user2Exists `shouldBe` True
             it "check a good password" $
                 runDB (userCheck user1 password1) `shouldReturn` True
             it "check a wrong password" $
                 runDB (userCheck user1 password2) `shouldReturn` False
-            it "tests password change with the right password" $ do
-                runDB (userChangePassword user1 password1 password2)
-                    `shouldReturn` True
+            it "tests password change" $ do
+                runDB (userChangePassword user1 password2)
                 runDB (userCheck user1 password2) `shouldReturn` True
-            it "tests password change with a wrong password" $
-                runDB (userChangePassword user1 password2 password2)
-                    `shouldReturn` False
             it "tests the list of users" $
                 runDB userList `shouldReturn` [ user1 ]
         context "Test properties" $ do
