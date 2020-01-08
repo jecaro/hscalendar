@@ -35,7 +35,7 @@ import           Db.Model
 import qualified Db.Password as Password (Password, parser)
 
 -- | Basic commands to update the user list
-data Cmd
+data UserCmd
     = UserList
     | UserRm Login.Login
     | UserAdd Login.Login Password.Password
@@ -49,30 +49,30 @@ readLogin = attoReadM Login.parser
 readPassword :: ReadM Password.Password
 readPassword = attoReadM Password.parser
 
-userRmCmd :: Parser Cmd
+userRmCmd :: Parser UserCmd
 userRmCmd = UserRm <$> argument readLogin (metavar "LOGIN...")
 
-userAddCmd :: Parser Cmd
+userAddCmd :: Parser UserCmd
 userAddCmd = UserAdd
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readPassword (metavar "PASSWORD...")
 
-userRenameCmd :: Parser Cmd
+userRenameCmd :: Parser UserCmd
 userRenameCmd = UserRename
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readLogin (metavar "LOGIN...")
 
-userChangePasswordCmd :: Parser Cmd
+userChangePasswordCmd :: Parser UserCmd
 userChangePasswordCmd = UserChangePassword
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readPassword (metavar "PASSWORD...")
 
-userCheckCmd :: Parser Cmd
+userCheckCmd :: Parser UserCmd
 userCheckCmd = UserCheck
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readPassword (metavar "PASSWORD...")
 
-userCmd :: Parser Cmd
+userCmd :: Parser UserCmd
 userCmd = subparser
     (  command "list" (info (pure UserList) (progDesc "List users"))
     <> command "add" (info userAddCmd (progDesc "Add a new user"))
@@ -82,13 +82,13 @@ userCmd = subparser
     <> command "check" (info userCheckCmd (progDesc "Check the password for a user"))
     )
 
-optionsAndCmd :: Parser (Options, Cmd)
+optionsAndCmd :: Parser (Options, UserCmd)
 optionsAndCmd = curry id <$> options <*> userCmd
 
-optionsInfo :: ParserInfo (Options, Cmd)
+optionsInfo :: ParserInfo (Options, UserCmd)
 optionsInfo = info (optionsAndCmd <**> helper) idm
 
-run :: (HasLogFunc env, HasConnPool env) => Cmd -> RIO env ()
+run :: (HasLogFunc env, HasConnPool env) => UserCmd -> RIO env ()
 
 -- | Print the users present in the database
 run UserList = runDB userList >>= mapM_ (logInfo . display . Login.unLogin)
