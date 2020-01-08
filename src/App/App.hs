@@ -4,6 +4,7 @@ module App.App
     ( App(..)
     , HasConnPool(..)
     , HasConfig(..)
+    , logException
     , initAppAndRun
     , runDB
     )
@@ -58,6 +59,10 @@ instance HasConfig App where
 -- | Constraint for functions needing to start a process
 instance HasProcessContext App where
     processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })
+
+-- | Print an exception
+logException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
+logException = logError . displayShow
 
 -- | Init the application and run the rio actions
 initAppAndRun :: MonadUnliftIO m => Bool -> LogLevel -> RIO App b -> m b

@@ -3,6 +3,7 @@ module Db.Password
     ( Password
     , mkPassword
     , mkPasswordLit
+    , parser
     , unPassword
     )
 where
@@ -12,6 +13,11 @@ import           RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Aeson (FromJSON, ToJSON)
+import           Data.Attoparsec.Text
+    ( Parser
+    , many1
+    , satisfy
+    )
 import           Data.Char (isPrint)
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
@@ -77,3 +83,9 @@ mkPasswordLit = MkPassword . unrefine
 mkPassword :: Text -> Maybe Password
 mkPassword password = mkPasswordLit <$> rightToMaybe (refine password)
 
+parser :: Parser Password
+parser = do
+    str <- many1 $ satisfy isPrint
+    case mkPassword (Text.pack str) of
+        Nothing -> fail "Unable to parse password"
+        Just p  -> return p

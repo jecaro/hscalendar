@@ -32,6 +32,7 @@ module Db.Model
     , userCheck
     , userExists
     , userList
+    , userRename
     , userRm
     -- * Misc
     , cleanDB
@@ -139,15 +140,15 @@ newtype UserNotFound = UserNotFound Login
 instance Exception UserNotFound
 
 instance Show UserNotFound where
-    show (UserNotFound user) = "The user " <> Text.unpack (unLogin user) <> " is not in the database"
+    show (UserNotFound login) = "The user " <> Text.unpack (unLogin login) <> " is not in the database"
 
 -- | A user with the same login already exists in the db
-newtype UserExists = UserExists Text
+newtype UserExists = UserExists Login
 
 instance Exception UserExists
 
 instance Show UserExists where
-    show (UserExists login) = "The user " <> Text.unpack login <> " exists in the database"
+    show (UserExists login) = "The user " <> Text.unpack (unLogin login) <> " exists in the database"
 
 -- | There is no record for specified half-day
 data HdNotFound = HdNotFound Time.Day TimeInDay
@@ -196,8 +197,7 @@ userAdd
     :: (MonadIO m)
     => Login -> Password -> SqlPersistT m ()
 userAdd login password = do
-    exists <- isJust <$> getBy (UniqueLogin $ unLogin login)
-    when exists (throwIO $ UserExists $ unLogin login)
+    guardUserNotExistsInt login
     hash <- liftIO $ hashTxt password
     void $ insert (DBUser (unLogin login) hash)
 
@@ -213,17 +213,20 @@ userRm login = delete . entityKey =<< userGetInt login
 userList :: (MonadIO m) => SqlPersistT m [Login]
 userList = mapMaybe (mkLogin . dBUserLogin . entityVal) <$> selectList [] [Asc DBUserLogin]
 
+userRename :: (MonadIO m) => Login -> Login -> SqlPersistT m ()
+userRename login1 login2 = do
+    guardUserNotExistsInt login2
+    (Entity uId _) <- userGetInt login1
+    update uId [DBUserLogin =. unLogin login2]
+
 -- | Change the password for a user
 userChangePassword
     :: (MonadIO m)
-    => Login -> Password -> Password -> SqlPersistT m Bool
-userChangePassword login old new = do
-    check <- userCheck login old
-    when check $ do
-        (Entity uId _) <- userGetInt login
-        hash <- liftIO $ hashTxt new
-        update uId [DBUserHash =. hash]
-    return check
+    => Login -> Password -> SqlPersistT m ()
+userChangePassword login password = do
+    (Entity uId _) <- userGetInt login
+    hash <- liftIO $ hashTxt password
+    update uId [DBUserHash =. hash]
 
 -- Private user functions
 
@@ -233,6 +236,12 @@ userGetInt login = getBy (UniqueLogin $ unLogin login) >>=
     \case
         Nothing -> throwIO $ UserNotFound login
         Just e -> return e
+
+-- | Throw an exception if a user already exists
+guardUserNotExistsInt :: (MonadIO m) => Login -> SqlPersistT m ()
+guardUserNotExistsInt login = do
+    exists <- userExists login
+    when exists (throwIO $ UserExists login)
 
 -- | Hash function operating on 'Text'
 hashTxt :: MonadRandom m => Password -> m Text

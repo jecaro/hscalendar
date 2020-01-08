@@ -4,6 +4,7 @@ module Db.Login
     , mkLogin
     , mkLoginLit
     , unLogin
+    , parser
     )
 where
 
@@ -12,6 +13,12 @@ import           RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Aeson (FromJSON, ToJSON)
+import           Data.Attoparsec.Text
+    ( Parser
+    , inClass
+    , many1
+    , satisfy
+    )
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
 import           Refined
@@ -80,3 +87,9 @@ mkLoginLit = MkLogin . unrefine
 mkLogin :: Text -> Maybe Login
 mkLogin login = mkLoginLit <$> rightToMaybe (refine login)
 
+parser :: Parser Login
+parser = do
+    str <- many1 $ satisfy $ inClass loginAllowedChars
+    case mkLogin (Text.pack str) of
+        Nothing -> fail "Unable to parse login"
+        Just p  -> return p

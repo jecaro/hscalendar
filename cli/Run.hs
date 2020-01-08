@@ -16,6 +16,7 @@ import           App.App
     ( App(..)
     , HasConfig(..)
     , HasConnPool(..)
+    , logException
     , runDB
     )
 import           App.CommandLine (Cmd(..))
@@ -43,10 +44,6 @@ import           Db.Model
 import           Db.Project (unProject)
 
 
--- | Print an exception
-printException :: (MonadIO m, MonadReader env m, HasLogFunc env, Show a) => a -> m ()
-printException =  logError . displayShow
-
 -- | Execute the command
 run :: (HasConnPool env, HasConfig env, HasLogFunc env, HasProcessContext env)
     => Cmd
@@ -60,18 +57,18 @@ run ProjList = runDB projList >>= mapM_ (logInfo . display . unProject)
 
 -- Add a project
 run (ProjAdd project) = catch (void $ runDB $ projAdd project)
-                           (\e@(ProjExists _) -> printException e)
+                           (\e@(ProjExists _) -> logException e)
 
 -- Remove a project
 run (ProjRm project) = catches (runDB $ projRm project)
-    [ Handler (\e@(ProjHasHd _)    -> printException e)
-    , Handler (\e@(ProjNotFound _) -> printException e)
+    [ Handler (\e@(ProjHasHd _)    -> logException e)
+    , Handler (\e@(ProjNotFound _) -> logException e)
     ]
 
 -- Rename a project
 run (ProjRename p1 p2) = catches (runDB $ projRename p1 p2)
-    [ Handler (\e@(ProjExists _)   -> printException e)
-    , Handler (\e@(ProjNotFound _) -> printException e)
+    [ Handler (\e@(ProjExists _)   -> logException e)
+    , Handler (\e@(ProjNotFound _) -> logException e)
     ]
 
 -- Display an entry
@@ -99,9 +96,9 @@ run (DiaryWork cd tid wopts) = do
     day <- toDay cd
     -- Create the record in DB
     catches (runWorkOptions day tid wopts)
-        [ Handler (\e@TimesAreWrong      -> printException e)
-        , Handler (\e@ProjCmdIsMandatory -> printException e)
-        , Handler (\e@(ProjNotFound _)   -> printException e)
+        [ Handler (\e@TimesAreWrong      -> logException e)
+        , Handler (\e@ProjCmdIsMandatory -> logException e)
+        , Handler (\e@(ProjNotFound _)   -> logException e)
         ]
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
@@ -116,6 +113,6 @@ run (DiaryHoliday cd tid hdt) = do
 -- Delete an entry
 run (DiaryRm cs tid) = do
     day <- toDay cs
-    catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> printException e)
+    catch (runDB $ hdRm day tid) (\e@(HdNotFound _ _) -> logException e)
 
 
