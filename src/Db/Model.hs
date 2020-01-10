@@ -11,6 +11,7 @@ module Db.Model
     , UserNotFound(..)
     -- * Half-day functions
     , hdGet
+    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , hdSetWork
@@ -53,6 +54,7 @@ import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
 import           Crypto.KDF.BCrypt (hashPassword, validatePassword)
 import           Crypto.Random.Types (MonadRandom)
+import           Data.Time.Calendar.WeekDate (fromWeekDate)
 import           Database.Esqueleto
     ( LeftOuterJoin(..)
     , from
@@ -65,6 +67,8 @@ import           Database.Esqueleto
     , (&&.)
     , (^.)
     , (==.)
+    , (>=.)
+    , (<=.)
     )
 import           Database.Persist
     ( Entity(..)
@@ -318,16 +322,24 @@ hdGet day tid =
         return (hd, mbHdw, mbProj)) >>=
     \case
         []    -> throwIO $ HdNotFound day tid
-        (x:_) -> case x of
-            (Entity _ hd, Nothing, Nothing) ->
-                case dbToIdle hd of
-                    Nothing -> throwIO DbInconsistency
-                    Just idle -> return $ MkHalfDayIdle idle
-            (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) ->
-                case dbToWorked hd hdw proj of
-                    Nothing -> throwIO DbInconsistency
-                    Just worked -> return $ MkHalfDayWorked worked
-            _ -> throwIO $ HdNotFound day tid
+        (x:_) -> dbToHalfDayInt x
+
+-- | Get the half-days on a complete week
+hdGetWeek
+    :: (MonadIO m, MonadUnliftIO m)
+    => Integer
+    -> Int
+    -> SqlPersistT m [HalfDay]
+hdGetWeek year week = do
+    let firstDay = fromWeekDate year week 1
+        lastDay = fromWeekDate year week 7
+    (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+        where_ (   hd ^. DBHalfDayDay >=. val firstDay
+               &&. hd ^. DBHalfDayDay <=. val lastDay
+               )
+        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
+        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
+        return (hd, mbHdw, mbProj)) >>= mapM dbToHalfDayInt
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
@@ -471,6 +483,22 @@ hdHdwProjGetInt day tid = do
                 hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId)
         return (hd, hdw, proj)
     maybe (throwIO $ HdNotFound day tid) return (L.headMaybe hdHdwProjs)
+
+-- | Convert output of a join query to a `HalfDay`. Throw an exception in case
+-- of inconsistencies in the DB along the way
+dbToHalfDayInt
+    :: MonadIO m =>
+    (Entity DBHalfDay, Maybe (Entity DBHalfDayWorked), Maybe (Entity DBProject))
+    -> m HalfDay
+dbToHalfDayInt (Entity _ hd, Nothing, Nothing) =
+    case dbToIdle hd of
+        Nothing -> throwIO DbInconsistency
+        Just idle -> return $ MkHalfDayIdle idle
+dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
+    case dbToWorked hd hdw proj of
+        Nothing -> throwIO DbInconsistency
+        Just worked -> return $ MkHalfDayWorked worked
+dbToHalfDayInt _ = throwIO DbInconsistency
 
 -- hd private functions
 
