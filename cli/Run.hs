@@ -34,7 +34,6 @@ import           Db.Model
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , hdGet
-    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , migrateAll
@@ -42,6 +41,7 @@ import           Db.Model
     , projList
     , projRename
     , projRm
+    , weekGet
     )
 import           Db.Project (unProject)
 
@@ -88,7 +88,7 @@ run (DiaryDisplay cd tid) = do
 run (DiaryWeek cw) = do
     -- Get actual week
     week <- toWeek cw
-    hds <- runDB $ hdGetWeek week
+    hds <- runDB $ weekGet week
     mapM_ (logInfo . display) hds
 
 -- Edit an entry

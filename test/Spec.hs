@@ -57,7 +57,6 @@ import           Db.Model
     , UserNotFound(..)
     , cleanDB
     , hdGet
-    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , hdSetWork
@@ -80,6 +79,7 @@ import           Db.Model
     , userList
     , userRm
     , userRename
+    , weekGet
     )
 import          Db.Login (Login, mkLoginLit)
 import          Db.Notes (Notes, mkNotesLit)
@@ -575,7 +575,7 @@ testHdAPI runDB =
             it "tests getting an entry" $
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests getting the full week" $ do
-                res <- runDB (hdGetWeek week1)
+                res <- runDB (weekGet week1)
                 res `shouldSatisfy` null
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
@@ -587,7 +587,7 @@ testHdAPI runDB =
                 res <- runDB (hdGet day1 tid1)
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
             it "tests getting the full week" $ do
-                res <- runDB (hdGetWeek week1)
+                res <- runDB (weekGet week1)
                 res `shouldBe` [MkHalfDayIdle (MkIdle day1 tid1 hdt1')]
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
@@ -601,7 +601,7 @@ testHdAPI runDB =
                 worked <- runDB (hdGet day1 tid1)
                 worked `shouldBe` defaultWorked day1 tid1 project1
             it "tests getting the full week" $ do
-                res <- runDB (hdGetWeek week1)
+                res <- runDB (weekGet week1)
                 res `shouldBe` [defaultWorked day1 tid1 project1]
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)

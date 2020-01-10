@@ -11,7 +11,6 @@ module Db.Model
     , UserNotFound(..)
     -- * Half-day functions
     , hdGet
-    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , hdSetWork
@@ -21,6 +20,8 @@ module Db.Model
     , hdSetNotes
     , hdSetOffice
     , hdSetProject
+    -- * Other query functions
+    , weekGet
     -- * Project functions
     , projAdd
     , projExists
@@ -325,9 +326,9 @@ hdGet day tid =
         (x:_) -> dbToHalfDayInt x
 
 -- | Get the half-days on a complete week
-hdGetWeek
+weekGet
     :: (MonadIO m, MonadUnliftIO m) => Week -> SqlPersistT m [HalfDay]
-hdGetWeek week = do
+weekGet week = do
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (monday week)
                &&. hd ^. DBHalfDayDay <=. val (sunday week)

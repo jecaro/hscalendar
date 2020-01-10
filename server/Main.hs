@@ -47,7 +47,6 @@ import           Db.Model
     , TimesAreWrong(..)
     , UserNotFound(..)
     , hdGet
-    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , migrateAll
@@ -56,6 +55,7 @@ import           Db.Model
     , projRename
     , projRm
     , userCheck
+    , weekGet
     )
 import           Db.Password (mkPassword)
 import           Db.Project (Project)
@@ -68,7 +68,7 @@ rioServer _ =  hMigrateAll
           :<|> hProjRm
           :<|> hProjRename
           :<|> hHdGet
-          :<|> hHdGetWeek
+          :<|> hWeekGet
           :<|> hHdSetIdleDay
           :<|> hHdSetWork
           :<|> hHdRm
@@ -134,12 +134,12 @@ hHdGet cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-hHdGetWeek :: HasConnPool env => CustomWeek -> RIO env [HalfDay]
-hHdGetWeek cw = do
+hWeekGet :: HasConnPool env => CustomWeek -> RIO env [HalfDay]
+hWeekGet cw = do
     -- Get actual week
     week <- toWeek cw
     -- Get the list of half-day
-    runDB $ hdGetWeek week
+    runDB $ weekGet week
 
 hHdSetIdleDay
     :: HasConnPool env
