@@ -30,6 +30,7 @@ import           App.API
     , RenameArgs(..)
     )
 import           App.CustomDay (CustomDay(..), toDay)
+import           App.CustomWeek (CustomWeek(..), toWeek)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
@@ -46,6 +47,7 @@ import           Db.Model
     , TimesAreWrong(..)
     , UserNotFound(..)
     , hdGet
+    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , migrateAll
@@ -66,6 +68,7 @@ rioServer _ =  hMigrateAll
           :<|> hProjRm
           :<|> hProjRename
           :<|> hHdGet
+          :<|> hHdGetWeek
           :<|> hHdSetIdleDay
           :<|> hHdSetWork
           :<|> hHdRm
@@ -130,6 +133,13 @@ hHdGet cd tid = do
         \case
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
+
+hHdGetWeek :: HasConnPool env => CustomWeek -> RIO env [HalfDay]
+hHdGetWeek cw = do
+    -- Get actual week
+    week <- toWeek cw
+    -- Get the list of half-day
+    runDB $ hdGetWeek week
 
 hHdSetIdleDay
     :: HasConnPool env

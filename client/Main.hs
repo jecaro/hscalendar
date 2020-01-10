@@ -44,6 +44,7 @@ import qualified Servant.Client.Extended as CE (parse)
 
 import           App.API (protectedHSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay)
+import           App.CustomWeek (CustomWeek)
 import           App.CommandLine
     ( Cmd(..)
     , Options(..)
@@ -79,6 +80,7 @@ data ProtectedClient env = ProtectedClient
     , projRm :: Project -> RIO env NoContent
     , projRename :: RenameArgs -> RIO env NoContent
     , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
+    , hdGetWeek :: CustomWeek -> RIO env [ HalfDay ]
     , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
     , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
     , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent
@@ -93,6 +95,7 @@ mkProtectedApi env ad =
         :<|> projRm
         :<|> projRename
         :<|> hdGet
+        :<|> hdGetWeek
         :<|> hdSetIdleDay
         :<|> hdSetWork
         :<|> hdRm
@@ -172,6 +175,9 @@ run ProtectedClient{..} (ProjRename p1 p2) =
 
 run ProtectedClient{..} (DiaryDisplay cd tid) =
     hdGet cd tid >>= logInfo . display
+
+run ProtectedClient{..} (DiaryWeek cw) =
+    hdGetWeek cw >>= mapM_ (logInfo . display)
 
 run ProtectedClient{..} (DiaryWork cd tid wopts) =
     void $ hdSetWork cd tid wopts

@@ -12,3 +12,5 @@
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
+- Rename hdGetWeek
+- Improve display of week

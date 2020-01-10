@@ -6,6 +6,7 @@ module App.CustomWeek
 where
 
 import           RIO
+import qualified RIO.Text as Text (intercalate)
 import qualified RIO.Time as Time (toGregorian)
 
 import           Data.Attoparsec.Text
@@ -14,6 +15,9 @@ import           Data.Attoparsec.Text
     , decimal
     , char
     )
+import           Formatting.Extended (formatTwoDigitsPadZero)
+import           Servant.API (FromHttpApiData(..), ToHttpApiData(..))
+import           Servant.API.Extended (runAtto)
 
 import           App.CustomDay (today)
 import           Db.Week (Week(..), fromDay)
@@ -24,6 +28,16 @@ data CustomWeek = MkCustomWeek Week   | -- ^ Fully defined week
                   CurrentWeek           -- ^ The current week
 
     deriving (Eq, Show)
+
+instance FromHttpApiData CustomWeek where
+    parseQueryParam = runAtto parser
+
+instance ToHttpApiData CustomWeek where
+    toQueryParam (MkCustomWeek (MkWeek year week)) =
+        Text.intercalate "-" (fmap formatTwoDigitsPadZero [yearInt, week])
+        where yearInt = fromIntegral year
+    toQueryParam (MkCustomWeekNum week) = formatTwoDigitsPadZero week
+    toQueryParam CurrentWeek = "current"
 
 parser :: Parser CustomWeek
 parser =   asciiCI "current" $> CurrentWeek
