@@ -1,0 +1,10 @@
+# Git stuff
+.git
+.gitignore
+
+# Stack stuff
+.stack-work
+
+# Docker stuff
+Dockerfile
+.dockerfile
