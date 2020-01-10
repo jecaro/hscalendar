@@ -54,7 +54,6 @@ import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (MonadIO)
 import           Crypto.KDF.BCrypt (hashPassword, validatePassword)
 import           Crypto.Random.Types (MonadRandom)
-import           Data.Time.Calendar.WeekDate (fromWeekDate)
 import           Database.Esqueleto
     ( LeftOuterJoin(..)
     , from
@@ -98,6 +97,7 @@ import           Db.Office (Office(..))
 import           Db.Password (Password, unPassword)
 import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay(..), other)
+import           Db.Week (Week(..), monday, sunday)
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
 import           Db.Internal.DBModel
@@ -326,16 +326,11 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 hdGetWeek
-    :: (MonadIO m, MonadUnliftIO m)
-    => Integer
-    -> Int
-    -> SqlPersistT m [HalfDay]
-hdGetWeek year week = do
-    let firstDay = fromWeekDate year week 1
-        lastDay = fromWeekDate year week 7
+    :: (MonadIO m, MonadUnliftIO m) => Week -> SqlPersistT m [HalfDay]
+hdGetWeek week = do
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (   hd ^. DBHalfDayDay >=. val firstDay
-               &&. hd ^. DBHalfDayDay <=. val lastDay
+        where_ (   hd ^. DBHalfDayDay >=. val (monday week)
+               &&. hd ^. DBHalfDayDay <=. val (sunday week)
                )
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)

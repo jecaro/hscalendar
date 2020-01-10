@@ -9,7 +9,6 @@ import qualified RIO.Time as Time (TimeOfDay(..), Day, fromGregorian)
 import           Control.Monad (ap)
 import           Control.Monad.Logger (runNoLoggingT)
 
-import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Database.Persist.Sql
     ( runMigration
     , runSqlPersistM
@@ -89,6 +88,7 @@ import          Db.Password (Password, mkPasswordLit)
 import          Db.Project (Project, mkProjectLit)
 import          Db.TimeInDay (TimeInDay(..), other)
 import          Db.Worked (Worked(..))
+import          Db.Week (Week, fromDay)
 
 -- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)
@@ -145,9 +145,8 @@ project2 = mkProjectLit $$(refineTH "TestProject2")
 day1 :: Time.Day
 day1 = Time.fromGregorian 1979 03 22
 
-week1 :: (Integer, Int)
-week1 = let (y, w, _) = toWeekDate day1
-        in (y, w)
+week1 :: Week
+week1 = fromDay day1
 
 tid1 :: TimeInDay
 tid1 = Morning
@@ -576,7 +575,7 @@ testHdAPI runDB =
             it "tests getting an entry" $
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests getting the full week" $ do
-                res <- runDB (uncurry hdGetWeek week1)
+                res <- runDB (hdGetWeek week1)
                 res `shouldSatisfy` null
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
@@ -588,7 +587,7 @@ testHdAPI runDB =
                 res <- runDB (hdGet day1 tid1)
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
             it "tests getting the full week" $ do
-                res <- runDB (uncurry hdGetWeek week1)
+                res <- runDB (hdGetWeek week1)
                 res `shouldBe` [MkHalfDayIdle (MkIdle day1 tid1 hdt1')]
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
@@ -602,7 +601,7 @@ testHdAPI runDB =
                 worked <- runDB (hdGet day1 tid1)
                 worked `shouldBe` defaultWorked day1 tid1 project1
             it "tests getting the full week" $ do
-                res <- runDB (uncurry hdGetWeek week1)
+                res <- runDB (hdGetWeek week1)
                 res `shouldBe` [defaultWorked day1 tid1 project1]
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
