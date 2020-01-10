@@ -21,6 +21,7 @@ import           App.App
     )
 import           App.CommandLine (Cmd(..))
 import           App.CustomDay (toDay)
+import           App.CustomWeek (toWeek)
 import           App.Editor (editorToOptions)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
@@ -33,6 +34,7 @@ import           Db.Model
     , ProjNotFound(..)
     , TimesAreWrong(..)
     , hdGet
+    , hdGetWeek
     , hdRm
     , hdSetHoliday
     , migrateAll
@@ -81,6 +83,13 @@ run (DiaryDisplay cd tid) = do
     case eiHd of
        Left e@(HdNotFound _ _) -> logInfo $ displayShow e
        Right hd -> logInfo $ display hd
+
+-- Display a complete week
+run (DiaryWeek cw) = do
+    -- Get actual week
+    week <- toWeek cw
+    hds <- runDB $ hdGetWeek week
+    mapM_ (logInfo . display) hds
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do

@@ -12,6 +12,7 @@ import qualified RIO.Time as Time (Day)
 import           Data.Time.Calendar.WeekDate (fromWeekDate, toWeekDate)
 
 data Week = MkWeek { _year :: !Integer, _week :: !Int}
+    deriving (Eq, Show)
 
 monday :: Week -> Time.Day
 monday MkWeek { _year = year, _week = week } = fromWeekDate year week 1

@@ -5,6 +5,7 @@ module App.CustomDay
     ( CustomDay(..)
     , parser
     , toDay
+    , today
     ) where
 
 import           RIO
