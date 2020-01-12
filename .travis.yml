@@ -9,7 +9,13 @@ services:
 
 script:
 # Create the docker image
-- docker build -t hscalendar-server .
+- docker build -t jecaro/hscalendar-server .
 # Test the created image
-- docker run -t hscalendar-server ./hscalendar-test
+- docker run -t jecaro/hscalendar-server ./hscalendar-test
 
+# Deploy on docker hub
+deploy:
+    provider: script
+    script:
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
+        docker push jecaro/hscalendar-server
