@@ -1,6 +1,5 @@
 - Import CSV
 - Stats for a year
-- Show week
 - Show month
 - Make diary date/TimeInDay optional default today
 - Put defaults values in config file for a week
@@ -12,5 +11,4 @@
 - Add documentation about postgres and environment variables
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
-- Improve display of week
-- Log actions from the server
+- Improve display of week. Add message saying if the week is complete or not.

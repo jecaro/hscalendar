@@ -1,1 +1,1 @@
-web: hscalendar-server
+web: hscalendar-server -p $PORT

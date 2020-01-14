@@ -4,7 +4,24 @@ import           Control.Monad.Except (ExceptT(..))
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Database.Persist.Sql (runMigration)
 import           Network.Wai.Handler.Warp (run)
-import           Network.Wai.Middleware.RequestLogger (logStdout)
+import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
+import           Options.Applicative
+    ( Parser
+    , ParserInfo
+    , auto
+    , execParser
+    , help
+    , helper
+    , idm
+    , info
+    , long
+    , metavar
+    , option
+    , short
+    , switch
+    , value
+    , (<**>)
+    )
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
 import           Servant.API (NoContent(..), (:<|>)(..))
 import           Servant.Server
@@ -22,7 +39,6 @@ import           Servant.Server
     , serveWithContext
     )
 import qualified Servant.Server as Server (Handler(..))
-import           System.Environment (lookupEnv)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.API
@@ -168,14 +184,29 @@ hHdSetWork cd tid wopts = do
         , Handler (\(ProjNotFound _)     -> throwM err404)
         ]
 
-getPortFromEnv :: RIO env Int
-getPortFromEnv = do
-    maybePortStr <- liftIO $ lookupEnv "PORT"
-    let maybePortInt = readMaybe =<< maybePortStr
-    return $ fromMaybe 8081 maybePortInt
+-- | optparse options
+data Options = Options { optionVerbose :: !Bool, -- ^ Verbose mode for wai logging
+                         optionPort    :: !Int } -- ^ Server port
+
+options :: Parser Options
+options = Options
+    <$> switch (long "verbose" <> short 'v' <> help "Verbose output")
+    <*> option auto
+        (  long "port"
+        <> short 'p'
+        <> metavar "PORT"
+        <> help "server port"
+        <> value 8081
+        )
+
+optionsInfo :: ParserInfo Options
+optionsInfo = info (options <**> helper) idm
 
 main :: IO ()
-main = initAppAndRun False LevelInfo $ do
-    port <- getPortFromEnv
-    app <- ask
-    liftIO . run port $ logStdout(server app)
+main = do
+    (Options verbose port) <- execParser optionsInfo
+    initAppAndRun False LevelInfo $ do
+        app <- ask
+        let logFun = if verbose then logStdoutDev else logStdout
+        logInfo $ "Start server on port: " <> display port
+        liftIO . run port $ logFun (server app)
