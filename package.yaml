@@ -35,6 +35,7 @@ dependencies:
 - servant-server
 - temporary
 - time
+- wai-extra
 - warp
 - yaml
 name: hscalendar

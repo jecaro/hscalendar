@@ -4,6 +4,7 @@ import           Control.Monad.Except (ExceptT(..))
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
 import           Database.Persist.Sql (runMigration)
 import           Network.Wai.Handler.Warp (run)
+import           Network.Wai.Middleware.RequestLogger (logStdout)
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
 import           Servant.API (NoContent(..), (:<|>)(..))
 import           Servant.Server
@@ -177,4 +178,4 @@ main :: IO ()
 main = initAppAndRun False LevelInfo $ do
     port <- getPortFromEnv
     app <- ask
-    liftIO . run port $ server app
+    liftIO . run port $ logStdout(server app)
