@@ -9,6 +9,7 @@ dependencies:
 - case-insensitive
 - containers
 - cryptonite
+- data-default
 - directory
 - either
 - esqueleto

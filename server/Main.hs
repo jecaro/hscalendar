@@ -2,9 +2,16 @@ import           RIO
 
 import           Control.Monad.Except (ExceptT(..))
 import           Data.ByteString.Lazy.Char8 as DBLC (pack)
+import           Data.Default (def)
 import           Database.Persist.Sql (runMigration)
 import           Network.Wai.Handler.Warp (run)
-import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
+import           Network.Wai.Middleware.RequestLogger
+    ( IPAddrSource (..)
+    , OutputFormat (..)
+    , logStdoutDev
+    , mkRequestLogger
+    , outputFormat
+    )
 import           Options.Applicative
     ( Parser
     , ParserInfo
@@ -207,6 +214,9 @@ main = do
     (Options verbose port) <- execParser optionsInfo
     initAppAndRun False LevelInfo $ do
         app <- ask
-        let logFun = if verbose then logStdoutDev else logStdout
+        logger <-
+            if verbose
+                then return logStdoutDev
+                else liftIO $ mkRequestLogger def { outputFormat = Apache FromHeader }
         logInfo $ "Start server on port: " <> display port
-        liftIO . run port $ logFun (server app)
+        liftIO . run port $ logger (server app)
