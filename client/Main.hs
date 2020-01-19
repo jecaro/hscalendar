@@ -25,6 +25,7 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 import           Network.HTTP.Client (newManager, defaultManagerSettings)
+import           Network.HTTP.Client.TLS (tlsManagerSettings)
 import           Network.HTTP.Types.Status.Extended ()
 import           Network.HTTP.Types.Header.Extended ()
 import           Servant.API (NoContent, (:<|>)(..))
@@ -34,6 +35,7 @@ import           Servant.Client
     ( BaseUrl(..)
     , ClientEnv
     , ClientM
+    , Scheme(..)
     , ServantError(..)
     , client
     , hoistClient
@@ -147,7 +149,10 @@ main = do
     -- Parse command line
     (Options verbose level, url, auth, cmd') <- execParser optionsInfo
     -- Init the client
-    manager <- newManager defaultManagerSettings
+    let settings = case baseUrlScheme url of
+                       Http -> defaultManagerSettings
+                       Https -> tlsManagerSettings
+    manager <- newManager settings
     let clientEnv = mkClientEnv manager url
         api = mkProtectedApi clientEnv auth
     -- Setup log options and run the command
