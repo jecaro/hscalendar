@@ -7,15 +7,29 @@ language: generic
 services:
 - docker
 
-script:
-# Create the docker image
-- docker build -t jecaro/hscalendar-server .
-# Test the created image
-- docker run -t jecaro/hscalendar-server ./hscalendar-test
+# Add a simple cache for docker images as explained here
+# https://stackoverflow.com/questions/32866599/can-travis-ci-cache-docker-images/41975912
+cache:
+  directories:
+  - docker_images
 
-# Deploy on docker hub
-deploy:
-    provider: script
-    script:
+before_install:
+- docker load -i docker_images/images.tar || true
+
+before_cache:
+- docker save -o docker_images/images.tar jecaro/hscalendar-server
+
+jobs:
+  include:
+
+    - stage: build
+      script: docker build -t jecaro/hscalendar-server .
+
+    - stage: test
+      script: docker run -t jecaro/hscalendar-server ./hscalendar-test
+
+    - stage: deploy
+      script:
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
         docker push jecaro/hscalendar-server
+
