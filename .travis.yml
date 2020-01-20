@@ -11,13 +11,10 @@ services:
 # https://stackoverflow.com/questions/32866599/can-travis-ci-cache-docker-images/41975912
 cache:
   directories:
-  - docker_images
-
-before_install:
-- docker load -i docker_images/images.tar || true
+  - docker_image
 
 before_cache:
-- docker save -o docker_images/images.tar jecaro/hscalendar-server
+- docker save -o docker_image/images.tar jecaro/hscalendar-server
 
 jobs:
   include:
@@ -26,9 +23,13 @@ jobs:
       script: docker build -t jecaro/hscalendar-server .
 
     - stage: test
+      before_install:
+      - docker load -i docker_image/images.tar
       script: docker run -t jecaro/hscalendar-server ./hscalendar-test
 
     - stage: deploy
+      before_install:
+      - docker load -i docker_image/images.tar
       script:
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
         docker push jecaro/hscalendar-server
