@@ -14,11 +14,7 @@ import qualified RIO.Text as Text (Text, all, length, pack)
 
 import           Data.Char (isPrint)
 import           Data.Aeson (FromJSON(..), ToJSON, withObject, (.:))
-import           Data.Attoparsec.Text
-    ( Parser
-    , many1
-    , satisfy
-    )
+import           Data.Attoparsec.Text (Parser, satisfy)
 import           Data.Either.Combinators (rightToMaybe)
 import           Data.Typeable (typeOf)
 import           Refined
@@ -97,7 +93,7 @@ mkNotes notes = mkNotesLit <$> rightToMaybe (refine notes)
 
 parser :: Parser Notes
 parser = do
-    str <- many1 $ satisfy printableOrEOLOrTab
+    str <- many $ satisfy printableOrEOLOrTab
     case mkNotes (Text.pack str) of
         Nothing -> fail "Unable to parse notes"
         Just p  -> return p

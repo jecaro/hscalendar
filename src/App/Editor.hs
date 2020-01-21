@@ -2,6 +2,7 @@
 module App.Editor
     ( ParseError(..)
     , editorToOptions
+    , fileParser
     , parse
     , hdAsText
     )
@@ -14,6 +15,7 @@ import qualified RIO.Text as Text
     , lines
     , null
     , pack
+    , stripEnd
     , unlines
     , unpack
     )
@@ -95,13 +97,13 @@ fileParser = FileWorked
     <$> Project.parser <* skipHorizontalSpaces <* endOfLine
     <*> Office.parser <* skipHorizontalSpaces
     <*> Time.parser <* skipHorizontalSpaces
-    <*> Time.parser <* skipHorizontalSpaces <* endOfLine
+    <*> Time.parser <* optional (skipHorizontalSpaces <* endOfLine)
     <*> Notes.parser
 
 parse :: Text -> Either ParseError [WorkOption]
 parse fileContent = do
     -- Remove comments
-    let prunedContent = Text.unlines $ filter notComment $ Text.lines fileContent
+    let prunedContent = Text.stripEnd $ Text.unlines $ filter notComment $ Text.lines fileContent
     -- Remaining file is empty
     if Text.null prunedContent
         then Left EmptyFileError

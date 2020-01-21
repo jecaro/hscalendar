@@ -5,13 +5,14 @@ where
 
 import           RIO
 
+import qualified RIO.Text as Text (null)
 import qualified RIO.Time as Time (Day, TimeOfDay)
 import           RIO.Time.Extended ()
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
 
-import           Db.Notes (Notes)
+import           Db.Notes (Notes, unNotes)
 import           Db.Project (Project)
 import           Db.Office (Office)
 import           Db.TimeInDay (TimeInDay)
@@ -42,5 +43,8 @@ instance Display Worked where
             <> display (worked ^. left)
             <> "\n"
         <> "Project: " <> display (worked ^. project) <> "\n"
-        <> "Notes:\n"
+        <> "Notes:" <> eolAfterNoteLabel
         <> display (worked ^. notes)
+      where eolAfterNoteLabel
+              | Text.null (unNotes $ worked ^. notes) = ""
+              | otherwise = "\n"
