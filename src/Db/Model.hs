@@ -57,9 +57,12 @@ import           Crypto.KDF.BCrypt (hashPassword, validatePassword)
 import           Crypto.Random.Types (MonadRandom)
 import           Database.Esqueleto
     ( LeftOuterJoin(..)
+    , asc
+    , desc
     , from
     , just
     , on
+    , orderBy
     , select
     , val
     , where_
@@ -335,6 +338,7 @@ weekGet week = do
                )
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
+        orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
         return (hd, mbHdw, mbProj)) >>= mapM dbToHalfDayInt
 
 -- | Set the office for a day-time in day
