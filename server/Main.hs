@@ -36,8 +36,8 @@ import           Servant.Server
     , BasicAuthCheck (BasicAuthCheck)
     , BasicAuthResult(..)
     , Context ((:.), EmptyContext)
-    , ServantErr(..)
     , Server
+    , ServerError(..)
     , ServerT
     , err404
     , err409

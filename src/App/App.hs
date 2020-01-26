@@ -19,7 +19,6 @@ import           Database.Persist.Sqlite (withSqlitePool)
 import           Database.Persist.Postgresql (withPostgresqlPool)
 import           Database.Persist.Sql (ConnectionPool, SqlPersistM, runSqlPersistMPool)
 import           Data.Yaml (prettyPrintParseException)
-import           System.Exit (exitFailure)
 
 import           App.Config
     ( backend

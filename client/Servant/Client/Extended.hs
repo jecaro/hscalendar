@@ -13,7 +13,7 @@ import           Control.Applicative ((<|>))
 import           Data.Attoparsec.Text (Parser, string)
 import           Network.HTTP.Types.Header.Extended ()
 import           Network.HTTP.Types.Status.Extended ()
-import           Servant.Client (GenResponse(..), Response, Scheme(..))
+import           Servant.Client (Response, ResponseF(..), Scheme(..))
 
 instance Display Response where
     display Response

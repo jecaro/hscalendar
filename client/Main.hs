@@ -34,9 +34,9 @@ import qualified Servant.API.BasicAuth.Extended as BAE (parse)
 import           Servant.Client
     ( BaseUrl(..)
     , ClientEnv
+    , ClientError(..)
     , ClientM
     , Scheme(..)
-    , ServantError(..)
     , client
     , hoistClient
     , mkClientEnv
@@ -136,8 +136,8 @@ optionsAndURI = rewrap <$> options <*> baseUrlAndBasicAuthData <*> cmd
 optionsInfo :: ParserInfo (Options, BaseUrl, BasicAuthData, Cmd)
 optionsInfo = info (optionsAndURI <**> helper) idm
 
-handleError :: (HasLogFunc env) => ServantError -> RIO env ()
-handleError (FailureResponse response) = logError $
+handleError :: (HasLogFunc env) => ClientError -> RIO env ()
+handleError (FailureResponse _ response) = logError $
     "The server returns an error\n" <> display response
 handleError (ConnectionError text) = logError $
     "Unable to connect to the server\n" <> display text
