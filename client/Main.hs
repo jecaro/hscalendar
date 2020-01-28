@@ -44,7 +44,7 @@ import           Servant.Client
     )
 import qualified Servant.Client.Extended as CE (parse)
 
-import           App.API (protectedHSCalendarApi, RenameArgs(..))
+import           App.Api (protectedHSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay)
 import           App.CustomWeek (CustomWeek)
 import           App.CommandLine

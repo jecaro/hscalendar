@@ -48,7 +48,7 @@ import           Servant.Server
 import qualified Servant.Server as Server (Handler(..))
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
-import           App.API
+import           App.Api
     ( ProtectedHSCalendarApi
     , protectedHSCalendarApi
     , RenameArgs(..)

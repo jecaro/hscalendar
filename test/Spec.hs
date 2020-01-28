@@ -500,8 +500,8 @@ prop_userList runDB (UserUniqueList users) = Q.monadic (ioProperty . runDB) $ do
     Q.assert $ dbUsers == L.sort (fst <$> users)
 
 -- | Test the project API
-testProjAPI :: RunDB -> Spec
-testProjAPI runDB =
+testProjApi :: RunDB -> Spec
+testProjApi runDB =
     describe "Test the project API" $ do
         context "When the DB is empty" $ do
             it "tests the uniqueness of the name" $
@@ -562,8 +562,8 @@ itemsNoWorkedEntry runDB = do
         runDB (hdSetProject day1 tid1 project1) `shouldThrow` hdNotFoundException
 
 -- | Test the HD API
-testHdAPI :: RunDB -> Spec
-testHdAPI runDB =
+testHdApi :: RunDB -> Spec
+testHdApi runDB =
     describe "Test hd API" $
         after_ (runDB cleanDB) $ do
         context "When the DB is empty" $ do
@@ -666,8 +666,8 @@ testHdAPI runDB =
     hdwShouldSatisfy mbHdwProj pred = mbHdwProj `shouldSatisfy` maybe False pred
 
 -- | Test the user API
-testUserAPI :: RunDB -> Spec
-testUserAPI runDB =
+testUserApi :: RunDB -> Spec
+testUserApi runDB =
     describe "Test the user API" $ do
         context "When the DB is empty" $ do
             it "tests the uniqueness of the login" $
@@ -729,7 +729,7 @@ main = runNoLoggingT . withSqliteConn ":memory:" $ \conn -> liftIO $ do
         runDB actions = runSqlPersistM actions conn
     -- Launch the tests
     hspec $ beforeAll (runDB $ runMigration migrateAll) $ do
-        testProjAPI runDB
-        testHdAPI runDB
-        testUserAPI runDB
+        testProjApi runDB
+        testHdApi runDB
+        testUserApi runDB
 
