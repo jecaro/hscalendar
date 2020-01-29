@@ -30,7 +30,7 @@ import           Options.Applicative
     , (<**>)
     )
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
-import           Servant.API (NoContent(..), (:<|>)(..))
+import           Servant.API (NoContent(..), Raw, (:<|>)(..))
 import           Servant.Server
     ( Application
     , BasicAuthCheck (BasicAuthCheck)
@@ -46,11 +46,11 @@ import           Servant.Server
     , serveWithContext
     )
 import qualified Servant.Server as Server (Handler(..))
+import           Servant.Server.StaticFiles (serveDirectoryWebApp)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.Api
     ( ProtectedHSCalendarApi
-    , protectedHSCalendarApi
     , RenameArgs(..)
     )
 import           App.CustomDay (CustomDay(..), toDay)
@@ -85,17 +85,25 @@ import           Db.Password (mkPassword)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
 
-rioServer :: ServerT ProtectedHSCalendarApi (RIO App)
-rioServer _ =  hMigrateAll
-          :<|> hProjList
-          :<|> hProjAdd
-          :<|> hProjRm
-          :<|> hProjRename
-          :<|> hHdGet
-          :<|> hWeekGet
-          :<|> hHdSetIdleDay
-          :<|> hHdSetWork
-          :<|> hHdRm
+type Api = ProtectedHSCalendarApi :<|> Raw
+
+api :: Proxy Api
+api = Proxy
+
+rioServer :: ServerT Api (RIO App)
+rioServer = protectedRioServer :<|> serveDirectoryWebApp "frontend"
+
+protectedRioServer :: ServerT ProtectedHSCalendarApi (RIO App)
+protectedRioServer _ =  hMigrateAll
+                   :<|> hProjList
+                   :<|> hProjAdd
+                   :<|> hProjRm
+                   :<|> hProjRename
+                   :<|> hHdGet
+                   :<|> hWeekGet
+                   :<|> hHdSetIdleDay
+                   :<|> hHdSetWork
+                   :<|> hHdRm
 
 authCheckInRIO :: HasConnPool env => BasicAuthData -> RIO env (BasicAuthResult Login)
 authCheckInRIO (BasicAuthData authName authPass) = do
@@ -114,8 +122,8 @@ authCheckInRIO (BasicAuthData authName authPass) = do
 authCheck :: App -> BasicAuthCheck Login
 authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
 
-mainServer :: App -> Server ProtectedHSCalendarApi
-mainServer app = hoistServerWithContext protectedHSCalendarApi
+mainServer :: App -> Server Api
+mainServer app = hoistServerWithContext api
     (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) rioServer
 
 -- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
@@ -123,7 +131,7 @@ nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Application
-server app = serveWithContext protectedHSCalendarApi context (mainServer app)
+server app = serveWithContext api context (mainServer app)
     where context = authCheck app :. EmptyContext
 
 hMigrateAll :: HasConnPool env => RIO env NoContent
