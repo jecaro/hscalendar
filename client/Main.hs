@@ -28,7 +28,7 @@ import           Network.HTTP.Client (newManager, defaultManagerSettings)
 import           Network.HTTP.Client.TLS (tlsManagerSettings)
 import           Network.HTTP.Types.Status.Extended ()
 import           Network.HTTP.Types.Header.Extended ()
-import           Servant.API (NoContent, (:<|>)(..))
+import           Servant.API (NoContent, (:<|>)(..), (:>))
 import           Servant.API.BasicAuth (BasicAuthData(..))
 import qualified Servant.API.BasicAuth.Extended as BAE (parse)
 import           Servant.Client
@@ -44,7 +44,7 @@ import           Servant.Client
     )
 import qualified Servant.Client.Extended as CE (parse)
 
-import           App.Api (protectedHSCalendarApi, RenameArgs(..))
+import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay)
 import           App.CustomWeek (CustomWeek)
 import           App.CommandLine
@@ -60,6 +60,11 @@ import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
+
+type ProtectedHSCalendarApi = HSBasicAuth :> HSCalendarApi
+
+protectedHSCalendarApi :: Proxy ProtectedHSCalendarApi
+protectedHSCalendarApi = Proxy
 
 data App = App
     { appLogFunc        :: !LogFunc        -- ^ The log function

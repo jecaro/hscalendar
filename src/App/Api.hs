@@ -1,4 +1,8 @@
-module App.Api (ProtectedHSCalendarApi, protectedHSCalendarApi, RenameArgs(..))
+module App.Api
+    ( HSBasicAuth
+    , HSCalendarApi
+    , RenameArgs(..)
+    )
 where
 
 import           RIO
@@ -82,8 +86,6 @@ type HSCalendarApi =
            :> Capture "time in day" TimeInDay
            :> DeleteNoContent '[JSON] NoContent
 
-type ProtectedHSCalendarApi = BasicAuth "basic-realm" Login :> HSCalendarApi
+type HSBasicAuth = BasicAuth "basic-realm" Login
 
-protectedHSCalendarApi :: Proxy ProtectedHSCalendarApi
-protectedHSCalendarApi = Proxy
 

@@ -30,7 +30,7 @@ import           Options.Applicative
     , (<**>)
     )
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
-import           Servant.API (NoContent(..), Raw, (:<|>)(..))
+import           Servant.API (NoContent(..), Raw, (:<|>)(..), (:>))
 import           Servant.Server
     ( Application
     , BasicAuthCheck (BasicAuthCheck)
@@ -49,10 +49,7 @@ import qualified Servant.Server as Server (Handler(..))
 import           Servant.Server.StaticFiles (serveDirectoryWebApp)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
-import           App.Api
-    ( ProtectedHSCalendarApi
-    , RenameArgs(..)
-    )
+import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay(..), toDay)
 import           App.CustomWeek (CustomWeek(..), toWeek)
 import           App.WorkOption
@@ -85,16 +82,16 @@ import           Db.Password (mkPassword)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
 
-type Api = ProtectedHSCalendarApi :<|> Raw
+type ProtectedApi = HSBasicAuth :> (HSCalendarApi :<|> Raw)
 
-api :: Proxy Api
-api = Proxy
+protectedApi :: Proxy ProtectedApi
+protectedApi = Proxy
 
-rioServer :: ServerT Api (RIO App)
-rioServer = protectedRioServer :<|> serveDirectoryWebApp "frontend"
+protectedRioServer :: ServerT ProtectedApi (RIO App)
+protectedRioServer _ = rioServer :<|> serveDirectoryWebApp "frontend"
 
-protectedRioServer :: ServerT ProtectedHSCalendarApi (RIO App)
-protectedRioServer _ =  hMigrateAll
+rioServer :: ServerT HSCalendarApi (RIO App)
+rioServer =  hMigrateAll
                    :<|> hProjList
                    :<|> hProjAdd
                    :<|> hProjRm
@@ -122,16 +119,16 @@ authCheckInRIO (BasicAuthData authName authPass) = do
 authCheck :: App -> BasicAuthCheck Login
 authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
 
-mainServer :: App -> Server Api
-mainServer app = hoistServerWithContext api
-    (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) rioServer
+mainServer :: App -> Server ProtectedApi
+mainServer app = hoistServerWithContext protectedApi
+    (Proxy :: Proxy '[BasicAuthCheck Login]) (nt app) protectedRioServer
 
 -- | https://www.parsonsmatt.org/2017/06/21/exceptional_servant_handling.html
 nt :: App -> RIO App a -> Server.Handler a
 nt app actions = Server.Handler . ExceptT . try $ runRIO app actions
 
 server :: App -> Application
-server app = serveWithContext api context (mainServer app)
+server app = serveWithContext protectedApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
 hMigrateAll :: HasConnPool env => RIO env NoContent
