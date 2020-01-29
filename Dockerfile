@@ -11,7 +11,7 @@ WORKDIR /opt/build
 # Copy source files and build the binaries
 COPY . /opt/build
 # Build the binaries
-# --test for build the test suite
+# --test for building the test suite
 # --no-run-tests for not running the tests, we will run then on the next CI step
 RUN stack build --test --no-run-tests --system-ghc
 
