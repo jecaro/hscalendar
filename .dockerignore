@@ -8,3 +8,6 @@
 # Docker stuff
 Dockerfile
 .dockerfile
+
+# Elm stuff
+frontend/elm-stuff
