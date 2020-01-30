@@ -1,4 +1,8 @@
+# The source elm files
 SRC = $(wildcard src/*.elm)
+
+# The fronted files to install
+FRONTEND= elm.js index.html
 
 # Toggle debug mode with "make debug=1"
 ifdef debug
@@ -14,5 +18,13 @@ elm.js: $(SRC)
 
 clean:
 	rm -f elm.js
+
+# Install target only when given destdir argument
+# ex: "make destdir=/opt/bin/frontend"
+ifdef destdir
+install: all
+	mkdir -p $(destdir)
+	cp $(FRONTEND) $(destdir)
+endif
 
 .PHONY: clean
