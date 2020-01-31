@@ -92,8 +92,23 @@ import qualified Database.Persist as P ((==.))
 import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
+import           Data.Time.Calendar.WeekDate (toWeekDate)
 
-import           Db.HalfDay (HalfDay(..))
+import qualified Lens.Micro.Platform as L ((?~), (^.))
+
+import           Db.FullDay (afternoon, emptyFullDay, morning)
+import           Db.FullWeek
+    ( FullWeek(..)
+    , emptyFullWeek
+    , monday
+    , tuesday
+    , wednesday
+    , thursday
+    , friday
+    , saturday
+    , sunday
+    )
+import qualified Db.HalfDay as HalfDay (HalfDay(..), day, timeInDay)
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
 import           Db.Notes (Notes, unNotes)
@@ -101,7 +116,7 @@ import           Db.Office (Office(..))
 import           Db.Password (Password, unPassword)
 import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay(..), other)
-import           Db.Week (Week(..), monday, sunday)
+import qualified Db.Week as Week (Week(..), monday, sunday)
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
 import           Db.Internal.DBModel
@@ -316,7 +331,7 @@ hdGet
     :: (MonadIO m, MonadUnliftIO m)
     => Time.Day
     -> TimeInDay
-    -> SqlPersistT m HalfDay
+    -> SqlPersistT m HalfDay.HalfDay
 hdGet day tid =
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. DBHalfDayDay        ==. val day &&.
@@ -330,16 +345,18 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 weekGet
-    :: (MonadIO m, MonadUnliftIO m) => Week -> SqlPersistT m [HalfDay]
+    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek
 weekGet week = do
-    (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (   hd ^. DBHalfDayDay >=. val (monday week)
-               &&. hd ^. DBHalfDayDay <=. val (sunday week)
+    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+        where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
+               &&. hd ^. DBHalfDayDay <=. val (Week.sunday week)
                )
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
         orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
-        return (hd, mbHdw, mbProj)) >>= mapM dbToHalfDayInt
+        return (hd, mbHdw, mbProj))
+    hdList <- mapM dbToHalfDayInt tupleList
+    return $ toFullWeek hdList
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
@@ -484,21 +501,42 @@ hdHdwProjGetInt day tid = do
         return (hd, hdw, proj)
     maybe (throwIO $ HdNotFound day tid) return (L.headMaybe hdHdwProjs)
 
--- | Convert output of a join query to a `HalfDay`. Throw an exception in case
+-- | Convert output of a join query to a 'HalfDay'. Throw an exception in case
 -- of inconsistencies in the DB along the way
 dbToHalfDayInt
     :: MonadIO m =>
     (Entity DBHalfDay, Maybe (Entity DBHalfDayWorked), Maybe (Entity DBProject))
-    -> m HalfDay
+    -> m HalfDay.HalfDay
 dbToHalfDayInt (Entity _ hd, Nothing, Nothing) =
     case dbToIdle hd of
         Nothing -> throwIO DbInconsistency
-        Just idle -> return $ MkHalfDayIdle idle
+        Just idle -> return $ HalfDay.MkHalfDayIdle idle
 dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
     case dbToWorked hd hdw proj of
         Nothing -> throwIO DbInconsistency
-        Just worked -> return $ MkHalfDayWorked worked
+        Just worked -> return $ HalfDay.MkHalfDayWorked worked
 dbToHalfDayInt _ = throwIO DbInconsistency
+
+-- | Convert '[HalfDay]' returned by 'dbToHalfDayInt' to a nicer data type
+toFullWeek :: [HalfDay.HalfDay] -> FullWeek
+toFullWeek = foldr fillUpFullWeek emptyFullWeek
+  where
+      fillUpFullWeek hd fullWeek =
+          let (_, _, weekDay) = toWeekDate (view HalfDay.day hd)
+              dayLens = case weekDay of
+                            1 -> monday
+                            2 -> tuesday
+                            3 -> wednesday
+                            4 -> thursday
+                            5 -> friday
+                            6 -> saturday
+                            7 -> sunday
+                            _ -> lensDoingNothing
+              tidLens = case hd L.^. HalfDay.timeInDay of
+                            Morning -> morning
+                            Afternoon -> afternoon
+          in fullWeek & dayLens . tidLens L.?~ hd
+      lensDoingNothing = lens (const emptyFullDay) const
 
 -- hd private functions
 

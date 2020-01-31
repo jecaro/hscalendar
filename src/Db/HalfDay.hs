@@ -1,16 +1,18 @@
 -- | Functions related to the type 'HalfDay'
-module Db.HalfDay (HalfDay(..))
+module Db.HalfDay (HalfDay(..), day, timeInDay)
 where
 
 import           RIO
+import qualified RIO.Time as Time (Day)
 
 import           Data.Aeson (FromJSON, ToJSON)
 
-import           Db.Idle (Idle(..))
-import           Db.Worked (Worked)
+import qualified Db.Idle as Idle (Idle(..), day, timeInDay)
+import           Db.TimeInDay (TimeInDay)
+import qualified Db.Worked as Worked (Worked(..), day, timeInDay)
 
 -- | A 'HalfDay' could be worked or not
-data HalfDay = MkHalfDayWorked Worked | MkHalfDayIdle Idle
+data HalfDay = MkHalfDayWorked Worked.Worked | MkHalfDayIdle Idle.Idle
     deriving (Eq, Generic, Show)
 
 instance ToJSON HalfDay
@@ -19,3 +21,16 @@ instance FromJSON HalfDay
 instance Display HalfDay where
     display (MkHalfDayWorked worked) = display worked
     display (MkHalfDayIdle idle) = display idle
+
+-- | Dispatch the day lens of the sum type
+-- code inspired by: https://stackoverflow.com/questions/52832649/how-can-i-write-a-lens-for-a-sum-type
+day :: Lens' HalfDay Time.Day
+day f = \case
+    MkHalfDayWorked worked -> MkHalfDayWorked <$> Worked.day f worked
+    MkHalfDayIdle idle -> MkHalfDayIdle <$> Idle.day f idle
+
+timeInDay :: Lens' HalfDay TimeInDay
+timeInDay f = \case
+    MkHalfDayWorked worked -> MkHalfDayWorked <$> Worked.timeInDay f worked
+    MkHalfDayIdle idle -> MkHalfDayIdle <$> Idle.timeInDay f idle
+

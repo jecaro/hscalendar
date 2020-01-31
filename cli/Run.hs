@@ -89,7 +89,7 @@ run (DiaryWeek cw) = do
     -- Get actual week
     week <- toWeek cw
     hds <- runDB $ weekGet week
-    mapM_ (logInfo . display) hds
+    logInfo $ display hds
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
