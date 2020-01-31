@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Db.FullDay
     ( FullDay(..)
-    , emptyFullDay
+    , empty
     , morning
     , afternoon
     )
@@ -29,5 +29,5 @@ instance Display FullDay where
            display (fullDay ^. morning) <> "\n"
         <> display (fullDay ^. afternoon)
 
-emptyFullDay :: FullDay
-emptyFullDay = MkFullDay Nothing Nothing
+empty :: FullDay
+empty = MkFullDay Nothing Nothing

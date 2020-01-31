@@ -96,10 +96,10 @@ import           Data.Time.Calendar.WeekDate (toWeekDate)
 
 import qualified Lens.Micro.Platform as L ((?~), (^.))
 
-import           Db.FullDay (afternoon, emptyFullDay, morning)
-import           Db.FullWeek
+import qualified Db.FullDay as FullDay (afternoon, empty, morning)
+import qualified Db.FullWeek as FullWeek
     ( FullWeek(..)
-    , emptyFullWeek
+    , empty
     , monday
     , tuesday
     , wednesday
@@ -345,7 +345,7 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 weekGet
-    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek
+    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek.FullWeek
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
@@ -518,25 +518,25 @@ dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
 dbToHalfDayInt _ = throwIO DbInconsistency
 
 -- | Convert '[HalfDay]' returned by 'dbToHalfDayInt' to a nicer data type
-toFullWeek :: [HalfDay.HalfDay] -> FullWeek
-toFullWeek = foldr fillUpFullWeek emptyFullWeek
+toFullWeek :: [HalfDay.HalfDay] -> FullWeek.FullWeek
+toFullWeek = foldr fillUpFullWeek FullWeek.empty
   where
       fillUpFullWeek hd fullWeek =
           let (_, _, weekDay) = toWeekDate (view HalfDay.day hd)
               dayLens = case weekDay of
-                            1 -> monday
-                            2 -> tuesday
-                            3 -> wednesday
-                            4 -> thursday
-                            5 -> friday
-                            6 -> saturday
-                            7 -> sunday
+                            1 -> FullWeek.monday
+                            2 -> FullWeek.tuesday
+                            3 -> FullWeek.wednesday
+                            4 -> FullWeek.thursday
+                            5 -> FullWeek.friday
+                            6 -> FullWeek.saturday
+                            7 -> FullWeek.sunday
                             _ -> lensDoingNothing
               tidLens = case hd L.^. HalfDay.timeInDay of
-                            Morning -> morning
-                            Afternoon -> afternoon
+                            Morning -> FullDay.morning
+                            Afternoon -> FullDay.afternoon
           in fullWeek & dayLens . tidLens L.?~ hd
-      lensDoingNothing = lens (const emptyFullDay) const
+      lensDoingNothing = lens (const FullDay.empty) const
 
 -- hd private functions
 

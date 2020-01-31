@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Db.FullWeek
     ( FullWeek(..)
-    , emptyFullWeek
+    , empty
     , monday
     , tuesday
     , wednesday
@@ -39,8 +39,8 @@ instance Display FullWeek where
         <> "Saturday:\n" <> display (fullWeek ^. saturday) <> "\n--\n"
         <> "Sunday:\n" <> display (fullWeek ^. sunday) <> "\n--"
 
-emptyFullWeek :: FullWeek
-emptyFullWeek = MkFullWeek
+empty :: FullWeek
+empty = MkFullWeek
     { _fullWeekMonday = MkFullDay Nothing Nothing
     , _fullWeekTuesday = MkFullDay Nothing Nothing
     , _fullWeekWednesday = MkFullDay Nothing Nothing
