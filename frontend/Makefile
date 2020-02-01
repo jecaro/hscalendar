@@ -1,5 +1,5 @@
-# The source elm files
-SRC = $(wildcard src/*.elm)
+# The source elm file
+SRC = $(wildcard src/Main.elm)
 
 # The fronted files to install
 FRONTEND= elm.js index.html

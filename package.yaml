@@ -12,8 +12,11 @@ dependencies:
 - data-default
 - directory
 - either
+- elm-syntax
 - esqueleto
 - formatting
+- generics-sop
+- haskell-to-elm
 - hspec
 - http-client
 - http-client-tls
@@ -28,6 +31,7 @@ dependencies:
 - persistent-sqlite
 - persistent-postgresql
 - persistent-template
+- prettyprinter
 - quickcheck-instances
 - refined
 - rio
@@ -37,6 +41,7 @@ dependencies:
 - servant-server
 - temporary
 - time
+- unordered-containers
 - wai-extra
 - warp
 - yaml
@@ -114,6 +119,22 @@ executables:
     - -Wredundant-constraints
     dependencies:
     - hscalendar
+  elm-generator:
+    source-dirs: elm-generator
+    main: Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -Wcompat
+    - -Widentities
+    - -Wincomplete-record-updates
+    - -Wincomplete-uni-patterns
+    - -Wpartial-fields
+    - -Wredundant-constraints
+    dependencies:
+    - hscalendar
 
 tests:
   hscalendar-test:
@@ -148,6 +169,8 @@ default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
   - RankNTypes
+  - StandaloneDeriving
+  - TypeApplications
   - TypeOperators
   - TypeSynonymInstances
 
