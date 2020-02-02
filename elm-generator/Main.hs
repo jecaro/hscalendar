@@ -109,7 +109,7 @@ main = do
           , jsonDefinitions @Office
           , jsonDefinitions @Project
           , jsonDefinitions @Time.Day
-          , jsonDefinitions @Time.TimeOfDay
           , jsonDefinitions @TimeInDay
+          , jsonDefinitions @Time.TimeOfDay
           , jsonDefinitions @Worked
           ]

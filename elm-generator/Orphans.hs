@@ -11,6 +11,7 @@ import           Language.Haskell.To.Elm
     ( HasElmEncoder(..)
     , HasElmDecoder(..)
     , HasElmType(..)
+    , Options(..)
     , defaultOptions
     , deriveElmJSONEncoder
     , deriveElmJSONDecoder
@@ -67,7 +68,7 @@ instance SOP.HasDatatypeInfo Idle
 
 instance HasElmType Idle where
     elmDefinition =
-        Just $ deriveElmTypeDefinition @Idle defaultOptions "Api.Idle"
+        Just $ deriveElmTypeDefinition @Idle removeUnderscoreOptions "Api.Idle"
 
 instance HasElmDecoder A.Value Idle where
     elmDecoderDefinition =
@@ -135,7 +136,7 @@ instance SOP.HasDatatypeInfo Worked
 
 instance HasElmType Worked where
     elmDefinition =
-        Just $ deriveElmTypeDefinition @Worked defaultOptions "Api.Worked"
+        Just $ deriveElmTypeDefinition @Worked removeUnderscoreOptions "Api.Worked"
 
 instance HasElmDecoder A.Value Worked where
     elmDecoderDefinition =
@@ -169,7 +170,7 @@ instance SOP.Generic Time.Day
 instance SOP.HasDatatypeInfo Time.Day
 
 instance HasElmType Time.Day where
-    elmType = "Time.Date"
+    elmType = "Date.Date"
 
 instance HasElmEncoder A.Value Time.Day where
   elmEncoder = "Date.Extra.encode"
@@ -184,7 +185,7 @@ instance SOP.Generic Time.TimeOfDay
 instance SOP.HasDatatypeInfo Time.TimeOfDay
 
 instance HasElmType Time.TimeOfDay where
-    elmType = "Time.Date"
+    elmType = "TimeOfDay.TimeOfDay"
 
 instance HasElmEncoder A.Value Time.TimeOfDay where
   elmEncoder = "Date.Extra.encode"
@@ -194,3 +195,12 @@ instance HasElmDecoder A.Value Time.TimeOfDay where
 
 --
 
+-- | Remove the first underscore of a string
+removeUnderscore :: String -> String
+removeUnderscore ('_':xs) = xs
+removeUnderscore x = x
+
+-- | Options to rewrite the fields name. It seems that Elm doesn't accept
+-- identifiers starting with underscore
+removeUnderscoreOptions :: Options
+removeUnderscoreOptions = Options removeUnderscore
