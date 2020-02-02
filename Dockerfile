@@ -20,6 +20,8 @@ COPY . /opt/build
 # --test for building the test suite
 # --no-run-tests for not running the tests, we will run then on the next CI step
 RUN stack build --test --no-run-tests --system-ghc
+# Generate elm code
+RUN stack exec elm-generator -- -o frontend/src
 # Build the frontend
 RUN make -C frontend
 
