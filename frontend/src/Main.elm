@@ -10,7 +10,18 @@ import Date exposing
     , today
     , toIsoString
     )
-import Html exposing (Html, button, div, h1, nav, p, section, text)
+import Html exposing 
+    ( Html
+    , button
+    , div
+    , h1
+    , nav
+    , option
+    , p
+    , section
+    , select
+    , text
+    )
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http exposing (Error, get, expectString)
@@ -88,23 +99,29 @@ viewHero =
             ]
         ]
 
+
 viewNav : Model -> Html Msg
 viewNav model = 
     nav [ class "level" ]
-        [ div [ class "level-left" ]
-            [ div [ class "level-item" ]
-                [ button [ class "button", onClick (SetDate (previousDay model)) ] 
-                    [ text "Prev" ]
-                ]
+        [ div [ class "level-item" ]
+            [ button [ class "button", onClick (SetDate (previousDay model)) ] 
+                [ text "Prev" ]
+            , button [ class "button", onClick (SetDate (nextDay model)) ] 
+                [ text "Next" ]                    
             ]
         , div [ class "level-item" ]
-            [ p []
-                [ text (toIsoString model.date) ]
+            [ p [ class "subtitle" ] [ text (toIsoString model.date) ]
             ]
-        , div [ class "level-right" ]
-            [ div [ class "level-item" ]
-                [ button [ class "button", onClick (SetDate (nextDay model)) ] 
-                    [ text "Next" ]
+        , div [ class "level-item" ]
+            [ div [ class "field" ]
+                [ div [ class "control" ]
+                    [ div [ class "select" ] 
+                        [ select [] 
+                            [ option [] [ text "Morning" ]
+                            , option [] [ text "Afternoon" ]
+                            ]
+                        ]
+                    ]
                 ]
             ]
         ]
