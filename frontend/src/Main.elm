@@ -1,41 +1,19 @@
 module Main exposing (main)
 
 import Browser
+import Date exposing (Date, Unit(..), add, fromCalendarDate, today, toIsoString)
 import Html exposing (Html, button, div, h1, nav, p, section, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Platform.Cmd exposing (batch)
-import String exposing (padLeft)
 import Task exposing (perform)
-import Time
-    exposing
-        ( Month(..)
-        , Posix
-        , Weekday(..)
-        , Zone
-        , here
-        , millisToPosix
-        , now
-        , toDay
-        , toHour
-        , toMinute
-        , toMonth
-        , toSecond
-        , toYear
-        , utc
-        )
-import Time.Extra exposing (Interval(..), add)
+import Time exposing (Month(..))
 
 
-type alias Model =
-    { zone : Zone
-    , posix : Posix
-    }
+type alias Model = Date
 
 
 type Msg
-    = AdjustZone Zone
-    | AdjustPosix Posix
+    = SetDate Date
 
 
 main : Program () Model Msg
@@ -50,22 +28,16 @@ main =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Model utc (millisToPosix 0)
-    , batch
-        [ perform AdjustZone here
-        , perform AdjustPosix now
-        ]
+    ( fromCalendarDate 2019 Jan 1
+    , perform SetDate today
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg _ =
     case msg of
-        AdjustZone zone ->
-            ( { model | zone = zone }, Cmd.none )
-
-        AdjustPosix posix ->
-            ( { model | posix = posix }, Cmd.none )
+        SetDate date ->
+            ( date, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -73,93 +45,12 @@ subscriptions _ =
     Sub.none
 
 
-monthToInt : Month -> Int
-monthToInt m =
-    case m of
-        Jan ->
-            1
-
-        Feb ->
-            2
-
-        Mar ->
-            3
-
-        Apr ->
-            4
-
-        May ->
-            5
-
-        Jun ->
-            6
-
-        Jul ->
-            7
-
-        Aug ->
-            8
-
-        Sep ->
-            9
-
-        Oct ->
-            10
-
-        Nov ->
-            11
-
-        Dec ->
-            12
+previousDay : Model -> Date
+previousDay = add Days -1 
 
 
-posixToString : Zone -> Posix -> String
-posixToString z t =
-    let
-        year =
-            String.fromInt (toYear z t)
-
-        month =
-            padLeft 2 '0' (String.fromInt (monthToInt (toMonth z t)))
-
-        day =
-            padLeft 2 '0' (String.fromInt (toDay z t))
-
-        hour =
-            padLeft 2 '0' (String.fromInt (toHour z t))
-
-        minute =
-            padLeft 2 '0' (String.fromInt (toMinute z t))
-
-        second =
-            padLeft 2 '0' (String.fromInt (toSecond z t))
-    in
-    day ++ "/" ++ month ++ "/" ++ year ++ "-" ++ hour ++ ":" ++ minute ++ ":" ++ second
-
-
-previousDay : Model -> Posix
-previousDay model =
-    add Day -1 model.zone model.posix
-
-
-nextDay : Model -> Posix
-nextDay model =
-    add Day 1 model.zone model.posix
-
-
-
---<section class="hero">
---  <div class="hero-body">
---    <div class="container">
---      <h1 class="title">
---        Hero title
---      </h1>
---      <h2 class="subtitle">
---        Hero subtitle
---      </h2>
---    </div>
---  </div>
---</section>
+nextDay : Model -> Date
+nextDay = add Days 1 
 
 
 view : Model -> Html Msg
@@ -179,17 +70,17 @@ view model =
                 [ nav [ class "level" ]
                     [ div [ class "level-left" ]
                         [ div [ class "level-item" ]
-                            [ button [ class "button", onClick (AdjustPosix (previousDay model)) ] 
+                            [ button [ class "button", onClick (SetDate (previousDay model)) ] 
                                 [ text "Prev" ]
                             ]
                         ]
                     , div [ class "level-item" ]
                         [ p []
-                            [ text ("Posix time is " ++ posixToString model.zone model.posix) ]
+                            [ text (toIsoString model) ]
                         ]
                     , div [ class "level-right" ]
                         [ div [ class "level-item" ]
-                            [ button [ class "button", onClick (AdjustPosix (nextDay model)) ] 
+                            [ button [ class "button", onClick (SetDate (nextDay model)) ] 
                                 [ text "Next" ]
                             ]
                         ]
