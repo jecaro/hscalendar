@@ -54,7 +54,7 @@ update msg model =
         SetDate date ->
               let 
                 httpCommand = get
-                    { url = "/diary/" ++ toInvertIsoString model.date ++ "/morning"
+                    { url = "/diary/" ++ toInvertIsoString date ++ "/morning"
                     , expect = expectString ResponseReceived 
                     }
               in ( { model | date = date }, httpCommand )
@@ -114,7 +114,7 @@ viewHalfDay model = case model.response of
     Nothing -> p [] []
     Just (Ok jsonString) -> p [] [ text jsonString ]
     Just (Err _) -> p [] [ text "ERROR" ]
-        
+
 
 
 view : Model -> Html Msg
