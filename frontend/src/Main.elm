@@ -23,21 +23,24 @@ import Html exposing
     , text
     )
 import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Http exposing (Error, get, expectString)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
 import Api exposing (TimeInDay(..))
+import Api.TimeInDay.Extra exposing (fromString, toString)
 
 type alias Model = 
     { date : Date
+    , timeInDay : TimeInDay
     , response : Maybe (Result Error String)
     }
 
 
 type Msg
     = SetDate Date
+    | SetTimeInDay TimeInDay
     | ResponseReceived (Result Error String)
 
 
@@ -54,23 +57,30 @@ main =
 init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { date = fromCalendarDate 2020 Jan 1
+      , timeInDay = Morning
       , response = Nothing
       }
     , perform SetDate today
     )
 
+httpCommand : Model -> Cmd Msg
+httpCommand model = 
+    get
+        { url = "/diary/" ++ toInvertIsoString model.date ++ "/" ++ toString model.timeInDay
+        , expect = expectString ResponseReceived 
+        }
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg model = 
     case msg of
-        SetDate date ->
-              let 
-                httpCommand = get
-                    { url = "/diary/" ++ toInvertIsoString date ++ "/morning"
-                    , expect = expectString ResponseReceived 
-                    }
-              in ( { model | date = date }, httpCommand )
-        ResponseReceived response -> ({ model | response = Just response}, Cmd.none )
+        SetDate date -> 
+            let model_ = { model | date = date }
+            in ( model_, httpCommand model_ )
+        SetTimeInDay timeInDay -> 
+            let model_ = { model | timeInDay = timeInDay }
+            in ( model_, httpCommand model_ )
+        ResponseReceived response -> ( { model | response = Just response}, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -100,7 +110,6 @@ viewHero =
             ]
         ]
 
-
 viewNav : Model -> Html Msg
 viewNav model = 
     nav [ class "level" ]
@@ -116,7 +125,7 @@ viewNav model =
         , div [ class "level-item" ]
             [ div [ class "field" ]
                 [ div [ class "control" ]
-                    [ div [ class "select" ] 
+                    [ div [ class "select", onInput (\t -> SetTimeInDay (fromString t)) ] 
                         [ select [] 
                             [ option [] [ text "Morning" ]
                             , option [] [ text "Afternoon" ]
