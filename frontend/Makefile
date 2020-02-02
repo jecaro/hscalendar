@@ -1,8 +1,8 @@
 # The source elm file
-SRC = $(wildcard src/Main.elm)
+SRC = src/Main.elm
 
 # The fronted files to install
-FRONTEND= elm.js index.html
+FRONTEND= elm.js index.html bulma.min.css
 
 # Toggle debug mode with "make debug=1"
 ifdef debug
