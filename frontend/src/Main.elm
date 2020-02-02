@@ -24,7 +24,7 @@ import Html exposing
     )
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
-import Http exposing (Error, get, expectString)
+import Http exposing (Error(..), get, expectString)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
@@ -140,8 +140,8 @@ viewHalfDay : Model -> Html msg
 viewHalfDay model = case model.response of
     Nothing -> p [] []
     Just (Ok jsonString) -> p [] [ text jsonString ]
-    Just (Err _) -> p [] [ text "ERROR" ]
-
+    Just (Err (BadStatus 404)) -> p [] [ text "No entry" ]
+    Just (Err _) -> p [] [ text "ERROR"]
 
 
 view : Model -> Html Msg
