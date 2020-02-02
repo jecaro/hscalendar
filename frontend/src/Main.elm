@@ -28,6 +28,7 @@ import Http exposing (Error, get, expectString)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
+import Api exposing (TimeInDay(..))
 
 type alias Model = 
     { date : Date
