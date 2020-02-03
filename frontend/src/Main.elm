@@ -27,25 +27,48 @@ import Html exposing
     , tr
     , text
     )
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick, onInput)
-import Http exposing (Error(..), get, expectJson)
+import Html.Attributes exposing (class, selected)
+import Html.Events exposing (onClick, onDoubleClick, onInput)
+import Http exposing 
+    ( Error(..)
+    , expectJson
+    , expectWhatever
+    , get
+    , jsonBody
+    , request
+    )
+import Json.Encode exposing (list)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
-import Api exposing (HalfDay(..), Idle, TimeInDay(..), Worked)
-import Api.HalfDay exposing (decoder)
+import Api as Api exposing 
+    ( HalfDay(..)
+    , Idle
+    , Office(..)
+    , SetOffice(..)
+    , TimeInDay(..)
+    , WorkOption(..)
+    , Worked
+    )
+import Api.HalfDay as HalfDay exposing (decoder)
 import Api.IdleDayType.Extended as IdleDayType exposing (toString)
 import Api.Office.Extended as Office exposing (toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
+import Api.WorkOption as WorkOption exposing (encoder)
+
+type Mode 
+    = View
+    | EditOffice
 
 
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
+    , edit : WebData ()
+    , mode : Mode
     }
 
 
@@ -53,6 +76,9 @@ type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
     | HalfDayResponse (WebData HalfDay)
+    | EditResponse (WebData ())
+    | SetMode Mode
+    | SetOffice Office
 
 
 main : Program () Model Msg
@@ -70,35 +96,61 @@ init _ =
     ( { date = fromCalendarDate 2020 Jan 1
       , timeInDay = Morning
       , halfDay = NotAsked
+      , mode = View
+      , edit = NotAsked
       }
     , perform SetDate today
     )
 
+diaryUrl : Model -> String
+diaryUrl model 
+    = "/diary/" 
+    ++ toInvertIsoString model.date 
+    ++ "/" 
+    ++ TimeInDay.toString model.timeInDay
+
 sendGetHalfDay : Model -> Cmd Msg
 sendGetHalfDay model = 
     get
-        { url 
-            = "/diary/" 
-            ++ toInvertIsoString model.date 
-            ++ "/" 
-            ++ TimeInDay.toString model.timeInDay
-        , expect = Http.expectJson (fromResult >> HalfDayResponse) decoder
+        { url = diaryUrl model
+        , expect = Http.expectJson (fromResult >> HalfDayResponse) HalfDay.decoder
         }
 
+sendSetOffice : Model -> Office -> Cmd Msg
+sendSetOffice model office = 
+    request
+        { method = "PUT"
+        , headers = []
+        , url = diaryUrl model
+        , body = jsonBody <| list WorkOption.encoder [MkSetOffice <| Api.SetOffice office]
+        , expect = expectWhatever (fromResult >> EditResponse)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date, halfDay = Loading }
+            let model_ = { model | date = date, halfDay = Loading, mode = View  }
             in ( model_, sendGetHalfDay model_ )
         
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay, halfDay = Loading }
+            let model_ = { model | timeInDay = timeInDay, halfDay = Loading, mode = View  }
             in ( model_, sendGetHalfDay model_ )
         
         HalfDayResponse response -> 
-            ( { model | halfDay = response }, Cmd.none )
+            ( { model | halfDay = response, mode = View  }, Cmd.none )
+
+        EditResponse response -> 
+            ( { model | edit = response, mode = View  }, Cmd.none )
+
+        SetMode mode ->
+            ( { model | mode = mode }, Cmd.none )
+
+        SetOffice office -> 
+            let model_ = { model | edit = Loading }
+            in ( model_, sendSetOffice model_ office )
 
 
 subscriptions : Model -> Sub Msg
@@ -158,38 +210,66 @@ viewNav model =
             ]
         ]
 
-viewStatus : WebData HalfDay -> Html Msg
-viewStatus status = 
-    case status of
+viewStatus : Model -> Html Msg
+viewStatus model = 
+    case model.halfDay of
         NotAsked -> p [] [ ]
         Loading -> p [] [ text "Loading ..." ]
-        Success (MkHalfDayWorked worked) -> viewWorked worked
+        Success (MkHalfDayWorked worked) -> viewWorked worked model.mode 
         Success (MkHalfDayIdle idle) -> viewIdle idle
         Failure (BadStatus 404) -> viewNoEntry
         Failure _ -> p [] [ text "ERROR"]
 
-viewWorked : Worked -> Html Msg
+
+officeSelect : Office -> Html Msg
+officeSelect current = 
+    let
+        setOption office = 
+            option [ selected <| office == current ] [ text <| Office.toString office ]
+    in
+        div [ class "field" ]
+            [ div [ class "control" ]
+                [ div [ class "select", onInput <| SetOffice << Result.withDefault Rennes << Office.fromString ]
+                    [ select [] 
+                        [ setOption Rennes
+                        , setOption Home
+                        , setOption Poool
+                        , setOption OutOfOffice
+                        ]
+                    ]
+                ]
+            ]
+
+viewWorked : Worked -> Mode -> Html Msg
 viewWorked 
     { workedArrived
     , workedLeft
     , workedOffice
     , workedNotes
-    , workedProject } = 
-    table [ class "table" ]
-        [ tbody []
-            [ tr []
-                [ th [] [ text <| Office.toString workedOffice ]
-                , td [] 
-                    [ text 
-                        <| TimeOfDay.toString workedArrived 
-                        ++ "-" ++ TimeOfDay.toString workedLeft]
-                ]
-            , tr []
-                [ th [] [ text <| workedProject.unProject ]
-                , td [] [ text <| workedNotes.unNotes ]
+    , workedProject } mode = 
+    let
+        cellOffice = 
+            case mode of
+                View -> 
+                    th [ onDoubleClick <| SetMode EditOffice ] [ text <| Office.toString workedOffice ]
+                EditOffice -> 
+                    th [] [ officeSelect workedOffice ]
+    in
+        table [ class "table" ]
+            [ tbody []
+                [ tr []
+                    [ cellOffice
+                    , td [] 
+                        [ text 
+                            <| TimeOfDay.toString workedArrived 
+                            ++ "-" ++ TimeOfDay.toString workedLeft]
+                    ]
+                , tr []
+                    [ th [] [ text <| workedProject.unProject ]
+                    , td [] [ text <| workedNotes.unNotes ]
+                    ]
                 ]
             ]
-        ]
     
 
 viewIdle : Idle -> Html msg
@@ -220,5 +300,5 @@ view model =
         , section [ class "section" ]
             [ div [ class "container" ] [ viewNav model ] ]
         , section [ class "section" ]
-            [ div [ class "content" ] [ viewStatus model.halfDay ] ]
+            [ div [ class "content" ] [ viewStatus model ] ]
         ]
