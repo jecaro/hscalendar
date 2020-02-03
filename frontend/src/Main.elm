@@ -20,28 +20,39 @@ import Html exposing
     , p
     , section
     , select
+    , table
+    , tbody
+    , td
+    , th
+    , tr
     , text
     )
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
-import Http exposing (Error(..), get, expectString)
+import Http exposing (Error(..), get, expectJson)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
-import Api exposing (TimeInDay(..))
-import Api.TimeInDay.Extra exposing (fromString, toString)
+import Api exposing (HalfDay(..), Idle, TimeInDay(..), Worked)
+import Api.HalfDay exposing (decoder)
+import Api.IdleDayType.Extra as IdleDayType exposing (toString)
+import Api.Office.Extra as Office exposing (toString)
+import Api.TimeInDay.Extra as TimeInDay exposing (fromString, toString)
+import TimeOfDay as TimeOfDay exposing (toString)
+
+type alias Response = Maybe (Result Error HalfDay)
 
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
-    , response : Maybe (Result Error String)
+    , response : Response
     }
 
 
 type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
-    | ResponseReceived (Result Error String)
+    | ResponseReceived (Result Error HalfDay)
 
 
 main : Program () Model Msg
@@ -66,8 +77,12 @@ init _ =
 httpCommand : Model -> Cmd Msg
 httpCommand model = 
     get
-        { url = "/diary/" ++ toInvertIsoString model.date ++ "/" ++ toString model.timeInDay
-        , expect = expectString ResponseReceived 
+        { url 
+            = "/diary/" 
+            ++ toInvertIsoString model.date 
+            ++ "/" 
+            ++ TimeInDay.toString model.timeInDay
+        , expect = Http.expectJson ResponseReceived decoder
         }
 
 
@@ -136,12 +151,58 @@ viewNav model =
             ]
         ]
 
-viewHalfDay : Model -> Html msg
-viewHalfDay model = case model.response of
-    Nothing -> p [] []
-    Just (Ok jsonString) -> p [] [ text jsonString ]
-    Just (Err (BadStatus 404)) -> p [] [ text "No entry" ]
-    Just (Err _) -> p [] [ text "ERROR"]
+viewResponse : Response -> Html msg
+viewResponse response = 
+    case response of
+        Nothing -> p [] []
+        Just (Ok (MkHalfDayWorked worked)) -> viewWorked worked
+        Just (Ok (MkHalfDayIdle idle)) -> viewIdle idle
+        Just (Err (BadStatus 404)) -> viewNoEntry
+        Just (Err _) -> p [] [ text "ERROR"]
+
+viewWorked : Worked -> Html msg
+viewWorked 
+    { workedArrived
+    , workedLeft
+    , workedOffice
+    , workedNotes
+    , workedProject } = 
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ th [] [ text <| Office.toString workedOffice ]
+                , td [] 
+                    [ text 
+                        <| TimeOfDay.toString workedArrived 
+                        ++ "-" ++ TimeOfDay.toString workedLeft]
+                ]
+            , tr []
+                [ th [] [ text <| workedProject.unProject ]
+                , td [] [ text <| workedNotes.unNotes ]
+                ]
+            ]
+        ]
+    
+
+viewIdle : Idle -> Html msg
+viewIdle { idleDayType } = 
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ th [] [ text <| IdleDayType.toString idleDayType ]
+                ]
+            ]
+        ]
+
+viewNoEntry : Html msg
+viewNoEntry  = 
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ th [] [ text "No entry" ]
+                ]
+            ]
+        ]
 
 
 view : Model -> Html Msg
@@ -151,5 +212,5 @@ view model =
         , section [ class "section" ]
             [ div [ class "container" ] [ viewNav model ] ]
         , section [ class "section" ]
-            [ div [ class "content" ] [ viewHalfDay model ] ]
+            [ div [ class "content" ] [ viewResponse model.response ] ]
         ]

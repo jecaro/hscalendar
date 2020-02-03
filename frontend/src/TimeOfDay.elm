@@ -1,4 +1,4 @@
-module TimeOfDay exposing (TimeOfDay, decoder, encode)
+module TimeOfDay exposing (TimeOfDay, decoder, encode, toString)
 
 import Json.Decode
 import Json.Encode
@@ -14,7 +14,7 @@ type alias TimeOfDay =
 toString : TimeOfDay -> String
 toString { hours, minutes, seconds} = 
   let pad2 x = pad 2 '0' <| fromInt x
-  in pad2 hours ++ pad2 minutes ++ pad2 seconds
+  in pad2 hours ++ ":" ++ pad2 minutes ++ ":"  ++ pad2 seconds
 
 fromString : String -> Result String TimeOfDay
 fromString str = 
