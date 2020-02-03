@@ -1,4 +1,4 @@
-module Api.TimeInDay.Extra exposing (toString, fromString)
+module Api.TimeInDay.Extended exposing (toString, fromString)
 
 import Api exposing (TimeInDay(..))
 

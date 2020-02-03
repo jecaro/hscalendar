@@ -35,10 +35,10 @@ import Time exposing (Month(..))
 
 import Api exposing (HalfDay(..), Idle, TimeInDay(..), Worked)
 import Api.HalfDay exposing (decoder)
-import Api.IdleDayType.Extra as IdleDayType exposing (toString)
-import Api.Office.Extra as Office exposing (toString)
-import Api.TimeInDay.Extra as TimeInDay exposing (fromString, toString)
-import TimeOfDay as TimeOfDay exposing (toString)
+import Api.IdleDayType.Extended as IdleDayType exposing (toString)
+import Api.Office.Extended as Office exposing (toString)
+import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
+import Api.TimeOfDay as TimeOfDay exposing (toString)
 
 type alias Response = Maybe (Result Error HalfDay)
 

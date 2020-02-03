@@ -1,4 +1,4 @@
-module TimeOfDay exposing (TimeOfDay, decoder, encode, toString)
+module Api.TimeOfDay exposing (TimeOfDay, decoder, encode, toString)
 
 import Json.Decode
 import Json.Encode

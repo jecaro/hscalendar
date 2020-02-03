@@ -1,5 +1,5 @@
 -- Code found here: https://github.com/folq/haskell-to-elm/issues/2
-module Date.Extra exposing (decoder, encode)
+module Date.Extended exposing (decoder, encode)
 
 import Date exposing (Date)
 import Json.Decode

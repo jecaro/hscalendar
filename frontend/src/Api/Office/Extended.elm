@@ -1,4 +1,4 @@
-module Api.Office.Extra exposing (toString)
+module Api.Office.Extended exposing (toString)
 
 import Api exposing (Office(..))
 

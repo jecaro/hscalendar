@@ -1,4 +1,4 @@
-module Api.IdleDayType.Extra exposing (toString)
+module Api.IdleDayType.Extended exposing (toString)
 
 import Api exposing (IdleDayType(..))
 

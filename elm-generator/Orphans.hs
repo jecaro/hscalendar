@@ -173,10 +173,10 @@ instance HasElmType Time.Day where
     elmType = "Date.Date"
 
 instance HasElmEncoder A.Value Time.Day where
-  elmEncoder = "Date.Extra.encode"
+  elmEncoder = "Date.Extended.encode"
 
 instance HasElmDecoder A.Value Time.Day where
-  elmDecoder = "Date.Extra.decoder"
+  elmDecoder = "Date.Extended.decoder"
 
 --
 
@@ -185,13 +185,13 @@ instance SOP.Generic Time.TimeOfDay
 instance SOP.HasDatatypeInfo Time.TimeOfDay
 
 instance HasElmType Time.TimeOfDay where
-    elmType = "TimeOfDay.TimeOfDay"
+    elmType = "Api.TimeOfDay.TimeOfDay"
 
 instance HasElmEncoder A.Value Time.TimeOfDay where
-  elmEncoder = "TimeOfDay.encode"
+  elmEncoder = "Api.TimeOfDay.encode"
 
 instance HasElmDecoder A.Value Time.TimeOfDay where
-  elmDecoder = "TimeOfDay.decoder"
+  elmDecoder = "Api.TimeOfDay.decoder"
 
 --
 
