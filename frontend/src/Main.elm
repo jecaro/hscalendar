@@ -40,12 +40,15 @@ import Api.Office.Extended as Office exposing (toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
 
-type alias Response = Maybe (Result Error HalfDay)
+type Status 
+    = Loading
+    | LoadError Error
+    | LoadOk HalfDay
 
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
-    , response : Response
+    , status : Status
     }
 
 
@@ -69,7 +72,7 @@ init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { date = fromCalendarDate 2020 Jan 1
       , timeInDay = Morning
-      , response = Nothing
+      , status = Loading
       }
     , perform SetDate today
     )
@@ -90,12 +93,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date, response = Nothing }
+            let model_ = { model | date = date, status = Loading }
             in ( model_, httpCommand model_ )
+        
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay, response = Nothing }
+            let model_ = { model | timeInDay = timeInDay, status = Loading }
             in ( model_, httpCommand model_ )
-        ResponseReceived response -> ( { model | response = Just response}, Cmd.none )
+        
+        ResponseReceived (Ok hd) -> 
+            ( { model | status = LoadOk hd}, Cmd.none )
+        
+        ResponseReceived (Err error) -> 
+            ( { model | status = LoadError error}, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -155,16 +164,16 @@ viewNav model =
             ]
         ]
 
-viewResponse : Response -> Html msg
-viewResponse response = 
-    case response of
-        Nothing -> p [] [ text "Loading ..." ]
-        Just (Ok (MkHalfDayWorked worked)) -> viewWorked worked
-        Just (Ok (MkHalfDayIdle idle)) -> viewIdle idle
-        Just (Err (BadStatus 404)) -> viewNoEntry
-        Just (Err _) -> p [] [ text "ERROR"]
+viewStatus : Status -> Html Msg
+viewStatus status = 
+    case status of
+        Loading -> p [] [ text "Loading ..." ]
+        LoadOk (MkHalfDayWorked worked) -> viewWorked worked
+        LoadOk (MkHalfDayIdle idle) -> viewIdle idle
+        LoadError (BadStatus 404) -> viewNoEntry
+        LoadError _ -> p [] [ text "ERROR"]
 
-viewWorked : Worked -> Html msg
+viewWorked : Worked -> Html Msg
 viewWorked 
     { workedArrived
     , workedLeft
@@ -216,5 +225,5 @@ view model =
         , section [ class "section" ]
             [ div [ class "container" ] [ viewNav model ] ]
         , section [ class "section" ]
-            [ div [ class "content" ] [ viewResponse model.response ] ]
+            [ div [ class "content" ] [ viewStatus model.status ] ]
         ]
