@@ -72,11 +72,11 @@ instance HasElmType Idle where
 
 instance HasElmDecoder A.Value Idle where
     elmDecoderDefinition =
-        Just $ deriveElmJSONDecoder @Idle defaultOptions A.defaultOptions "Api.Idle.decoder"
+        Just $ deriveElmJSONDecoder @Idle removeUnderscoreOptions A.defaultOptions "Api.Idle.decoder"
 
 instance HasElmEncoder A.Value Idle where
     elmEncoderDefinition =
-        Just $ deriveElmJSONEncoder @Idle defaultOptions A.defaultOptions "Api.Idle.encoder"
+        Just $ deriveElmJSONEncoder @Idle removeUnderscoreOptions A.defaultOptions "Api.Idle.encoder"
 
 --
 
@@ -140,11 +140,11 @@ instance HasElmType Worked where
 
 instance HasElmDecoder A.Value Worked where
     elmDecoderDefinition =
-        Just $ deriveElmJSONDecoder @Worked defaultOptions A.defaultOptions "Api.Worked.decoder"
+        Just $ deriveElmJSONDecoder @Worked removeUnderscoreOptions A.defaultOptions "Api.Worked.decoder"
 
 instance HasElmEncoder A.Value Worked where
     elmEncoderDefinition =
-        Just $ deriveElmJSONEncoder @Worked defaultOptions A.defaultOptions "Api.Worked.encoder"
+        Just $ deriveElmJSONEncoder @Worked removeUnderscoreOptions A.defaultOptions "Api.Worked.encoder"
 
 --
 
@@ -188,10 +188,10 @@ instance HasElmType Time.TimeOfDay where
     elmType = "TimeOfDay.TimeOfDay"
 
 instance HasElmEncoder A.Value Time.TimeOfDay where
-  elmEncoder = "Date.Extra.encode"
+  elmEncoder = "TimeOfDay.encode"
 
 instance HasElmDecoder A.Value Time.TimeOfDay where
-  elmDecoder = "Date.Extra.decoder"
+  elmDecoder = "TimeOfDay.decoder"
 
 --
 
