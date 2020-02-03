@@ -147,7 +147,7 @@ viewNav model =
         , div [ class "level-item" ]
             [ div [ class "field" ]
                 [ div [ class "control" ]
-                    [ div [ class "select", onInput <| SetTimeInDay << fromString ] 
+                    [ div [ class "select", onInput <| SetTimeInDay << Result.withDefault Morning << fromString ] 
                         [ select [] 
                             [ option [] [ text "Morning" ]
                             , option [] [ text "Afternoon" ]

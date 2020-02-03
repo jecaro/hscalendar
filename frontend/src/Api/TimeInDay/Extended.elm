@@ -8,12 +8,12 @@ toString timeInDay =
      Morning -> "morning"
      Afternoon -> "afternoon"
 
-fromString : String -> TimeInDay
+fromString : String -> Result String TimeInDay
 fromString string = 
     case string of
-       "Morning" -> Morning
-       "morning" -> Morning
-       "Afternoon" -> Afternoon
-       "afternoon" -> Afternoon
-       _ -> Morning
+       "Morning" -> Ok Morning
+       "morning" -> Ok Morning
+       "Afternoon" -> Ok Afternoon
+       "afternoon" -> Ok Afternoon
+       _ -> Err <| "Error parsing string to TimeInDay " ++ string
 
