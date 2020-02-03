@@ -30,6 +30,7 @@ import Html exposing
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error(..), get, expectJson)
+import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
@@ -40,22 +41,18 @@ import Api.Office.Extended as Office exposing (toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
 
-type HalfDayStatus 
-    = Loading
-    | LoadError Error
-    | LoadOk HalfDay
 
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
-    , status : HalfDayStatus
+    , halfDay : WebData HalfDay
     }
 
 
 type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
-    | HalfDayReceived (Result Error HalfDay)
+    | HalfDayResponse (WebData HalfDay)
 
 
 main : Program () Model Msg
@@ -72,7 +69,7 @@ init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { date = fromCalendarDate 2020 Jan 1
       , timeInDay = Morning
-      , status = Loading
+      , halfDay = NotAsked
       }
     , perform SetDate today
     )
@@ -85,7 +82,7 @@ sendGetHalfDay model =
             ++ toInvertIsoString model.date 
             ++ "/" 
             ++ TimeInDay.toString model.timeInDay
-        , expect = Http.expectJson HalfDayReceived decoder
+        , expect = Http.expectJson (fromResult >> HalfDayResponse) decoder
         }
 
 
@@ -93,18 +90,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date, status = Loading }
+            let model_ = { model | date = date, halfDay = Loading }
             in ( model_, sendGetHalfDay model_ )
         
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay, status = Loading }
+            let model_ = { model | timeInDay = timeInDay, halfDay = Loading }
             in ( model_, sendGetHalfDay model_ )
         
-        HalfDayReceived (Ok hd) -> 
-            ( { model | status = LoadOk hd}, Cmd.none )
-        
-        HalfDayReceived (Err error) -> 
-            ( { model | status = LoadError error}, Cmd.none )
+        HalfDayResponse response -> 
+            ( { model | halfDay = response }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -164,14 +158,15 @@ viewNav model =
             ]
         ]
 
-viewStatus : HalfDayStatus -> Html Msg
+viewStatus : WebData HalfDay -> Html Msg
 viewStatus status = 
     case status of
+        NotAsked -> p [] [ ]
         Loading -> p [] [ text "Loading ..." ]
-        LoadOk (MkHalfDayWorked worked) -> viewWorked worked
-        LoadOk (MkHalfDayIdle idle) -> viewIdle idle
-        LoadError (BadStatus 404) -> viewNoEntry
-        LoadError _ -> p [] [ text "ERROR"]
+        Success (MkHalfDayWorked worked) -> viewWorked worked
+        Success (MkHalfDayIdle idle) -> viewIdle idle
+        Failure (BadStatus 404) -> viewNoEntry
+        Failure _ -> p [] [ text "ERROR"]
 
 viewWorked : Worked -> Html Msg
 viewWorked 
@@ -225,5 +220,5 @@ view model =
         , section [ class "section" ]
             [ div [ class "container" ] [ viewNav model ] ]
         , section [ class "section" ]
-            [ div [ class "content" ] [ viewStatus model.status ] ]
+            [ div [ class "content" ] [ viewStatus model.halfDay ] ]
         ]
