@@ -216,11 +216,11 @@ example:
 - ~~deployement on [heroku][heroku]~~
 - ~~dockerize the app~~
 - ~~deploy on [digital ocean][digitalocean]~~
-- web frontend: technology not choosen yet
-- gtk frontend with [haskell-gi][haskell-gi]
+- web frontend with [Elm][elm]: in progress
 
 
 [digitalocean]: https://www.digitalocean.com/
+[elm]: https://elm-lang.org/
 [esqueleto]: https://github.com/bitemyapp/esqueleto
 [exceptions]: https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell
 [haskell-gi]: https://github.com/haskell-gi/haskell-gi
