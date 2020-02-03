@@ -10,3 +10,4 @@
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
 - Improve display of week. Add message saying if the week is complete or not.
+- Redirect root to index.html

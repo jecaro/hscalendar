@@ -113,6 +113,9 @@ nextDay model = add Days 1 model.date
 toInvertIsoString : Date -> String
 toInvertIsoString = format "dd-MM-yyyy"
 
+weekdayString : Date -> String
+weekdayString = format "EEEE"
+
 viewHero : Html msg
 viewHero =
     section [ class "hero", class "is-primary" ]
@@ -135,7 +138,8 @@ viewNav model =
                 [ text "Next" ]                    
             ]
         , div [ class "level-item" ]
-            [ p [ class "subtitle" ] [ text (toIsoString model.date) ]
+            [ p [ class "subtitle" ] 
+                [ text <| toIsoString model.date ++ " " ++ weekdayString model.date]
             ]
         , div [ class "level-item" ]
             [ div [ class "field" ]
