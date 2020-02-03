@@ -19,7 +19,7 @@ toString { hours, minutes, seconds} =
 fromString : String -> Result String TimeOfDay
 fromString str = 
   let
-      items = split str ":"
+      items = split ":" str 
       maybeInts = List.map toInt items
   in
     case maybeInts of
