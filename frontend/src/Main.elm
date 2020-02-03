@@ -67,7 +67,7 @@ type alias Model =
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
-    , edit : WebData ()
+    , edit : WebData WorkOption
     , mode : Mode
     }
 
@@ -76,7 +76,7 @@ type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
     | HalfDayResponse (WebData HalfDay)
-    | EditResponse (WebData ())
+    | EditResponse (WebData WorkOption)
     | SetMode Mode
     | SetOffice Office
 
@@ -118,15 +118,25 @@ sendGetHalfDay model =
 
 sendSetOffice : Model -> Office -> Cmd Msg
 sendSetOffice model office = 
-    request
-        { method = "PUT"
-        , headers = []
-        , url = diaryUrl model
-        , body = jsonBody <| list WorkOption.encoder [MkSetOffice <| Api.SetOffice office]
-        , expect = expectWhatever (fromResult >> EditResponse)
-        , timeout = Nothing
-        , tracker = Nothing
-        }
+    let
+        workOption = MkSetOffice <| Api.SetOffice office
+    in
+        request
+            { method = "PUT"
+            , headers = []
+            , url = diaryUrl model
+            , body = jsonBody <| list WorkOption.encoder [workOption]
+            , expect = expectWhatever <| EditResponse << RemoteData.map (always workOption) << fromResult
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+
+applyWorkOption : WorkOption -> HalfDay -> HalfDay
+applyWorkOption workOption halfDay = 
+    case (workOption, halfDay) of
+        (MkSetOffice (Api.SetOffice office), MkHalfDayWorked worked) -> 
+            MkHalfDayWorked { worked | workedOffice = office}
+        _ -> halfDay
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
@@ -143,7 +153,11 @@ update msg model =
             ( { model | halfDay = response, mode = View  }, Cmd.none )
 
         EditResponse response -> 
-            ( { model | edit = response, mode = View  }, Cmd.none )
+            ( { model | edit = response
+              , halfDay = RemoteData.map2 applyWorkOption response model.halfDay
+              , mode = View }
+            , Cmd.none
+            )
 
         SetMode mode ->
             ( { model | mode = mode }, Cmd.none )
