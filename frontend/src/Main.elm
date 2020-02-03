@@ -90,10 +90,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date }
+            let model_ = { model | date = date, response = Nothing }
             in ( model_, httpCommand model_ )
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay }
+            let model_ = { model | timeInDay = timeInDay, response = Nothing }
             in ( model_, httpCommand model_ )
         ResponseReceived response -> ( { model | response = Just response}, Cmd.none )
 
@@ -158,7 +158,7 @@ viewNav model =
 viewResponse : Response -> Html msg
 viewResponse response = 
     case response of
-        Nothing -> p [] []
+        Nothing -> p [] [ text "Loading ..." ]
         Just (Ok (MkHalfDayWorked worked)) -> viewWorked worked
         Just (Ok (MkHalfDayIdle idle)) -> viewIdle idle
         Just (Err (BadStatus 404)) -> viewNoEntry
