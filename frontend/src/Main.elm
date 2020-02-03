@@ -40,7 +40,7 @@ import Api.Office.Extended as Office exposing (toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
 
-type Status 
+type HalfDayStatus 
     = Loading
     | LoadError Error
     | LoadOk HalfDay
@@ -48,14 +48,14 @@ type Status
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
-    , status : Status
+    , status : HalfDayStatus
     }
 
 
 type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
-    | ResponseReceived (Result Error HalfDay)
+    | HalfDayReceived (Result Error HalfDay)
 
 
 main : Program () Model Msg
@@ -77,15 +77,15 @@ init _ =
     , perform SetDate today
     )
 
-httpCommand : Model -> Cmd Msg
-httpCommand model = 
+sendGetHalfDay : Model -> Cmd Msg
+sendGetHalfDay model = 
     get
         { url 
             = "/diary/" 
             ++ toInvertIsoString model.date 
             ++ "/" 
             ++ TimeInDay.toString model.timeInDay
-        , expect = Http.expectJson ResponseReceived decoder
+        , expect = Http.expectJson HalfDayReceived decoder
         }
 
 
@@ -94,16 +94,16 @@ update msg model =
     case msg of
         SetDate date -> 
             let model_ = { model | date = date, status = Loading }
-            in ( model_, httpCommand model_ )
+            in ( model_, sendGetHalfDay model_ )
         
         SetTimeInDay timeInDay -> 
             let model_ = { model | timeInDay = timeInDay, status = Loading }
-            in ( model_, httpCommand model_ )
+            in ( model_, sendGetHalfDay model_ )
         
-        ResponseReceived (Ok hd) -> 
+        HalfDayReceived (Ok hd) -> 
             ( { model | status = LoadOk hd}, Cmd.none )
         
-        ResponseReceived (Err error) -> 
+        HalfDayReceived (Err error) -> 
             ( { model | status = LoadError error}, Cmd.none )
 
 
@@ -164,7 +164,7 @@ viewNav model =
             ]
         ]
 
-viewStatus : Status -> Html Msg
+viewStatus : HalfDayStatus -> Html Msg
 viewStatus status = 
     case status of
         Loading -> p [] [ text "Loading ..." ]
