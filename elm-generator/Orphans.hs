@@ -18,6 +18,14 @@ import           Language.Haskell.To.Elm
     , deriveElmTypeDefinition
     )
 
+import           App.WorkOption
+    ( WorkOption
+    , SetArrived
+    , SetLeft
+    , SetNotes
+    , SetOffice
+    , SetProj
+    )
 import           Db.HalfDay (HalfDay)
 import           Db.Idle (Idle)
 import           Db.IdleDayType (IdleDayType)
@@ -162,6 +170,108 @@ instance HasElmDecoder A.Value HalfDay where
 instance HasElmEncoder A.Value HalfDay where
     elmEncoderDefinition =
         Just $ deriveElmJSONEncoder @HalfDay defaultOptions A.defaultOptions "Api.HalfDay.encoder"
+
+--
+
+instance SOP.Generic WorkOption
+instance SOP.HasDatatypeInfo WorkOption
+
+instance HasElmType WorkOption where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @WorkOption defaultOptions "Api.WorkOption"
+
+instance HasElmDecoder A.Value WorkOption where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @WorkOption defaultOptions A.defaultOptions "Api.WorkOption.decoder"
+
+instance HasElmEncoder A.Value WorkOption where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @WorkOption defaultOptions A.defaultOptions "Api.WorkOption.encoder"
+
+--
+
+instance SOP.Generic SetArrived
+instance SOP.HasDatatypeInfo SetArrived
+
+instance HasElmType SetArrived where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @SetArrived defaultOptions "Api.SetArrived"
+
+instance HasElmDecoder A.Value SetArrived where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @SetArrived defaultOptions A.defaultOptions "Api.SetArrived.decoder"
+
+instance HasElmEncoder A.Value SetArrived where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @SetArrived defaultOptions A.defaultOptions "Api.SetArrived.encoder"
+
+--
+
+instance SOP.Generic SetLeft
+instance SOP.HasDatatypeInfo SetLeft
+
+instance HasElmType SetLeft where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @SetLeft defaultOptions "Api.SetLeft"
+
+instance HasElmDecoder A.Value SetLeft where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @SetLeft defaultOptions A.defaultOptions "Api.SetLeft.decoder"
+
+instance HasElmEncoder A.Value SetLeft where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @SetLeft defaultOptions A.defaultOptions "Api.SetLeft.encoder"
+
+--
+
+instance SOP.Generic SetNotes
+instance SOP.HasDatatypeInfo SetNotes
+
+instance HasElmType SetNotes where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @SetNotes defaultOptions "Api.SetNotes"
+
+instance HasElmDecoder A.Value SetNotes where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @SetNotes defaultOptions A.defaultOptions "Api.SetNotes.decoder"
+
+instance HasElmEncoder A.Value SetNotes where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @SetNotes defaultOptions A.defaultOptions "Api.SetNotes.encoder"
+
+--
+
+instance SOP.Generic SetOffice
+instance SOP.HasDatatypeInfo SetOffice
+
+instance HasElmType SetOffice where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @SetOffice defaultOptions "Api.SetOffice"
+
+instance HasElmDecoder A.Value SetOffice where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @SetOffice defaultOptions A.defaultOptions "Api.SetOffice.decoder"
+
+instance HasElmEncoder A.Value SetOffice where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @SetOffice defaultOptions A.defaultOptions "Api.SetOffice.encoder"
+
+--
+
+instance SOP.Generic SetProj
+instance SOP.HasDatatypeInfo SetProj
+
+instance HasElmType SetProj where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @SetProj defaultOptions "Api.SetProj"
+
+instance HasElmDecoder A.Value SetProj where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @SetProj defaultOptions A.defaultOptions "Api.SetProj.decoder"
+
+instance HasElmEncoder A.Value SetProj where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @SetProj defaultOptions A.defaultOptions "Api.SetProj.encoder"
 
 --
 

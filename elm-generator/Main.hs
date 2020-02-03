@@ -36,6 +36,14 @@ import           Path
 import           Path.IO (createDirIfMissing, getCurrentDir)
 
 import           App.CommandLine (Options(..), options)
+import           App.WorkOption
+    ( SetArrived
+    , SetLeft
+    , SetNotes
+    , SetOffice
+    , SetProj
+    , WorkOption
+    )
 import           Db.HalfDay (HalfDay)
 import           Db.Idle (Idle)
 import           Db.IdleDayType (IdleDayType)
@@ -108,8 +116,14 @@ main = do
           , jsonDefinitions @Notes
           , jsonDefinitions @Office
           , jsonDefinitions @Project
+          , jsonDefinitions @SetArrived
+          , jsonDefinitions @SetLeft
+          , jsonDefinitions @SetNotes
+          , jsonDefinitions @SetOffice
+          , jsonDefinitions @SetProj
           , jsonDefinitions @Time.Day
           , jsonDefinitions @TimeInDay
           , jsonDefinitions @Time.TimeOfDay
           , jsonDefinitions @Worked
+          , jsonDefinitions @WorkOption
           ]
