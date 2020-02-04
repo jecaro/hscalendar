@@ -28,6 +28,7 @@ jobs:
       script: docker run -t jecaro/hscalendar-server ./hscalendar-test
 
     - stage: deploy
+      if: branch = master
       before_install:
       - docker load -i docker_image/images.tar
       script:
