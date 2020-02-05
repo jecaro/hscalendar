@@ -20,7 +20,7 @@ jobs:
   include:
 
     - stage: build
-      script: docker build -t jecaro/hscalendar-server .
+      script: docker build -t jecaro/hscalendar-server:latest .
 
     - stage: test
       before_install:
@@ -32,6 +32,9 @@ jobs:
       before_install:
       - docker load -i docker_image/images.tar
       script:
+        export VERSION=$(date +%Y%m%d).$(git rev-parse --short HEAD) &&
+        docker tag jecaro/hscalendar-server:latest jecaro/hscalendar-server:$VERSION &&
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
-        docker push jecaro/hscalendar-server
+        docker push jecaro/hscalendar-server:latest &&
+        docker push jecaro/hscalendar-server:$VERSION
 
