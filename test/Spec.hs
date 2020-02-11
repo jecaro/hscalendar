@@ -44,6 +44,7 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
+import           Db.FullWeek (add, empty)
 import qualified Db.IdleDayType as IDT (IdleDayType(..))
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
@@ -576,7 +577,7 @@ testHdApi runDB =
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldSatisfy` null
+                res `shouldBe` empty
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
@@ -588,7 +589,7 @@ testHdApi runDB =
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` [MkHalfDayIdle (MkIdle day1 tid1 hdt1')]
+                res `shouldBe` add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) empty
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
@@ -602,7 +603,7 @@ testHdApi runDB =
                 worked `shouldBe` defaultWorked day1 tid1 project1
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` [defaultWorked day1 tid1 project1]
+                res `shouldBe` add (defaultWorked day1 tid1 project1) empty
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException

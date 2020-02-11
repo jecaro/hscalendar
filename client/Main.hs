@@ -56,6 +56,7 @@ import           App.CommandLine
     )
 import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
+import           Db.FullWeek (FullWeek)
 import           Db.HalfDay (HalfDay)
 import           Db.IdleDayType (IdleDayType)
 import           Db.Project (Project)
@@ -87,7 +88,7 @@ data ProtectedClient env = ProtectedClient
     , projRm :: Project -> RIO env NoContent
     , projRename :: RenameArgs -> RIO env NoContent
     , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
-    , weekGet :: CustomWeek -> RIO env [ HalfDay ]
+    , weekGet :: CustomWeek -> RIO env FullWeek
     , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
     , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
     , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent
@@ -187,7 +188,7 @@ run ProtectedClient{..} (DiaryDisplay cd tid) =
     hdGet cd tid >>= logInfo . display
 
 run ProtectedClient{..} (DiaryWeek cw) =
-    weekGet cw >>= mapM_ (logInfo . display)
+    weekGet cw >>= logInfo . display
 
 run ProtectedClient{..} (DiaryWork cd tid wopts) =
     void $ hdSetWork cd tid wopts

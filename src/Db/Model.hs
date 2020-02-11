@@ -92,23 +92,9 @@ import qualified Database.Persist as P ((==.))
 import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
-import           Data.Time.Calendar.WeekDate (toWeekDate)
 
-import qualified Lens.Micro.Platform as L ((?~), (^.))
-
-import qualified Db.FullDay as FullDay (afternoon, empty, morning)
-import qualified Db.FullWeek as FullWeek
-    ( FullWeek(..)
-    , empty
-    , monday
-    , tuesday
-    , wednesday
-    , thursday
-    , friday
-    , saturday
-    , sunday
-    )
-import qualified Db.HalfDay as HalfDay (HalfDay(..), day, timeInDay)
+import           Db.FullWeek (FullWeek(..), add, empty)
+import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
 import           Db.Notes (Notes, unNotes)
@@ -331,7 +317,7 @@ hdGet
     :: (MonadIO m, MonadUnliftIO m)
     => Time.Day
     -> TimeInDay
-    -> SqlPersistT m HalfDay.HalfDay
+    -> SqlPersistT m HalfDay
 hdGet day tid =
     (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (hd ^. DBHalfDayDay        ==. val day &&.
@@ -345,7 +331,7 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 weekGet
-    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek.FullWeek
+    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
@@ -357,6 +343,7 @@ weekGet week = do
         return (hd, mbHdw, mbProj))
     hdList <- mapM dbToHalfDayInt tupleList
     return $ toFullWeek hdList
+  where toFullWeek = foldr add empty
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
@@ -506,37 +493,16 @@ hdHdwProjGetInt day tid = do
 dbToHalfDayInt
     :: MonadIO m =>
     (Entity DBHalfDay, Maybe (Entity DBHalfDayWorked), Maybe (Entity DBProject))
-    -> m HalfDay.HalfDay
+    -> m HalfDay
 dbToHalfDayInt (Entity _ hd, Nothing, Nothing) =
     case dbToIdle hd of
         Nothing -> throwIO DbInconsistency
-        Just idle -> return $ HalfDay.MkHalfDayIdle idle
+        Just idle -> return $ MkHalfDayIdle idle
 dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
     case dbToWorked hd hdw proj of
         Nothing -> throwIO DbInconsistency
-        Just worked -> return $ HalfDay.MkHalfDayWorked worked
+        Just worked -> return $ MkHalfDayWorked worked
 dbToHalfDayInt _ = throwIO DbInconsistency
-
--- | Convert '[HalfDay]' returned by 'dbToHalfDayInt' to a nicer data type
-toFullWeek :: [HalfDay.HalfDay] -> FullWeek.FullWeek
-toFullWeek = foldr fillUpFullWeek FullWeek.empty
-  where
-      fillUpFullWeek hd fullWeek =
-          let (_, _, weekDay) = toWeekDate (view HalfDay.day hd)
-              dayLens = case weekDay of
-                            1 -> FullWeek.monday
-                            2 -> FullWeek.tuesday
-                            3 -> FullWeek.wednesday
-                            4 -> FullWeek.thursday
-                            5 -> FullWeek.friday
-                            6 -> FullWeek.saturday
-                            7 -> FullWeek.sunday
-                            _ -> lensDoingNothing
-              tidLens = case hd L.^. HalfDay.timeInDay of
-                            Morning -> FullDay.morning
-                            Afternoon -> FullDay.afternoon
-          in fullWeek & dayLens . tidLens L.?~ hd
-      lensDoingNothing = lens (const FullDay.empty) const
 
 -- hd private functions
 

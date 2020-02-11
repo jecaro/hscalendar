@@ -10,6 +10,7 @@ where
 
 import           RIO
 
+import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields)
 
 import           Db.HalfDay ( HalfDay )
@@ -18,7 +19,11 @@ data FullDay = MkFullDay
     { _fullDayMorning :: !(Maybe HalfDay)
     , _fullDayAfternoon :: !(Maybe HalfDay)
     }
+    deriving (Eq, Generic, Show)
 makeFields ''FullDay
+
+instance FromJSON FullDay
+instance ToJSON FullDay
 
 instance Display (Maybe HalfDay) where
     display (Just hd) = display hd
