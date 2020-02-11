@@ -7,34 +7,31 @@ language: generic
 services:
 - docker
 
+env:
+- CACHE_DIR=docker_image
+
 # Add a simple cache for docker images as explained here
 # https://stackoverflow.com/questions/32866599/can-travis-ci-cache-docker-images/41975912
 cache:
   directories:
-  - docker_image
+  - ${CACHE_DIR}
 
 before_cache:
-- docker save -o docker_image/images.tar jecaro/hscalendar-server
+- make cache_dir=${CACHE_DIR} save
 
 jobs:
   include:
 
     - stage: build
-      script: docker build -t jecaro/hscalendar-server:latest .
+      script: make build
 
     - stage: test
       before_install:
-      - docker load -i docker_image/images.tar
-      script: docker run -t jecaro/hscalendar-server ./hscalendar-test
+      - make cache_dir=${CACHE_DIR} load
+      script: make test
 
     - stage: deploy
-      if: branch = master
       before_install:
-      - docker load -i docker_image/images.tar
-      script:
-        export VERSION=$(date +%Y%m%d).$(git rev-parse --short HEAD) &&
-        docker tag jecaro/hscalendar-server:latest jecaro/hscalendar-server:$VERSION &&
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
-        docker push jecaro/hscalendar-server:latest &&
-        docker push jecaro/hscalendar-server:$VERSION
+      - make cache_dir=${CACHE_DIR} load
+      script: make deploy
 
