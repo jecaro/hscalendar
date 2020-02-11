@@ -45,6 +45,7 @@ import Time exposing (Month(..))
 import Api as Api exposing 
     ( HalfDay(..)
     , Idle
+    , IdleDayType(..)
     , Office(..)
     , SetOffice(..)
     , TimeInDay(..)
@@ -52,7 +53,8 @@ import Api as Api exposing
     , Worked
     )
 import Api.HalfDay as HalfDay exposing (decoder)
-import Api.IdleDayType.Extended as IdleDayType exposing (toString)
+import Api.IdleDayType as IdleDayType exposing (encoder)
+import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
@@ -61,13 +63,16 @@ import Api.WorkOption as WorkOption exposing (encoder)
 type Mode 
     = View
     | EditOffice
+    | EditIdleDayType
 
+
+type EditHalfDay = MkWorkOption WorkOption | MkIdleDayType IdleDayType
 
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
-    , edit : WebData WorkOption
+    , edit : WebData EditHalfDay
     , mode : Mode
     }
 
@@ -76,9 +81,10 @@ type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
     | HalfDayResponse (WebData HalfDay)
-    | EditResponse (WebData WorkOption)
+    | EditResponse (WebData EditHalfDay)
     | SetMode Mode
     | SetOffice Office
+    | SetIdleDayType IdleDayType
 
 
 main : Program () Model Msg
@@ -109,6 +115,13 @@ diaryUrl model
     ++ "/" 
     ++ TimeInDay.toString model.timeInDay
 
+idleUrl : Model -> String
+idleUrl model 
+    = "/diary/idle/" 
+    ++ toInvertIsoString model.date 
+    ++ "/" 
+    ++ TimeInDay.toString model.timeInDay
+
 sendGetHalfDay : Model -> Cmd Msg
 sendGetHalfDay model = 
     get
@@ -126,16 +139,31 @@ sendSetOffice model office =
             , headers = []
             , url = diaryUrl model
             , body = jsonBody <| list WorkOption.encoder [workOption]
-            , expect = expectWhatever <| EditResponse << RemoteData.map (always workOption) << fromResult
+            , expect = expectWhatever <| EditResponse << RemoteData.map (always (MkWorkOption workOption)) << fromResult
             , timeout = Nothing
             , tracker = Nothing
             }
 
-applyWorkOption : WorkOption -> HalfDay -> HalfDay
-applyWorkOption workOption halfDay = 
+sendSetIdleDayType : Model -> IdleDayType -> Cmd Msg
+sendSetIdleDayType model idleDayType = 
+        request
+            { method = "PUT"
+            , headers = []
+            , url = idleUrl model
+            , body = jsonBody <| IdleDayType.encoder idleDayType
+            , expect = expectWhatever <| EditResponse << RemoteData.map (always (MkIdleDayType idleDayType)) << fromResult
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+
+
+applyEditHalfDay : EditHalfDay -> HalfDay -> HalfDay
+applyEditHalfDay workOption halfDay = 
     case (workOption, halfDay) of
-        (MkSetOffice (Api.SetOffice office), MkHalfDayWorked worked) -> 
+        (MkWorkOption (MkSetOffice (Api.SetOffice office)), MkHalfDayWorked worked) -> 
             MkHalfDayWorked { worked | workedOffice = office}
+        (MkIdleDayType idleDayType, MkHalfDayIdle idle) -> 
+            MkHalfDayIdle { idle | idleDayType = idleDayType }
         _ -> halfDay
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -154,7 +182,7 @@ update msg model =
 
         EditResponse response -> 
             ( { model | edit = response
-              , halfDay = RemoteData.map2 applyWorkOption response model.halfDay
+              , halfDay = RemoteData.map2 applyEditHalfDay response model.halfDay
               , mode = View }
             , Cmd.none
             )
@@ -165,6 +193,10 @@ update msg model =
         SetOffice office -> 
             let model_ = { model | edit = Loading }
             in ( model_, sendSetOffice model_ office )
+
+        SetIdleDayType idleDayType -> 
+            let model_ = { model | edit = Loading }
+            in ( model_, sendSetIdleDayType model_ idleDayType )
 
 
 subscriptions : Model -> Sub Msg
@@ -213,7 +245,7 @@ viewNav model =
         , div [ class "level-item" ]
             [ div [ class "field" ]
                 [ div [ class "control" ]
-                    [ div [ class "select", onInput <| SetTimeInDay << Result.withDefault Morning << fromString ] 
+                    [ div [ class "select", onInput <| SetTimeInDay << Result.withDefault Morning << TimeInDay.fromString ] 
                         [ select [] 
                             [ option [] [ text "Morning" ]
                             , option [] [ text "Afternoon" ]
@@ -230,7 +262,7 @@ viewStatus model =
         NotAsked -> p [] [ ]
         Loading -> p [] [ text "Loading ..." ]
         Success (MkHalfDayWorked worked) -> viewWorked worked model.mode 
-        Success (MkHalfDayIdle idle) -> viewIdle idle
+        Success (MkHalfDayIdle idle) -> viewIdle idle model.mode
         Failure (BadStatus 404) -> viewNoEntry
         Failure _ -> p [] [ text "ERROR"]
 
@@ -254,6 +286,28 @@ officeSelect current =
                 ]
             ]
 
+idleDayTypeSelect : IdleDayType -> Html Msg
+idleDayTypeSelect current = 
+    let
+        setOption idleDayType = 
+            option [ selected <| idleDayType == current ] [ text <| IdleDayType.toString idleDayType ]
+    in
+        div [ class "field" ]
+            [ div [ class "control" ]
+                [ div [ class "select", onInput <| SetIdleDayType << Result.withDefault PaidLeave << IdleDayType.fromString ]
+                    [ select [] 
+                        [ setOption PaidLeave
+                        , setOption FamilyEvent
+                        , setOption RTTE
+                        , setOption RTTS
+                        , setOption UnpaidLeave
+                        , setOption PublicHoliday
+                        , setOption PartTime
+                        ]
+                    ]
+                ]
+            ]
+
 viewWorked : Worked -> Mode -> Html Msg
 viewWorked 
     { workedArrived
@@ -262,10 +316,11 @@ viewWorked
     , workedNotes
     , workedProject } mode = 
     let
+        viewMode = th [ onDoubleClick <| SetMode EditOffice ] [ text <| Office.toString workedOffice ]
         cellOffice = 
             case mode of
-                View -> 
-                    th [ onDoubleClick <| SetMode EditOffice ] [ text <| Office.toString workedOffice ]
+                View -> viewMode
+                EditIdleDayType -> viewMode
                 EditOffice -> 
                     th [] [ officeSelect workedOffice ]
     in
@@ -286,15 +341,24 @@ viewWorked
             ]
     
 
-viewIdle : Idle -> Html msg
-viewIdle { idleDayType } = 
-    table [ class "table" ]
-        [ tbody []
-            [ tr []
-                [ th [] [ text <| IdleDayType.toString idleDayType ]
+viewIdle : Idle -> Mode -> Html Msg
+viewIdle { idleDayType } mode = 
+    let
+        viewMode = 
+            th [ onDoubleClick <| SetMode EditIdleDayType ] [ text <| IdleDayType.toString idleDayType ]
+        cellIdleDayType = 
+            case mode of
+                View -> viewMode
+                EditIdleDayType -> th [] [ idleDayTypeSelect idleDayType ]
+                EditOffice -> viewMode
+    in    
+        table [ class "table" ]
+            [ tbody []
+                [ tr []
+                    [ cellIdleDayType
+                    ]
                 ]
             ]
-        ]
 
 viewNoEntry : Html msg
 viewNoEntry  = 
