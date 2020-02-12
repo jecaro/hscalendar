@@ -38,7 +38,9 @@ import Http exposing
     , jsonBody
     , request
     )
-import Json.Encode exposing (list)
+import Json.Decode as Decode exposing (list)
+import Json.Encode as Encode exposing (list)
+import Platform.Cmd exposing (batch)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Task exposing (perform)
@@ -50,6 +52,7 @@ import Api exposing
     , IdleDayType(..)
     , Notes
     , Office(..)
+    , Project
     , SetNotes(..)
     , SetOffice(..)
     , TimeInDay(..)
@@ -61,6 +64,7 @@ import Api.HalfDay.Extended exposing (setIdleDayType, setWorkOption)
 import Api.IdleDayType as IdleDayType exposing (encoder)
 import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (toString)
+import Api.Project as Project exposing (decoder)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (toString)
 import Api.WorkOption as WorkOption exposing (encoder)
@@ -78,7 +82,8 @@ type alias Model =
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
-    , edit : WebData EditHalfDay 
+    , projects : WebData (List Project)
+    , edit : WebData EditHalfDay
     , mode : Mode
     }
 
@@ -88,6 +93,7 @@ type Msg
     | SetTimeInDay TimeInDay
     | HalfDayResponse (WebData HalfDay)
     | EditResponse (WebData EditHalfDay)
+    | ProjectsResponse (WebData (List Project))
     | SetMode Mode
     | SetEditHalfDay (Cmd Msg)
 
@@ -107,10 +113,11 @@ init _ =
     ( { date = fromCalendarDate 2020 Jan 1
       , timeInDay = Morning
       , halfDay = NotAsked
+      , projects = NotAsked
       , mode = View
       , edit = NotAsked
       }
-    , perform SetDate today
+    , batch [ perform SetDate today, sendGetProjects ]
     )
 
 diaryUrl : Model -> String
@@ -132,6 +139,13 @@ sendGetHalfDay model =
     get
         { url = diaryUrl model
         , expect = Http.expectJson (fromResult >> HalfDayResponse) HalfDay.decoder
+        }
+
+sendGetProjects : Cmd Msg
+sendGetProjects = 
+    get
+        { url = "/project/"
+        , expect = Http.expectJson (fromResult >> ProjectsResponse) (Decode.list Project.decoder)
         }
 
 sendSetOffice : Model -> Office -> Cmd Msg
@@ -156,7 +170,7 @@ sendSetWorkOption model option =
         { method = "PUT"
         , headers = []
         , url = diaryUrl model
-        , body = jsonBody <| list WorkOption.encoder [option]
+        , body = jsonBody <| Encode.list WorkOption.encoder [option]
         , expect = expectWhatever <| EditResponse << RemoteData.map (always (setWorkOption option)) << fromResult
         , timeout = Nothing
         , tracker = Nothing
@@ -187,7 +201,10 @@ update msg model =
             in ( model_, sendGetHalfDay model_ )
         
         HalfDayResponse response -> 
-            ( { model | halfDay = response, mode = View  }, Cmd.none )
+            ( { model | halfDay = response, mode = View }, Cmd.none )
+
+        ProjectsResponse response -> 
+            ( { model | projects = response }, Cmd.none )
 
         EditResponse response -> 
             ( { model | edit = response
