@@ -39,6 +39,7 @@ import Http exposing
     , request
     )
 import Json.Encode exposing (list)
+import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Task exposing (perform)
 import Time exposing (Month(..))
@@ -249,7 +250,10 @@ viewNav model =
         , div [ class "level-item" ]
             [ div [ class "field" ]
                 [ div [ class "control" ]
-                    [ div [ class "select", onInput <| SetTimeInDay << Result.withDefault Morning << TimeInDay.fromString ] 
+                    [ div 
+                        [ class "select"
+                        , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString 
+                        ] 
                         [ select [] 
                             [ option [] [ text "Morning" ]
                             , option [] [ text "Afternoon" ]
@@ -279,7 +283,10 @@ officeSelect model current =
     in
         div [ class "field" ]
             [ div [ class "control" ]
-                [ div [ class "select", onInput <| SetEditHalfDay << sendSetOffice model << Result.withDefault Rennes << Office.fromString ]
+                [ div 
+                    [ class "select"
+                    , onInput <| SetEditHalfDay << sendSetOffice model << withDefault Rennes << Office.fromString 
+                    ]
                     [ select [] 
                         [ setOption Rennes
                         , setOption Home
@@ -294,11 +301,15 @@ idleDayTypeSelect : Model -> IdleDayType -> Html Msg
 idleDayTypeSelect model current = 
     let
         setOption idleDayType = 
-            option [ selected <| idleDayType == current ] [ text <| IdleDayType.toString idleDayType ]
+            option [ selected <| idleDayType == current ] 
+                [ text <| IdleDayType.toString idleDayType ]
     in
         div [ class "field" ]
             [ div [ class "control" ]
-                [ div [ class "select", onInput <| SetEditHalfDay << sendSetIdleDayType model << Result.withDefault PaidLeave << IdleDayType.fromString ]
+                [ div 
+                    [ class "select"
+                    , onInput <| SetEditHalfDay << sendSetIdleDayType model << withDefault PaidLeave << IdleDayType.fromString 
+                    ]
                     [ select [] 
                         [ setOption PaidLeave
                         , setOption FamilyEvent
@@ -379,7 +390,8 @@ viewIdle model { idleDayType } =
                 EditIdleDayType -> 
                     th [] [ idleDayTypeSelect model idleDayType ]
                 _ -> 
-                    th [ onDoubleClick <| SetMode EditIdleDayType ] [ text <| IdleDayType.toString idleDayType ]
+                    th [ onDoubleClick <| SetMode EditIdleDayType ] 
+                        [ text <| IdleDayType.toString idleDayType ]
     in    
         table [ class "table" ]
             [ tbody []
