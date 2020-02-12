@@ -22,6 +22,7 @@ import Html exposing
     , select
     , table
     , tbody
+    , textarea
     , td
     , th
     , tr
@@ -42,11 +43,13 @@ import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
-import Api as Api exposing 
+import Api exposing 
     ( HalfDay(..)
     , Idle
     , IdleDayType(..)
+    , Notes
     , Office(..)
+    , SetNotes(..)
     , SetOffice(..)
     , TimeInDay(..)
     , WorkOption(..)
@@ -64,6 +67,7 @@ import Api.WorkOption as WorkOption exposing (encoder)
 type Mode 
     = View
     | EditOffice
+    | EditNotes String
     | EditIdleDayType
 
 
@@ -132,9 +136,18 @@ sendGetHalfDay model =
 sendSetOffice : Model -> Office -> Cmd Msg
 sendSetOffice model office = 
     let
-        workOption = MkSetOffice <| Api.SetOffice office
+        workOption = MkSetOffice <| SetOffice office
     in
         sendSetWorkOption model workOption
+
+
+sendSetNotes : Model -> String -> Cmd Msg
+sendSetNotes model notes = 
+    let
+        workOption = MkSetNotes <| SetNotes (Notes notes)
+    in
+        sendSetWorkOption model workOption
+
 
 sendSetWorkOption : Model -> WorkOption -> Cmd Msg
 sendSetWorkOption model option = 
@@ -307,13 +320,39 @@ viewWorked model
     , workedNotes
     , workedProject } = 
     let
-        viewMode = th [ onDoubleClick <| SetMode EditOffice ] [ text <| Office.toString workedOffice ]
         cellOffice = 
             case model.mode of
-                View -> viewMode
-                EditIdleDayType -> viewMode
-                EditOffice -> 
+                EditOffice ->
                     th [] [ officeSelect model workedOffice ]
+                _ -> 
+                    th [ onDoubleClick <| SetMode EditOffice ] 
+                        [ text <| Office.toString workedOffice ]
+        cellNotes = 
+            case model.mode of
+                EditNotes notes -> 
+                    td [ ] 
+                        [ div [ class "field"]
+                            [ div [ class "control" ]
+                                [ textarea 
+                                    [ class "textarea", onInput <| SetMode << EditNotes ]
+                                    [ text notes
+                                    ]
+                                ]
+                            ]
+                        , div [ class "field"]
+                            [ div [ class "control" ]
+                               [ button 
+                                    [ class "button"
+                                    , onClick <| SetEditHalfDay <| sendSetNotes model notes 
+                                    ]
+                                    [ text "Submit"
+                                    ]
+                               ]
+                            ]
+                        ]
+                _ -> 
+                    td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ] 
+                        [ text <| workedNotes.unNotes ]
     in
         table [ class "table" ]
             [ tbody []
@@ -326,7 +365,7 @@ viewWorked model
                     ]
                 , tr []
                     [ th [] [ text <| workedProject.unProject ]
-                    , td [] [ text <| workedNotes.unNotes ]
+                    , cellNotes
                     ]
                 ]
             ]
@@ -335,13 +374,12 @@ viewWorked model
 viewIdle : Model -> Idle -> Html Msg
 viewIdle model { idleDayType } = 
     let
-        viewMode = 
-            th [ onDoubleClick <| SetMode EditIdleDayType ] [ text <| IdleDayType.toString idleDayType ]
         cellIdleDayType = 
             case model.mode of
-                View -> viewMode
-                EditIdleDayType -> th [] [ idleDayTypeSelect model idleDayType ]
-                EditOffice -> viewMode
+                EditIdleDayType -> 
+                    th [] [ idleDayTypeSelect model idleDayType ]
+                _ -> 
+                    th [ onDoubleClick <| SetMode EditIdleDayType ] [ text <| IdleDayType.toString idleDayType ]
     in    
         table [ class "table" ]
             [ tbody []
