@@ -134,15 +134,19 @@ sendSetOffice model office =
     let
         workOption = MkSetOffice <| Api.SetOffice office
     in
-        request
-            { method = "PUT"
-            , headers = []
-            , url = diaryUrl model
-            , body = jsonBody <| list WorkOption.encoder [workOption]
-            , expect = expectWhatever <| EditResponse << RemoteData.map (always (setWorkOption workOption)) << fromResult
-            , timeout = Nothing
-            , tracker = Nothing
-            }
+        sendSetWorkOption model workOption
+
+sendSetWorkOption : Model -> WorkOption -> Cmd Msg
+sendSetWorkOption model option = 
+    request
+        { method = "PUT"
+        , headers = []
+        , url = diaryUrl model
+        , body = jsonBody <| list WorkOption.encoder [option]
+        , expect = expectWhatever <| EditResponse << RemoteData.map (always (setWorkOption option)) << fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 sendSetIdleDayType : Model -> IdleDayType -> Cmd Msg
 sendSetIdleDayType model idleDayType = 
