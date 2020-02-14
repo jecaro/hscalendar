@@ -55,6 +55,7 @@ import Api exposing
     , Project
     , SetNotes(..)
     , SetOffice(..)
+    , SetProj(..)
     , TimeInDay(..)
     , WorkOption(..)
     , Worked
@@ -72,6 +73,7 @@ import Api.WorkOption as WorkOption exposing (encoder)
 type Mode 
     = View
     | EditOffice
+    | EditProject
     | EditNotes String
     | EditIdleDayType
 
@@ -159,7 +161,15 @@ sendSetOffice model office =
 sendSetNotes : Model -> String -> Cmd Msg
 sendSetNotes model notes = 
     let
-        workOption = MkSetNotes <| SetNotes (Notes notes)
+        workOption = MkSetNotes <| SetNotes <| Notes notes
+    in
+        sendSetWorkOption model workOption
+
+
+sendSetProject : Model -> String -> Cmd Msg
+sendSetProject model project = 
+    let
+        workOption = MkSetProj <| SetProj <| Project project
     in
         sendSetWorkOption model workOption
 
@@ -295,7 +305,7 @@ viewStatus model =
 officeSelect : Model -> Office -> Html Msg
 officeSelect model current = 
     let
-        setOption office = 
+        toOption office = 
             option [ selected <| office == current ] [ text <| Office.toString office ]
     in
         div [ class "field" ]
@@ -305,19 +315,42 @@ officeSelect model current =
                     , onInput <| SetEditHalfDay << sendSetOffice model << withDefault Rennes << Office.fromString 
                     ]
                     [ select [] 
-                        [ setOption Rennes
-                        , setOption Home
-                        , setOption Poool
-                        , setOption OutOfOffice
+                        [ toOption Rennes
+                        , toOption Home
+                        , toOption Poool
+                        , toOption OutOfOffice
                         ]
                     ]
                 ]
             ]
 
+projectSelect : Model -> Project -> Html Msg
+projectSelect model current = 
+    let
+        toOption project = 
+            option [ selected <| project == current ] 
+                [ text project.unProject]
+    in
+        case model.projects of
+            NotAsked -> Debug.todo "TODO"
+            Loading -> Debug.todo "TODO"
+            Failure _ -> Debug.todo "TODO"
+            Success projects ->
+                div [ class "field" ]
+                    [ div [ class "control" ]
+                        [ div 
+                            [ class "select" 
+                            , onInput <| SetEditHalfDay << sendSetProject model
+                            ]
+                            [ select [] <| List.map toOption projects ]
+                        ]
+                    ]
+
+
 idleDayTypeSelect : Model -> IdleDayType -> Html Msg
 idleDayTypeSelect model current = 
     let
-        setOption idleDayType = 
+        toOption idleDayType = 
             option [ selected <| idleDayType == current ] 
                 [ text <| IdleDayType.toString idleDayType ]
     in
@@ -328,13 +361,13 @@ idleDayTypeSelect model current =
                     , onInput <| SetEditHalfDay << sendSetIdleDayType model << withDefault PaidLeave << IdleDayType.fromString 
                     ]
                     [ select [] 
-                        [ setOption PaidLeave
-                        , setOption FamilyEvent
-                        , setOption RTTE
-                        , setOption RTTS
-                        , setOption UnpaidLeave
-                        , setOption PublicHoliday
-                        , setOption PartTime
+                        [ toOption PaidLeave
+                        , toOption FamilyEvent
+                        , toOption RTTE
+                        , toOption RTTS
+                        , toOption UnpaidLeave
+                        , toOption PublicHoliday
+                        , toOption PartTime
                         ]
                     ]
                 ]
@@ -381,6 +414,13 @@ viewWorked model
                 _ -> 
                     td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ] 
                         [ text <| workedNotes.unNotes ]
+        cellProject =
+            case model.mode of
+                EditProject -> 
+                    th [] [ projectSelect model workedProject ]
+                _ ->
+                    th [ onDoubleClick <| SetMode EditProject ] 
+                        [ text <| workedProject.unProject ]
     in
         table [ class "table" ]
             [ tbody []
@@ -392,7 +432,7 @@ viewWorked model
                             ++ "-" ++ TimeOfDay.toString workedLeft]
                     ]
                 , tr []
-                    [ th [] [ text <| workedProject.unProject ]
+                    [ cellProject
                     , cellNotes
                     ]
                 ]
