@@ -326,9 +326,9 @@ viewStatus model =
                 Failure (BadStatus 404) -> viewNoEntry
                 Failure _ -> p [] [ text "Error loading half-day"]
                 Success (MkHalfDayWorked worked) -> 
-                    viewWorked model.date model.timeInDay model.mode projects worked
+                    viewWorked model.mode projects worked
                 Success (MkHalfDayIdle idle) -> 
-                    viewIdle model.date model.timeInDay model.mode idle
+                    viewIdle model.mode idle
 
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
@@ -442,9 +442,11 @@ leftInput date timeInDay timeOfDay =
     in
         arrivedOrLeftInput setEditHalfDay timeOfDay
 
-viewWorked : Date -> TimeInDay -> Mode -> List Project -> Worked -> Html Msg
-viewWorked date timeInDay mode projects 
-    { workedArrived
+viewWorked : Mode -> List Project -> Worked -> Html Msg
+viewWorked mode projects 
+    { workedDay
+    , workedTimeInDay
+    , workedArrived
     , workedLeft
     , workedOffice
     , workedNotes
@@ -453,7 +455,7 @@ viewWorked date timeInDay mode projects
         cellOffice = 
             case mode of
                 EditOffice ->
-                    th [] [ officeSelect date timeInDay workedOffice ]
+                    th [] [ officeSelect workedDay workedTimeInDay workedOffice ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditOffice ] 
                         [ text <| Office.toString workedOffice ]
@@ -475,7 +477,7 @@ viewWorked date timeInDay mode projects
                                     [ class "button"
                                     , onClick 
                                         <| SetEditHalfDay 
-                                        <| sendSetNotes date timeInDay notes 
+                                        <| sendSetNotes workedDay workedTimeInDay notes 
                                     ]
                                     [ text "Submit"
                                     ]
@@ -488,7 +490,7 @@ viewWorked date timeInDay mode projects
         cellProject =
             case mode of
                 EditProject -> 
-                    th [] [ projectSelect date timeInDay projects workedProject ]
+                    th [] [ projectSelect workedDay workedTimeInDay projects workedProject ]
                 _ ->
                     th [ onDoubleClick <| SetMode EditProject ] 
                         [ text <| workedProject.unProject ]
@@ -499,13 +501,13 @@ viewWorked date timeInDay mode projects
         divArrived =
             case mode of
                 EditArrived -> 
-                    arrivedInput date timeInDay workedArrived
+                    arrivedInput workedDay workedTimeInDay workedArrived
                 _ -> 
                     divViewArrivedOrLeft EditArrived workedArrived
         divLeft =
             case mode of
                 EditLeft ->
-                    leftInput date timeInDay workedLeft
+                    leftInput workedDay workedTimeInDay workedLeft
                 _ -> 
                     divViewArrivedOrLeft EditLeft workedLeft
     in
@@ -528,13 +530,13 @@ viewWorked date timeInDay mode projects
             ]
     
 
-viewIdle : Date -> TimeInDay -> Mode -> Idle -> Html Msg
-viewIdle date timeInDay mode { idleDayType } = 
+viewIdle : Mode -> Idle -> Html Msg
+viewIdle mode { idleDay, idleTimeInDay, idleDayType } = 
     let
         cellIdleDayType = 
             case mode of
                 EditIdleDayType -> 
-                    th [] [ idleDayTypeSelect date timeInDay idleDayType ]
+                    th [] [ idleDayTypeSelect idleDay idleTimeInDay idleDayType ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditIdleDayType ] 
                         [ text <| IdleDayType.toString idleDayType ]
