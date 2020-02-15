@@ -313,22 +313,17 @@ viewNav model =
             ]
         ]
 
-viewStatus : Model -> Html Msg
-viewStatus model = 
-    case model.projects of
+viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
+viewStatus halfDay mode projects = 
+    case halfDay of
         NotAsked -> p [] []
-        Loading -> p [] [ text "Loading projects ..." ]
-        Failure _ -> p [] [ text "Error loading projects"]
-        Success projects -> 
-            case model.halfDay of
-                NotAsked -> p [] []
-                Loading -> p [] [ text "Loading ..." ]
-                Failure (BadStatus 404) -> viewNoEntry
-                Failure _ -> p [] [ text "Error loading half-day"]
-                Success (MkHalfDayWorked worked) -> 
-                    viewWorked model.mode projects worked
-                Success (MkHalfDayIdle idle) -> 
-                    viewIdle model.mode idle
+        Loading -> p [] [ text "Loading ..." ]
+        Failure (BadStatus 404) -> viewNoEntry
+        Failure _ -> p [] [ text "Error loading half-day"]
+        Success (MkHalfDayWorked worked) -> 
+            viewWorked mode projects worked
+        Success (MkHalfDayIdle idle) -> 
+            viewIdle mode idle
 
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
@@ -562,10 +557,18 @@ viewNoEntry  =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ viewHero
-        , section [ class "section" ]
-            [ div [ class "container" ] [ viewNav model ] ]
-        , section [ class "section" ]
-            [ div [ class "content" ] [ viewStatus model ] ]
-        ]
+    let
+        listSectionsWithContent content = 
+            [ section [ class "section" ] [ div [ class "content" ] [ content ] ] 
+            ]
+
+        sectionHalfDay = RemoteData.unwrap [] 
+            (listSectionsWithContent << viewStatus model.halfDay model.mode)
+            model.projects
+        sectionNav = listSectionsWithContent <| viewNav model
+    in
+        div [] <|
+            [ viewHero ]
+            ++ sectionNav
+            ++ sectionHalfDay
+
