@@ -293,13 +293,20 @@ viewNav model =
 
 viewStatus : Model -> Html Msg
 viewStatus model = 
-    case model.halfDay of
-        NotAsked -> p [] [ ]
-        Loading -> p [] [ text "Loading ..." ]
-        Success (MkHalfDayWorked worked) -> viewWorked model worked  
-        Success (MkHalfDayIdle idle) -> viewIdle model idle
-        Failure (BadStatus 404) -> viewNoEntry
-        Failure _ -> p [] [ text "ERROR"]
+    case model.projects of
+        NotAsked -> p [] []
+        Loading -> p [] [ text "Loading projects ..." ]
+        Failure _ -> p [] [ text "Error loading projects"]
+        Success projects -> 
+            case model.halfDay of
+                NotAsked -> p [] []
+                Loading -> p [] [ text "Loading ..." ]
+                Failure (BadStatus 404) -> viewNoEntry
+                Failure _ -> p [] [ text "Error loading half-day"]
+                Success (MkHalfDayWorked worked) -> 
+                    viewWorked model.date model.timeInDay model.mode projects worked
+                Success (MkHalfDayIdle idle) -> 
+                    viewIdle model.date model.timeInDay model.mode idle
 
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
@@ -330,27 +337,22 @@ officeSelect date timeInDay current =
                 ]
             ]
 
-projectSelect : Model -> Project -> Html Msg
-projectSelect model current = 
+projectSelect : Date -> TimeInDay -> List Project -> Project -> Html Msg
+projectSelect date timeInDay projects current = 
     let
         toOption project = 
             option [ selected <| project == current ] 
                 [ text project.unProject]
     in
-        case model.projects of
-            NotAsked -> Debug.todo "TODO"
-            Loading -> Debug.todo "TODO"
-            Failure _ -> Debug.todo "TODO"
-            Success projects ->
-                div [ class "field" ]
-                    [ div [ class "control" ]
-                        [ div 
-                            [ class "select" 
-                            , onInput <| SetEditHalfDay << sendSetProject model.date model.timeInDay
-                            ]
-                            [ select [] <| List.map toOption projects ]
-                        ]
+        div [ class "field" ]
+            [ div [ class "control" ]
+                [ div 
+                    [ class "select"
+                    , onInput <| SetEditHalfDay << sendSetProject date timeInDay
                     ]
+                    [ select [] <| List.map toOption projects ]
+                ]
+            ]
 
 
 idleDayTypeSelect : Date -> TimeInDay -> IdleDayType -> Html Msg
@@ -384,8 +386,8 @@ idleDayTypeSelect date timeInDay current =
                 ]
             ]
 
-viewWorked : Model -> Worked -> Html Msg
-viewWorked model 
+viewWorked : Date -> TimeInDay -> Mode -> List Project -> Worked -> Html Msg
+viewWorked date timeInDay mode projects 
     { workedArrived
     , workedLeft
     , workedOffice
@@ -393,14 +395,14 @@ viewWorked model
     , workedProject } = 
     let
         cellOffice = 
-            case model.mode of
+            case mode of
                 EditOffice ->
-                    th [] [ officeSelect model.date model.timeInDay workedOffice ]
+                    th [] [ officeSelect date timeInDay workedOffice ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditOffice ] 
                         [ text <| Office.toString workedOffice ]
         cellNotes = 
-            case model.mode of
+            case mode of
                 EditNotes notes -> 
                     td [ ] 
                         [ div [ class "field"]
@@ -417,7 +419,7 @@ viewWorked model
                                     [ class "button"
                                     , onClick 
                                         <| SetEditHalfDay 
-                                        <| sendSetNotes model.date model.timeInDay notes 
+                                        <| sendSetNotes date timeInDay notes 
                                     ]
                                     [ text "Submit"
                                     ]
@@ -428,9 +430,9 @@ viewWorked model
                     td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ] 
                         [ text <| workedNotes.unNotes ]
         cellProject =
-            case model.mode of
+            case mode of
                 EditProject -> 
-                    th [] [ projectSelect model workedProject ]
+                    th [] [ projectSelect date timeInDay projects workedProject ]
                 _ ->
                     th [ onDoubleClick <| SetMode EditProject ] 
                         [ text <| workedProject.unProject ]
@@ -452,13 +454,13 @@ viewWorked model
             ]
     
 
-viewIdle : Model -> Idle -> Html Msg
-viewIdle model { idleDayType } = 
+viewIdle : Date -> TimeInDay -> Mode -> Idle -> Html Msg
+viewIdle date timeInDay mode { idleDayType } = 
     let
         cellIdleDayType = 
-            case model.mode of
+            case mode of
                 EditIdleDayType -> 
-                    th [] [ idleDayTypeSelect model.date model.timeInDay idleDayType ]
+                    th [] [ idleDayTypeSelect date timeInDay idleDayType ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditIdleDayType ] 
                         [ text <| IdleDayType.toString idleDayType ]
