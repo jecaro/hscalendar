@@ -122,24 +122,24 @@ init _ =
     , batch [ perform SetDate today, sendGetProjects ]
     )
 
-diaryUrl : Model -> String
-diaryUrl model 
+diaryUrl : Date -> TimeInDay -> String
+diaryUrl date timeInDay 
     = "/diary/" 
-    ++ toInvertIsoString model.date 
+    ++ toInvertIsoString date 
     ++ "/" 
-    ++ TimeInDay.toString model.timeInDay
+    ++ TimeInDay.toString timeInDay
 
-idleUrl : Model -> String
-idleUrl model 
+idleUrl : Date -> TimeInDay -> String
+idleUrl date timeInDay
     = "/diary/idle/" 
-    ++ toInvertIsoString model.date 
+    ++ toInvertIsoString date 
     ++ "/" 
-    ++ TimeInDay.toString model.timeInDay
+    ++ TimeInDay.toString timeInDay
 
-sendGetHalfDay : Model -> Cmd Msg
-sendGetHalfDay model = 
+sendGetHalfDay : Date -> TimeInDay -> Cmd Msg
+sendGetHalfDay date timeInDay = 
     get
-        { url = diaryUrl model
+        { url = diaryUrl date timeInDay
         , expect = Http.expectJson (fromResult >> HalfDayResponse) HalfDay.decoder
         }
 
@@ -150,48 +150,48 @@ sendGetProjects =
         , expect = Http.expectJson (fromResult >> ProjectsResponse) (Decode.list Project.decoder)
         }
 
-sendSetOffice : Model -> Office -> Cmd Msg
-sendSetOffice model office = 
+sendSetOffice : Date -> TimeInDay -> Office -> Cmd Msg
+sendSetOffice date timeInDay office = 
     let
         workOption = MkSetOffice <| SetOffice office
     in
-        sendSetWorkOption model workOption
+        sendSetWorkOption date timeInDay workOption
 
 
-sendSetNotes : Model -> String -> Cmd Msg
-sendSetNotes model notes = 
+sendSetNotes : Date -> TimeInDay -> String -> Cmd Msg
+sendSetNotes date timeInDay notes = 
     let
         workOption = MkSetNotes <| SetNotes <| Notes notes
     in
-        sendSetWorkOption model workOption
+        sendSetWorkOption date timeInDay workOption
 
 
-sendSetProject : Model -> String -> Cmd Msg
-sendSetProject model project = 
+sendSetProject : Date -> TimeInDay -> String -> Cmd Msg
+sendSetProject date timeInDay project = 
     let
         workOption = MkSetProj <| SetProj <| Project project
     in
-        sendSetWorkOption model workOption
+        sendSetWorkOption date timeInDay workOption
 
 
-sendSetWorkOption : Model -> WorkOption -> Cmd Msg
-sendSetWorkOption model option = 
+sendSetWorkOption : Date -> TimeInDay -> WorkOption -> Cmd Msg
+sendSetWorkOption date timeInDay option = 
     request
         { method = "PUT"
         , headers = []
-        , url = diaryUrl model
+        , url = diaryUrl date timeInDay
         , body = jsonBody <| Encode.list WorkOption.encoder [option]
         , expect = expectWhatever <| EditResponse << RemoteData.map (always (setWorkOption option)) << fromResult
         , timeout = Nothing
         , tracker = Nothing
         }
 
-sendSetIdleDayType : Model -> IdleDayType -> Cmd Msg
-sendSetIdleDayType model idleDayType = 
+sendSetIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd Msg
+sendSetIdleDayType date timeInDay idleDayType = 
         request
             { method = "PUT"
             , headers = []
-            , url = idleUrl model
+            , url = idleUrl date timeInDay
             , body = jsonBody <| IdleDayType.encoder idleDayType
             , expect = expectWhatever <| EditResponse << RemoteData.map (always (setIdleDayType idleDayType)) << fromResult
             , timeout = Nothing
@@ -204,11 +204,11 @@ update msg model =
     case msg of
         SetDate date -> 
             let model_ = { model | date = date, halfDay = Loading, mode = View  }
-            in ( model_, sendGetHalfDay model_ )
+            in ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
         SetTimeInDay timeInDay -> 
             let model_ = { model | timeInDay = timeInDay, halfDay = Loading, mode = View  }
-            in ( model_, sendGetHalfDay model_ )
+            in ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
         HalfDayResponse response -> 
             ( { model | halfDay = response, mode = View }, Cmd.none )
@@ -302,17 +302,23 @@ viewStatus model =
         Failure _ -> p [] [ text "ERROR"]
 
 
-officeSelect : Model -> Office -> Html Msg
-officeSelect model current = 
+officeSelect : Date -> TimeInDay -> Office -> Html Msg
+officeSelect date timeInDay current = 
     let
         toOption office = 
-            option [ selected <| office == current ] [ text <| Office.toString office ]
+            option [ selected <| office == current ] 
+                [ text <| Office.toString office ]
+        setEditHalfDay = 
+            SetEditHalfDay 
+                << sendSetOffice date timeInDay 
+                << withDefault Rennes 
+                << Office.fromString 
     in
         div [ class "field" ]
             [ div [ class "control" ]
                 [ div 
                     [ class "select"
-                    , onInput <| SetEditHalfDay << sendSetOffice model << withDefault Rennes << Office.fromString 
+                    , onInput <| setEditHalfDay
                     ]
                     [ select [] 
                         [ toOption Rennes
@@ -340,25 +346,30 @@ projectSelect model current =
                     [ div [ class "control" ]
                         [ div 
                             [ class "select" 
-                            , onInput <| SetEditHalfDay << sendSetProject model
+                            , onInput <| SetEditHalfDay << sendSetProject model.date model.timeInDay
                             ]
                             [ select [] <| List.map toOption projects ]
                         ]
                     ]
 
 
-idleDayTypeSelect : Model -> IdleDayType -> Html Msg
-idleDayTypeSelect model current = 
+idleDayTypeSelect : Date -> TimeInDay -> IdleDayType -> Html Msg
+idleDayTypeSelect date timeInDay current = 
     let
         toOption idleDayType = 
             option [ selected <| idleDayType == current ] 
                 [ text <| IdleDayType.toString idleDayType ]
+        setEditHalfDay =
+            SetEditHalfDay 
+                << sendSetIdleDayType date timeInDay 
+                << withDefault PaidLeave 
+                << IdleDayType.fromString 
     in
         div [ class "field" ]
             [ div [ class "control" ]
                 [ div 
                     [ class "select"
-                    , onInput <| SetEditHalfDay << sendSetIdleDayType model << withDefault PaidLeave << IdleDayType.fromString 
+                    , onInput <| setEditHalfDay
                     ]
                     [ select [] 
                         [ toOption PaidLeave
@@ -384,7 +395,7 @@ viewWorked model
         cellOffice = 
             case model.mode of
                 EditOffice ->
-                    th [] [ officeSelect model workedOffice ]
+                    th [] [ officeSelect model.date model.timeInDay workedOffice ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditOffice ] 
                         [ text <| Office.toString workedOffice ]
@@ -404,7 +415,9 @@ viewWorked model
                             [ div [ class "control" ]
                                [ button 
                                     [ class "button"
-                                    , onClick <| SetEditHalfDay <| sendSetNotes model notes 
+                                    , onClick 
+                                        <| SetEditHalfDay 
+                                        <| sendSetNotes model.date model.timeInDay notes 
                                     ]
                                     [ text "Submit"
                                     ]
@@ -445,7 +458,7 @@ viewIdle model { idleDayType } =
         cellIdleDayType = 
             case model.mode of
                 EditIdleDayType -> 
-                    th [] [ idleDayTypeSelect model idleDayType ]
+                    th [] [ idleDayTypeSelect model.date model.timeInDay idleDayType ]
                 _ -> 
                     th [ onDoubleClick <| SetMode EditIdleDayType ] 
                         [ text <| IdleDayType.toString idleDayType ]
