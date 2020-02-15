@@ -56,6 +56,7 @@ import Api exposing
     , Office(..)
     , Project
     , SetArrived(..)
+    , SetLeft(..)
     , SetNotes(..)
     , SetOffice(..)
     , SetProj(..)
@@ -80,6 +81,7 @@ type Mode
     | EditNotes String
     | EditIdleDayType
     | EditArrived
+    | EditLeft
 
 
 type alias EditHalfDay = HalfDay -> HalfDay
@@ -182,6 +184,14 @@ sendSetArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
 sendSetArrived date timeInDay timeOfDay = 
     let
         workOption = MkSetArrived <| SetArrived timeOfDay
+    in
+        sendSetWorkOption date timeInDay workOption
+
+
+sendSetLeft : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+sendSetLeft date timeInDay timeOfDay = 
+    let
+        workOption = MkSetLeft <| SetLeft timeOfDay
     in
         sendSetWorkOption date timeInDay workOption
 
@@ -417,6 +427,25 @@ arrivedInput date timeInDay timeOfDay =
                 ]
             ]
 
+leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+leftInput date timeInDay timeOfDay = 
+    let
+        setEditHalfDay =
+            SetEditHalfDay 
+                << sendSetLeft date timeInDay 
+                << withDefault timeOfDay
+                << TimeOfDay.fromString 
+    in
+        div [ class "field", class "is-inline-block" ]
+            [ div [ class "control" ]
+                [ input 
+                    [ class "input", type_ "text"
+                    , value <| TimeOfDay.toString timeOfDay 
+                    , onEnter setEditHalfDay
+                    ] [ ]
+                ]
+            ]
+
 viewWorked : Date -> TimeInDay -> Mode -> List Project -> Worked -> Html Msg
 viewWorked date timeInDay mode projects 
     { workedArrived
@@ -475,6 +504,14 @@ viewWorked date timeInDay mode projects
                     div [ class "is-inline-block"
                         , onDoubleClick <| SetMode EditArrived ]
                         [ text <| TimeOfDay.toString workedArrived ]
+        divLeft =
+            case mode of
+                EditLeft ->
+                    leftInput date timeInDay workedLeft
+                _ -> 
+                    div [ class "is-inline-block"
+                        , onDoubleClick <| SetMode EditLeft ]
+                        [ text <| TimeOfDay.toString workedLeft ]
     in
         table [ class "table" ]
             [ tbody []
@@ -484,8 +521,7 @@ viewWorked date timeInDay mode projects
                         [ divArrived 
                         , div [ class "is-inline-block" ] 
                             [ text "\u{00A0}-\u{00A0}" ]
-                        , div [ class "is-inline-block" ] 
-                            [ text <| TimeOfDay.toString workedLeft ]
+                        , divLeft
                         ]
                     ]
                 , tr []
