@@ -252,18 +252,9 @@ subscriptions _ =
     Sub.none
 
 
-previousDay : Model -> Date
-previousDay model = add Days -1 model.date
-
-
-nextDay : Model -> Date
-nextDay model = add Days 1 model.date
-
 toInvertIsoString : Date -> String
 toInvertIsoString = format "dd-MM-yyyy"
 
-weekdayString : Date -> String
-weekdayString = format "EEEE"
 
 viewHero : Html msg
 viewHero =
@@ -277,35 +268,40 @@ viewHero =
             ]
         ]
 
-viewNav : Model -> Html Msg
-viewNav model = 
-    nav [ class "level" ]
-        [ div [ class "level-item" ]
-            [ button [ class "button", onClick <| SetDate <| previousDay model ] 
-                [ text "Prev" ]
-            , button [ class "button", onClick <| SetDate <| nextDay model ] 
-                [ text "Next" ]                    
-            ]
-        , div [ class "level-item" ]
-            [ p [ class "subtitle" ] 
-                [ text <| toIsoString model.date ++ " " ++ weekdayString model.date]
-            ]
-        , div [ class "level-item" ]
-            [ div [ class "field" ]
-                [ div [ class "control" ]
-                    [ div 
-                        [ class "select"
-                        , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString 
-                        ] 
-                        [ select [] 
-                            [ option [] [ text "Morning" ]
-                            , option [] [ text "Afternoon" ]
+viewNav : Date -> Html Msg
+viewNav date = 
+    let
+        previousDay = add Days -1 date
+        nextDay = add Days 1 date
+        weekdayString = format "EEEE" date
+    in
+        nav [ class "level" ]
+            [ div [ class "level-item" ]
+                [ button [ class "button", onClick <| SetDate previousDay ] 
+                    [ text "Prev" ]
+                , button [ class "button", onClick <| SetDate nextDay ] 
+                    [ text "Next" ]                    
+                ]
+            , div [ class "level-item" ]
+                [ p [ class "subtitle" ] 
+                    [ text <| toIsoString date ++ " " ++ weekdayString]
+                ]
+            , div [ class "level-item" ]
+                [ div [ class "field" ]
+                    [ div [ class "control" ]
+                        [ div 
+                            [ class "select"
+                            , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString 
+                            ] 
+                            [ select [] 
+                                [ option [] [ text "Morning" ]
+                                , option [] [ text "Afternoon" ]
+                                ]
                             ]
                         ]
                     ]
                 ]
             ]
-        ]
 
 viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
 viewStatus halfDay mode projects = 
@@ -559,7 +555,7 @@ view model =
         sectionHalfDay = RemoteData.unwrap [] 
             (listSectionsWithContent << viewStatus model.halfDay model.mode)
             model.projects
-        sectionNav = listSectionsWithContent <| viewNav model
+        sectionNav = listSectionsWithContent <| viewNav model.date
     in
         div [] <|
             [ viewHero ]
