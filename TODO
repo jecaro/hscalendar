@@ -12,3 +12,11 @@
 - Improve display of week. Add message saying if the week is complete or not.
 - Redirect root to index.html
 - favicon
+- click outside control should cancel
+- same when we press the cancel key
+- better toString and fromString fct for TimeOfDay
+- widget for editing time
+- date picker
+- project page
+- week page
+- month page

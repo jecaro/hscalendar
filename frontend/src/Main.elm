@@ -408,6 +408,18 @@ idleDayTypeSelect date timeInDay current =
                 ]
             ]
 
+arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
+arrivedOrLeftInput callback timeOfDay = 
+    div [ class "field", class "is-inline-block" ]
+        [ div [ class "control" ]
+            [ input 
+                [ class "input", type_ "text"
+                , value <| TimeOfDay.toString timeOfDay 
+                , onEnter callback
+                ] [ ]
+            ]
+        ]
+
 arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 arrivedInput date timeInDay timeOfDay = 
     let
@@ -417,15 +429,7 @@ arrivedInput date timeInDay timeOfDay =
                 << withDefault timeOfDay
                 << TimeOfDay.fromString 
     in
-        div [ class "field", class "is-inline-block" ]
-            [ div [ class "control" ]
-                [ input 
-                    [ class "input", type_ "text"
-                    , value <| TimeOfDay.toString timeOfDay 
-                    , onEnter setEditHalfDay
-                    ] [ ]
-                ]
-            ]
+        arrivedOrLeftInput setEditHalfDay timeOfDay
 
 leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 leftInput date timeInDay timeOfDay = 
@@ -436,15 +440,7 @@ leftInput date timeInDay timeOfDay =
                 << withDefault timeOfDay
                 << TimeOfDay.fromString 
     in
-        div [ class "field", class "is-inline-block" ]
-            [ div [ class "control" ]
-                [ input 
-                    [ class "input", type_ "text"
-                    , value <| TimeOfDay.toString timeOfDay 
-                    , onEnter setEditHalfDay
-                    ] [ ]
-                ]
-            ]
+        arrivedOrLeftInput setEditHalfDay timeOfDay
 
 viewWorked : Date -> TimeInDay -> Mode -> List Project -> Worked -> Html Msg
 viewWorked date timeInDay mode projects 
@@ -496,22 +492,22 @@ viewWorked date timeInDay mode projects
                 _ ->
                     th [ onDoubleClick <| SetMode EditProject ] 
                         [ text <| workedProject.unProject ]
+        divViewArrivedOrLeft mode_ timeOfDay =
+            div [ class "is-inline-block"
+                , onDoubleClick <| SetMode mode_ ]
+                [ text <| TimeOfDay.toString timeOfDay ]        
         divArrived =
             case mode of
-                EditArrived ->
+                EditArrived -> 
                     arrivedInput date timeInDay workedArrived
                 _ -> 
-                    div [ class "is-inline-block"
-                        , onDoubleClick <| SetMode EditArrived ]
-                        [ text <| TimeOfDay.toString workedArrived ]
+                    divViewArrivedOrLeft EditArrived workedArrived
         divLeft =
             case mode of
                 EditLeft ->
                     leftInput date timeInDay workedLeft
                 _ -> 
-                    div [ class "is-inline-block"
-                        , onDoubleClick <| SetMode EditLeft ]
-                        [ text <| TimeOfDay.toString workedLeft ]
+                    divViewArrivedOrLeft EditLeft workedLeft
     in
         table [ class "table" ]
             [ tbody []
