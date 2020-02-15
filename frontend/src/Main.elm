@@ -15,6 +15,7 @@ import Html exposing
     , button
     , div
     , h1
+    , input
     , nav
     , option
     , p
@@ -28,8 +29,9 @@ import Html exposing
     , tr
     , text
     )
-import Html.Attributes exposing (class, selected)
+import Html.Attributes exposing (class, selected, type_, value)
 import Html.Events exposing (onClick, onDoubleClick, onInput)
+import Html.Events.Extended exposing (onEnter)
 import Http exposing 
     ( Error(..)
     , expectJson
@@ -53,6 +55,7 @@ import Api exposing
     , Notes
     , Office(..)
     , Project
+    , SetArrived(..)
     , SetNotes(..)
     , SetOffice(..)
     , SetProj(..)
@@ -67,7 +70,7 @@ import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (toString)
 import Api.Project as Project exposing (decoder)
 import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
-import Api.TimeOfDay as TimeOfDay exposing (toString)
+import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
 import Api.WorkOption as WorkOption exposing (encoder)
 
 type Mode 
@@ -76,6 +79,7 @@ type Mode
     | EditProject
     | EditNotes String
     | EditIdleDayType
+    | EditArrived
 
 
 type alias EditHalfDay = HalfDay -> HalfDay
@@ -170,6 +174,14 @@ sendSetProject : Date -> TimeInDay -> String -> Cmd Msg
 sendSetProject date timeInDay project = 
     let
         workOption = MkSetProj <| SetProj <| Project project
+    in
+        sendSetWorkOption date timeInDay workOption
+
+
+sendSetArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+sendSetArrived date timeInDay timeOfDay = 
+    let
+        workOption = MkSetArrived <| SetArrived timeOfDay
     in
         sendSetWorkOption date timeInDay workOption
 
@@ -386,6 +398,25 @@ idleDayTypeSelect date timeInDay current =
                 ]
             ]
 
+arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+arrivedInput date timeInDay timeOfDay = 
+    let
+        setEditHalfDay =
+            SetEditHalfDay 
+                << sendSetArrived date timeInDay 
+                << withDefault timeOfDay
+                << TimeOfDay.fromString 
+    in
+        div [ class "field", class "is-inline-block" ]
+            [ div [ class "control" ]
+                [ input 
+                    [ class "input", type_ "text"
+                    , value <| TimeOfDay.toString timeOfDay 
+                    , onEnter setEditHalfDay
+                    ] [ ]
+                ]
+            ]
+
 viewWorked : Date -> TimeInDay -> Mode -> List Project -> Worked -> Html Msg
 viewWorked date timeInDay mode projects 
     { workedArrived
@@ -436,15 +467,26 @@ viewWorked date timeInDay mode projects
                 _ ->
                     th [ onDoubleClick <| SetMode EditProject ] 
                         [ text <| workedProject.unProject ]
+        divArrived =
+            case mode of
+                EditArrived ->
+                    arrivedInput date timeInDay workedArrived
+                _ -> 
+                    div [ class "is-inline-block"
+                        , onDoubleClick <| SetMode EditArrived ]
+                        [ text <| TimeOfDay.toString workedArrived ]
     in
         table [ class "table" ]
             [ tbody []
                 [ tr []
                     [ cellOffice
                     , td [] 
-                        [ text 
-                            <| TimeOfDay.toString workedArrived 
-                            ++ "-" ++ TimeOfDay.toString workedLeft]
+                        [ divArrived 
+                        , div [ class "is-inline-block" ] 
+                            [ text "\u{00A0}-\u{00A0}" ]
+                        , div [ class "is-inline-block" ] 
+                            [ text <| TimeOfDay.toString workedLeft ]
+                        ]
                     ]
                 , tr []
                     [ cellProject
