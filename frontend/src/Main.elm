@@ -74,7 +74,7 @@ import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
 import Api.WorkOption as WorkOption exposing (encoder)
 
-type Mode 
+type Mode
     = View
     | EditOffice
     | EditProject
@@ -84,7 +84,7 @@ type Mode
     | EditLeft
 
 
-type alias Model = 
+type alias Model =
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
@@ -141,14 +141,14 @@ idleUrl date timeInDay
     ++ TimeInDay.toString timeInDay
 
 sendGetHalfDay : Date -> TimeInDay -> Cmd Msg
-sendGetHalfDay date timeInDay = 
+sendGetHalfDay date timeInDay =
     get
         { url = diaryUrl date timeInDay
         , expect = Http.expectJson (fromResult >> HalfDayResponse) HalfDay.decoder
         }
 
 sendGetProjects : Cmd Msg
-sendGetProjects = 
+sendGetProjects =
     get
         { url = "/project/"
         , expect = Http.expectJson (fromResult >> ProjectsResponse) (Decode.list Project.decoder)
@@ -171,56 +171,56 @@ sendSetNotes date timeInDay notes =
 
 
 sendSetProject : Date -> TimeInDay -> String -> Cmd Msg
-sendSetProject date timeInDay project = 
+sendSetProject date timeInDay project =
     let
         workOption = MkSetProj <| SetProj <| Project project
     in
-        sendSetWorkOption date timeInDay workOption
+    sendSetWorkOption date timeInDay workOption
 
 
 sendSetArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
-sendSetArrived date timeInDay timeOfDay = 
+sendSetArrived date timeInDay timeOfDay =
     let
         workOption = MkSetArrived <| SetArrived timeOfDay
     in
-        sendSetWorkOption date timeInDay workOption
+    sendSetWorkOption date timeInDay workOption
 
 
 sendSetLeft : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
-sendSetLeft date timeInDay timeOfDay = 
+sendSetLeft date timeInDay timeOfDay =
     let
         workOption = MkSetLeft <| SetLeft timeOfDay
     in
-        sendSetWorkOption date timeInDay workOption
+    sendSetWorkOption date timeInDay workOption
 
 
 sendSetWorkOption : Date -> TimeInDay -> WorkOption -> Cmd Msg
-sendSetWorkOption date timeInDay option = 
+sendSetWorkOption date timeInDay option =
     request
         { method = "PUT"
         , headers = []
         , url = diaryUrl date timeInDay
-        , body = jsonBody <| Encode.list WorkOption.encoder [option]
-        , expect = expectWhatever <| EditResponse << RemoteData.fromResult 
+        , body = jsonBody <| Encode.list WorkOption.encoder [ option ]
+        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
         , timeout = Nothing
         , tracker = Nothing
         }
 
 sendSetIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd Msg
-sendSetIdleDayType date timeInDay idleDayType = 
-        request
-            { method = "PUT"
-            , headers = []
-            , url = idleUrl date timeInDay
-            , body = jsonBody <| IdleDayType.encoder idleDayType
-            , expect = expectWhatever <| EditResponse << RemoteData.fromResult  
-            , timeout = Nothing
-            , tracker = Nothing
-            }
+sendSetIdleDayType date timeInDay idleDayType =
+    request
+        { method = "PUT"
+        , headers = []
+        , url = idleUrl date timeInDay
+        , body = jsonBody <| IdleDayType.encoder idleDayType
+        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model = 
+update msg model =
     case msg of
         SetDate date -> 
             let model_ = { model | date = date, halfDay = Loading, edit = NotAsked, mode = View  }
@@ -229,14 +229,14 @@ update msg model =
         SetTimeInDay timeInDay -> 
             let model_ = { model | timeInDay = timeInDay, halfDay = Loading, edit = NotAsked, mode = View  }
             in ( model_, sendGetHalfDay model_.date model_.timeInDay )
-        
-        HalfDayResponse response -> 
+
+        HalfDayResponse response ->
             ( { model | halfDay = response, mode = View }, Cmd.none )
 
-        ProjectsResponse response -> 
+        ProjectsResponse response ->
             ( { model | projects = response }, Cmd.none )
 
-        EditResponse response -> 
+        EditResponse response ->
             ( { model | edit = response }, sendGetHalfDay model.date model.timeInDay )
 
         SetMode mode ->
@@ -269,118 +269,174 @@ viewHero =
         ]
 
 viewNav : Date -> Html Msg
-viewNav date = 
+viewNav date =
     let
         previousDay = add Days -1 date
         nextDay = add Days 1 date
         weekdayString = format "EEEE" date
     in
-        nav [ class "level" ]
-            [ div [ class "level-item" ]
-                [ button [ class "button", onClick <| SetDate previousDay ] 
-                    [ text "Prev" ]
-                , button [ class "button", onClick <| SetDate nextDay ] 
-                    [ text "Next" ]                    
-                ]
-            , div [ class "level-item" ]
-                [ p [ class "subtitle" ] 
-                    [ text <| toIsoString date ++ " " ++ weekdayString]
-                ]
-            , div [ class "level-item" ]
-                [ div [ class "field" ]
-                    [ div [ class "control" ]
-                        [ div 
-                            [ class "select"
-                            , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString 
-                            ] 
-                            [ select [] 
-                                [ option [] [ text "Morning" ]
-                                , option [] [ text "Afternoon" ]
-                                ]
+    nav [ class "level" ]
+        [ div [ class "level-item" ]
+            [ button [ class "button", onClick <| SetDate previousDay ]
+                [ text "Prev" ]
+            , button [ class "button", onClick <| SetDate nextDay ]
+                [ text "Next" ]
+            ]
+        , div [ class "level-item" ]
+            [ p [ class "subtitle" ]
+                [ text <| toIsoString date ++ " " ++ weekdayString ]
+            ]
+        , div [ class "level-item" ]
+            [ div [ class "field" ]
+                [ div [ class "control" ]
+                    [ div
+                        [ class "select"
+                        , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString
+                        ]
+                        [ select []
+                            [ option [] [ text "Morning" ]
+                            , option [] [ text "Afternoon" ]
                             ]
                         ]
                     ]
                 ]
             ]
+        ]
+
+
+viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Html Msg
+viewChangeHalfDayType date timeInDay halfDay projects =
+    let
+        showRm =
+            div [ class "level-item" ]
+                [ button [ class "button" ] [ text "Rm" ]
+                ]
+
+        showIdle =
+            div [ class "level-item" ]
+                [ div [ class "label" ] [ text "Set as holiday" ]
+                , idleDayTypeSelect date timeInDay Nothing
+                ]
+
+        showWorked =
+            div [ class "level-item" ]
+                [ div [ class "label" ] [ text "Set as working" ]
+                , projectSelect date timeInDay (Project "" :: projects) (Project "")
+                ]
+    in
+    div [ class "level" ] <|
+        case halfDay of
+            Nothing ->
+                [ showIdle, showWorked ]
+
+            Just (Api.MkHalfDayIdle _) ->
+                [ showRm, showWorked ]
+
+            Just (Api.MkHalfDayWorked _) ->
+                [ showRm, showIdle ]
+
 
 viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
-viewStatus halfDay mode projects = 
+viewStatus halfDay mode projects =
     case halfDay of
         NotAsked -> p [] []
         Loading -> p [] [ text "Loading ..." ]
         Failure (BadStatus 404) -> viewNoEntry
-        Failure _ -> p [] [ text "Error loading half-day"]
-        Success (MkHalfDayWorked worked) -> 
+        Failure _ -> p [] [ text "Error loading half-day" ]
+        Success (MkHalfDayWorked worked) ->
             viewWorked mode projects worked
-        Success (MkHalfDayIdle idle) -> 
+        Success (MkHalfDayIdle idle) ->
             viewIdle mode idle
 
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
-officeSelect date timeInDay current = 
+officeSelect date timeInDay current =
     let
-        toOption office = 
-            option [ selected <| office == current ] 
+        toOption office =
+            option [ selected <| office == current ]
                 [ text <| Office.toString office ]
-        setEditHalfDay = 
-            SetEditHalfDay 
-                << sendSetOffice date timeInDay 
-                << withDefault Rennes 
-                << Office.fromString 
+        setEditHalfDay =
+            SetEditHalfDay
+                << sendSetOffice date timeInDay
+                << withDefault Rennes
+                << Office.fromString
     in
-        div [ class "field" ]
-            [ div [ class "control" ]
-                [ div 
-                    [ class "select"
-                    , onInput <| setEditHalfDay
-                    ]
-                    [ select [] 
-                        [ toOption Rennes
-                        , toOption Home
-                        , toOption Poool
-                        , toOption OutOfOffice
-                        ]
+    div [ class "field" ]
+        [ div [ class "control" ]
+            [ div
+                [ class "select"
+                , onInput <| setEditHalfDay
+                ]
+                [ select []
+                    [ toOption Rennes
+                    , toOption Home
+                    , toOption Poool
+                    , toOption OutOfOffice
                     ]
                 ]
             ]
+        ]
 
 projectSelect : Date -> TimeInDay -> List Project -> Project -> Html Msg
-projectSelect date timeInDay projects current = 
+projectSelect date timeInDay projects current =
     let
-        toOption project = 
-            option [ selected <| project == current ] 
-                [ text project.unProject]
-    in
-        div [ class "field" ]
-            [ div [ class "control" ]
-                [ div 
-                    [ class "select"
-                    , onInput <| SetEditHalfDay << sendSetProject date timeInDay
-                    ]
-                    [ select [] <| List.map toOption projects ]
+        toOption project =
+            option
+                [ value project.unProject
+                , selected <| project == current
                 ]
+                [ text project.unProject ]
+    in
+    div [ class "field" ]
+        [ div [ class "control" ]
+            [ div
+                [ class "select"
+                , onInput <| SetEditHalfDay << sendSetProject date timeInDay
+                , value current.unProject
+                ]
+                [ select [] <| List.map toOption projects ]
             ]
+        ]
 
-
-idleDayTypeSelect : Date -> TimeInDay -> IdleDayType -> Html Msg
-idleDayTypeSelect date timeInDay current = 
+{- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
+function prepend an empty item before the different types.
+-}
+idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Html Msg
+idleDayTypeSelect date timeInDay current =
     let
-        toOption idleDayType = 
-            option [ selected <| idleDayType == current ] 
+        selected_ idleDayType =
+            case current of
+                Nothing ->
+                    []
+
+                Just current_ ->
+                    [ selected (idleDayType == current_) ]
+
+        toOption idleDayType =
+            option
+                ( (value <| IdleDayType.toString idleDayType)
+                :: selected_ idleDayType
+                )
                 [ text <| IdleDayType.toString idleDayType ]
+
         setEditHalfDay =
-            SetEditHalfDay 
-                << sendSetIdleDayType date timeInDay 
-                << withDefault PaidLeave 
-                << IdleDayType.fromString 
+            SetEditHalfDay
+                << sendSetIdleDayType date timeInDay
+                << withDefault PaidLeave
+                << IdleDayType.fromString
     in
         div [ class "field" ]
             [ div [ class "control" ]
-                [ div 
+                [ div
                     [ class "select"
                     , onInput <| setEditHalfDay
                     ]
-                    [ select [] 
+                    [ select [] <|
+                        -- Prepend empty case if needed
+                        (case current of
+                            Nothing -> [ option [ value " " ] [ text " " ] ]
+                            Just _ -> [])
+                        ++
                         [ toOption PaidLeave
                         , toOption FamilyEvent
                         , toOption RTTE
@@ -394,148 +450,154 @@ idleDayTypeSelect date timeInDay current =
             ]
 
 arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
-arrivedOrLeftInput callback timeOfDay = 
+arrivedOrLeftInput callback timeOfDay =
     div [ class "field", class "is-inline-block" ]
         [ div [ class "control" ]
-            [ input 
-                [ class "input", type_ "text"
-                , value <| TimeOfDay.toString timeOfDay 
+            [ input
+                [ class "input"
+                , type_ "text"
+                , value <| TimeOfDay.toString timeOfDay
                 , onEnter callback
-                ] [ ]
+                ]
+                []
             ]
         ]
 
+
 arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
-arrivedInput date timeInDay timeOfDay = 
+arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
-            SetEditHalfDay 
-                << sendSetArrived date timeInDay 
+            SetEditHalfDay
+                << sendSetArrived date timeInDay
                 << withDefault timeOfDay
-                << TimeOfDay.fromString 
+                << TimeOfDay.fromString
     in
-        arrivedOrLeftInput setEditHalfDay timeOfDay
+    arrivedOrLeftInput setEditHalfDay timeOfDay
 
 leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
-leftInput date timeInDay timeOfDay = 
+leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
-            SetEditHalfDay 
-                << sendSetLeft date timeInDay 
+            SetEditHalfDay
+                << sendSetLeft date timeInDay
                 << withDefault timeOfDay
-                << TimeOfDay.fromString 
+                << TimeOfDay.fromString
     in
-        arrivedOrLeftInput setEditHalfDay timeOfDay
+    arrivedOrLeftInput setEditHalfDay timeOfDay
+
 
 viewWorked : Mode -> List Project -> Worked -> Html Msg
-viewWorked mode projects 
+viewWorked mode projects
     { workedDay
     , workedTimeInDay
     , workedArrived
     , workedLeft
     , workedOffice
     , workedNotes
-    , workedProject } = 
+    , workedProject } =
     let
-        cellOffice = 
+        cellOffice =
             case mode of
                 EditOffice ->
                     th [] [ officeSelect workedDay workedTimeInDay workedOffice ]
-                _ -> 
-                    th [ onDoubleClick <| SetMode EditOffice ] 
+                _ ->
+                    th [ onDoubleClick <| SetMode EditOffice ]
                         [ text <| Office.toString workedOffice ]
-        cellNotes = 
+        cellNotes =
             case mode of
-                EditNotes notes -> 
-                    td [ ] 
-                        [ div [ class "field"]
+                EditNotes notes ->
+                    td [ ]
+                        [ div [ class "field" ]
                             [ div [ class "control" ]
-                                [ textarea 
+                                [ textarea
                                     [ class "textarea", onInput <| SetMode << EditNotes ]
                                     [ text notes
                                     ]
                                 ]
                             ]
-                        , div [ class "field"]
+                        , div [ class "field" ]
                             [ div [ class "control" ]
-                               [ button 
+                                [ button
                                     [ class "button"
                                     , onClick 
                                         <| SetEditHalfDay 
-                                        <| sendSetNotes workedDay workedTimeInDay notes 
+                                        <| sendSetNotes workedDay workedTimeInDay notes
                                     ]
                                     [ text "Submit"
                                     ]
-                               ]
+                                ]
                             ]
                         ]
-                _ -> 
-                    td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ] 
+                _ ->
+                    td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ]
                         [ text <| workedNotes.unNotes ]
         cellProject =
             case mode of
-                EditProject -> 
+                EditProject ->
                     th [] [ projectSelect workedDay workedTimeInDay projects workedProject ]
                 _ ->
-                    th [ onDoubleClick <| SetMode EditProject ] 
+                    th [ onDoubleClick <| SetMode EditProject ]
                         [ text <| workedProject.unProject ]
         divViewArrivedOrLeft mode_ timeOfDay =
-            div [ class "is-inline-block"
-                , onDoubleClick <| SetMode mode_ ]
-                [ text <| TimeOfDay.toString timeOfDay ]        
+            div
+                [ class "is-inline-block"
+                , onDoubleClick <| SetMode mode_
+                ]
+                [ text <| TimeOfDay.toString timeOfDay ]
         divArrived =
             case mode of
-                EditArrived -> 
+                EditArrived ->
                     arrivedInput workedDay workedTimeInDay workedArrived
-                _ -> 
+                _ ->
                     divViewArrivedOrLeft EditArrived workedArrived
         divLeft =
             case mode of
                 EditLeft ->
                     leftInput workedDay workedTimeInDay workedLeft
-                _ -> 
+                _ ->
                     divViewArrivedOrLeft EditLeft workedLeft
     in
-        table [ class "table" ]
-            [ tbody []
-                [ tr []
-                    [ cellOffice
-                    , td [] 
-                        [ divArrived 
-                        , div [ class "is-inline-block" ] 
-                            [ text "\u{00A0}-\u{00A0}" ]
-                        , divLeft
-                        ]
-                    ]
-                , tr []
-                    [ cellProject
-                    , cellNotes
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ cellOffice
+                , td []
+                    [ divArrived
+                    , div [ class "is-inline-block" ]
+                        [ text "\u{00A0}-\u{00A0}" ]
+                    , divLeft
                     ]
                 ]
+            , tr []
+                [ cellProject
+                , cellNotes
+                ]
             ]
-    
+        ]
+
 
 viewIdle : Mode -> Idle -> Html Msg
-viewIdle mode { idleDay, idleTimeInDay, idleDayType } = 
+viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
     let
-        cellIdleDayType = 
+        cellIdleDayType =
             case mode of
-                EditIdleDayType -> 
-                    th [] [ idleDayTypeSelect idleDay idleTimeInDay idleDayType ]
-                _ -> 
-                    th [ onDoubleClick <| SetMode EditIdleDayType ] 
+                EditIdleDayType ->
+                    th [] [ idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) ]
+                _ ->
+                    th [ onDoubleClick <| SetMode EditIdleDayType ]
                         [ text <| IdleDayType.toString idleDayType ]
-    in    
-        table [ class "table" ]
-            [ tbody []
-                [ tr []
-                    [ cellIdleDayType
-                    ]
+    in
+    table [ class "table" ]
+        [ tbody []
+            [ tr []
+                [ cellIdleDayType
                 ]
             ]
+        ]
 
 viewNoEntry : Html msg
-viewNoEntry  = 
+viewNoEntry =
     table [ class "table" ]
         [ tbody []
             [ tr []
@@ -548,17 +610,30 @@ viewNoEntry  =
 view : Model -> Html Msg
 view model =
     let
-        listSectionsWithContent content = 
-            [ section [ class "section" ] [ div [ class "content" ] [ content ] ] 
+        listSectionsWithContent content =
+            [ section [ class "section" ] [ div [ class "content" ] [ content ] ]
             ]
 
-        sectionHalfDay = RemoteData.unwrap [] 
-            (listSectionsWithContent << viewStatus model.halfDay model.mode)
-            model.projects
-        sectionNav = listSectionsWithContent <| viewNav model.date
-    in
-        div [] <|
-            [ viewHero ]
-            ++ sectionNav
-            ++ sectionHalfDay
+        sectionNav =
+            listSectionsWithContent <| viewNav model.date
 
+        sectionChangeHalfDayType =
+            RemoteData.unwrap []
+                (listSectionsWithContent
+                    << viewChangeHalfDayType
+                        model.date
+                        model.timeInDay
+                        (RemoteData.toMaybe model.halfDay)
+                )
+                model.projects
+
+        sectionHalfDay =
+            RemoteData.unwrap []
+                (listSectionsWithContent << viewStatus model.halfDay model.mode)
+                model.projects
+    in
+    div [] <|
+        [ viewHero ]
+            ++ sectionNav
+            ++ sectionChangeHalfDayType
+            ++ sectionHalfDay
