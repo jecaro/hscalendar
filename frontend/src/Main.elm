@@ -84,14 +84,12 @@ type Mode
     | EditLeft
 
 
-type alias EditHalfDay = HalfDay -> HalfDay
-
 type alias Model = 
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
     , projects : WebData (List Project)
-    , edit : WebData EditHalfDay
+    , edit : WebData ()
     , mode : Mode
     }
 
@@ -100,7 +98,7 @@ type Msg
     = SetDate Date
     | SetTimeInDay TimeInDay
     | HalfDayResponse (WebData HalfDay)
-    | EditResponse (WebData EditHalfDay)
+    | EditResponse (WebData ())
     | ProjectsResponse (WebData (List Project))
     | SetMode Mode
     | SetEditHalfDay (Cmd Msg)
@@ -203,7 +201,7 @@ sendSetWorkOption date timeInDay option =
         , headers = []
         , url = diaryUrl date timeInDay
         , body = jsonBody <| Encode.list WorkOption.encoder [option]
-        , expect = expectWhatever <| EditResponse << RemoteData.map (always (setWorkOption option)) << fromResult
+        , expect = expectWhatever <| EditResponse << RemoteData.fromResult 
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -215,7 +213,7 @@ sendSetIdleDayType date timeInDay idleDayType =
             , headers = []
             , url = idleUrl date timeInDay
             , body = jsonBody <| IdleDayType.encoder idleDayType
-            , expect = expectWhatever <| EditResponse << RemoteData.map (always (setIdleDayType idleDayType)) << fromResult
+            , expect = expectWhatever <| EditResponse << RemoteData.fromResult  
             , timeout = Nothing
             , tracker = Nothing
             }
@@ -225,11 +223,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date, halfDay = Loading, mode = View  }
+            let model_ = { model | date = date, halfDay = Loading, edit = NotAsked, mode = View  }
             in ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay, halfDay = Loading, mode = View  }
+            let model_ = { model | timeInDay = timeInDay, halfDay = Loading, edit = NotAsked, mode = View  }
             in ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
         HalfDayResponse response -> 
@@ -239,11 +237,7 @@ update msg model =
             ( { model | projects = response }, Cmd.none )
 
         EditResponse response -> 
-            ( { model | edit = response
-              , halfDay = RemoteData.map2 identity response model.halfDay
-              , mode = View }
-            , Cmd.none
-            )
+            ( { model | edit = response }, sendGetHalfDay model.date model.timeInDay )
 
         SetMode mode ->
             ( { model | mode = mode }, Cmd.none )
