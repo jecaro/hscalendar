@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Dom exposing (focus)
 import Date exposing 
     ( Date
     , Unit(..)
@@ -29,8 +30,15 @@ import Html exposing
     , tr
     , text
     )
-import Html.Attributes exposing (class, disabled, selected, type_, value)
-import Html.Events exposing (onClick, onDoubleClick, onInput)
+import Html.Attributes exposing 
+    ( class
+    , disabled
+    , id
+    , selected
+    , type_
+    , value
+    )
+import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Http exposing 
@@ -44,11 +52,11 @@ import Http exposing
     )
 import Json.Decode as Decode exposing (list)
 import Json.Encode as Encode exposing (list)
-import Maybe.Extra exposing (isNothing)
+import Maybe.Extra exposing (isJust, isNothing)
 import Platform.Cmd exposing (batch)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
-import Task exposing (perform)
+import Task exposing (attempt, perform)
 import Time exposing (Month(..))
 
 import Api exposing 
@@ -104,6 +112,8 @@ type Msg
     | ProjectsResponse (WebData (List Project))
     | SetMode Mode
     | SetEditHalfDay (Cmd Msg)
+    | NoOp
+    | Cancel
 
 
 main : Program () Model Msg
@@ -273,11 +283,21 @@ update msg model =
             , sendGetHalfDay model.date model.timeInDay )
 
         SetMode mode ->
-            ( { model | mode = mode }, Cmd.none )
+            let 
+                cmd = 
+                    if mode == View 
+                    then Cmd.none
+                    else attempt (\_ -> NoOp) (focus "edit")
+            in
+                ( { model | mode = mode }, cmd )
 
         SetEditHalfDay request -> 
-            let model_ = { model | edit = Loading }
-            in ( model_, request )
+            ( { model | edit = Loading }, request )
+        
+        Cancel -> 
+            ( { model | mode = View }, Cmd.none )
+
+        NoOp -> ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -395,8 +415,8 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 [ projectSelect 
                     date 
                     timeInDay 
-                    (Project "" :: projects) 
-                    (Project "")
+                    projects
+                    Nothing
                     (isNothing halfDay || isIdle)
                 ]
             ]
@@ -435,7 +455,11 @@ officeSelect date timeInDay current =
     div [ class "field" ]
         [ div [ class "control" ]
             [ div [ class "select" ]
-                [ select [ onInput <| setEditHalfDay]
+                [ select 
+                    [ id "edit"
+                    , onInput setEditHalfDay
+                    , onBlur Cancel
+                    ]
                     [ toOption Rennes
                     , toOption Home
                     , toOption Poool
@@ -445,27 +469,42 @@ officeSelect date timeInDay current =
             ]
         ]
 
-projectSelect : Date -> TimeInDay -> List Project -> Project -> Bool -> Html Msg
+projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html Msg
 projectSelect date timeInDay projects current enabled =
     let
+        defaultValue = 
+            case current of
+                Nothing -> Project ""
+                Just current_ -> current_
+        projects_ =
+            case current of
+                Nothing -> Project "" :: projects
+                Just _ -> projects
         toOption project =
             option
                 [ value project.unProject
-                , selected <| project == current
+                , selected <| project == defaultValue
                 ]
                 [ text project.unProject ]
     in
-    div [ class "field" ]
-        [ div [ class "control" ]
-            [ div [ class "select" ]
-                [ select 
-                    [ disabled <| not enabled
-                    , onInput <| SetEditHalfDay << sendSetProject date timeInDay
-                    , value current.unProject
+        div [ class "field" ]
+            [ div [ class "control" ]
+                [ div [ class "select" ]
+                    [ select 
+                        [ disabled <| not enabled
+                        , onBlur Cancel
+                        , onInput <| SetEditHalfDay << sendSetProject date timeInDay
+                        , value defaultValue.unProject
+                        -- if there is a default value, it means that it is the
+                        -- select used for editing current halfday
+                        , id <| if isJust current
+                            then "edit" 
+                            else ""
+                        ]
+                        <| List.map toOption projects_ 
                     ]
-                    <| List.map toOption projects ]
+                ]
             ]
-        ]
 
 {- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
 function prepend an empty item before the different types.
@@ -501,12 +540,18 @@ idleDayTypeSelect date timeInDay current enabled =
                     ]
                     [ select 
                         [ disabled <| not enabled 
+                        , onBlur Cancel
                         , onInput setEditHalfDay
                         , value defaultValue
+                        -- if there is a default value, it means that it is the
+                        -- select used for editing current halfday
+                        , id <| if isJust current
+                            then "edit" 
+                            else ""
                         ] <|
                         -- Prepend empty case if needed
                         [ viewIf (isNothing current) 
-                            <| option [ value " " ] [ text " " ]
+                            <| option [ value "" ] [ text "" ]
                         , toOption PaidLeave
                         , toOption FamilyEvent
                         , toOption RTTE
@@ -528,6 +573,8 @@ arrivedOrLeftInput callback timeOfDay =
                 , type_ "text"
                 , value <| TimeOfDay.toString timeOfDay
                 , onEnter callback
+                , id "edit"
+                , onBlur Cancel
                 ]
                 []
             ]
@@ -581,7 +628,9 @@ viewWorked mode projects
                         [ div [ class "field" ]
                             [ div [ class "control" ]
                                 [ textarea
-                                    [ class "textarea", onInput <| SetMode << EditNotes ]
+                                    [ class "textarea"
+                                    , onInput <| SetMode << EditNotes 
+                                    ]
                                     [ text notes
                                     ]
                                 ]
@@ -610,7 +659,7 @@ viewWorked mode projects
                             workedDay 
                             workedTimeInDay 
                             projects 
-                            workedProject 
+                            (Just workedProject)
                             True 
                         ]
                 _ ->
