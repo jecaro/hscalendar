@@ -29,9 +29,10 @@ import Html exposing
     , tr
     , text
     )
-import Html.Attributes exposing (class, selected, type_, value)
+import Html.Attributes exposing (class, disabled, selected, type_, value)
 import Html.Events exposing (onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
+import Html.Extra exposing (viewMaybe)
 import Http exposing 
     ( Error(..)
     , emptyBody
@@ -43,6 +44,7 @@ import Http exposing
     )
 import Json.Decode as Decode exposing (list)
 import Json.Encode as Encode exposing (list)
+import Maybe.Extra exposing (isNothing)
 import Platform.Cmd exposing (batch)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
@@ -324,46 +326,58 @@ viewNav date =
 viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Html Msg
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
-        showRm =
+        isWorked = 
+            case halfDay of
+                Nothing -> False
+                Just (MkHalfDayWorked _) -> True
+                Just (MkHalfDayIdle _) -> False
+        isIdle = 
+            case halfDay of
+                Nothing -> False
+                Just (MkHalfDayWorked _) -> False
+                Just (MkHalfDayIdle _) -> True
+
+        viewDelete =
             [ div [ class "level-item" ]
                 [ button 
                     [ class "button"
                     , onClick <| SetEditHalfDay <| sendDelete date timeInDay
-                     ] [ text "Delete" ]
+                    , disabled <| isNothing halfDay
+                    ] [ text "Delete" ]
                 ]
             ]
 
-        showIdle =
+        viewSetIdle =
             [ div [ class "level-item" ] 
                 [ div [ class "label" ] [ text "Set as holiday" ]
                 ]
             , div [ class "level-item" ]
-                [ idleDayTypeSelect date timeInDay Nothing
+                [ idleDayTypeSelect 
+                    date 
+                    timeInDay 
+                    Nothing 
+                    (isNothing halfDay || isWorked) 
                 ]
             ]
 
-        showWorked =
+        viewSetWorked =
             [ div [ class "level-item" ] 
                 [ div [ class "label" ] [ text "Set as working" ] 
                 ]
             , div [ class "level-item" ]
-                [ projectSelect date timeInDay (Project "" :: projects) (Project "")
+                [ projectSelect 
+                    date 
+                    timeInDay 
+                    (Project "" :: projects) 
+                    (Project "")
+                    (isNothing halfDay || isIdle)
                 ]
             ]
     in
-    div [ class "level" ] 
-        [
-            div [ class "level-left" ] <|
-                case halfDay of
-                    Nothing ->
-                        showIdle ++ showWorked
-
-                    Just (Api.MkHalfDayIdle _) ->
-                        showRm ++ showWorked
-
-                    Just (Api.MkHalfDayWorked _) ->
-                        showRm ++ showIdle 
-        ]
+        div [ class "level" ] 
+            [ div [ class "level-left" ] (viewSetIdle ++ viewSetWorked )
+            , div [ class "level-right" ] viewDelete
+            ]
 
 
 viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
@@ -407,8 +421,8 @@ officeSelect date timeInDay current =
             ]
         ]
 
-projectSelect : Date -> TimeInDay -> List Project -> Project -> Html Msg
-projectSelect date timeInDay projects current =
+projectSelect : Date -> TimeInDay -> List Project -> Project -> Bool -> Html Msg
+projectSelect date timeInDay projects current enabled =
     let
         toOption project =
             option
@@ -421,18 +435,21 @@ projectSelect date timeInDay projects current =
         [ div [ class "control" ]
             [ div
                 [ class "select"
-                , onInput <| SetEditHalfDay << sendSetProject date timeInDay
-                , value current.unProject
                 ]
-                [ select [] <| List.map toOption projects ]
+                [ select 
+                    [ disabled <| not enabled
+                    , onInput <| SetEditHalfDay << sendSetProject date timeInDay
+                    , value current.unProject
+                    ]
+                    <| List.map toOption projects ]
             ]
         ]
 
 {- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
 function prepend an empty item before the different types.
 -}
-idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Html Msg
-idleDayTypeSelect date timeInDay current =
+idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html Msg
+idleDayTypeSelect date timeInDay current enabled =
     let
         selected_ idleDayType =
             case current of
@@ -459,9 +476,15 @@ idleDayTypeSelect date timeInDay current =
             [ div [ class "control" ]
                 [ div
                     [ class "select"
-                    , onInput <| setEditHalfDay
                     ]
-                    [ select [] <|
+                    [ select 
+                        [ disabled <| not enabled 
+                        , onInput setEditHalfDay
+                        , value 
+                            (case current of
+                                Nothing -> ""
+                                Just current_ -> IdleDayType.toString current_)
+                        ] <|
                         -- Prepend empty case if needed
                         (case current of
                             Nothing -> [ option [ value " " ] [ text " " ] ]
@@ -565,7 +588,14 @@ viewWorked mode projects
         cellProject =
             case mode of
                 EditProject ->
-                    th [] [ projectSelect workedDay workedTimeInDay projects workedProject ]
+                    th [] 
+                        [ projectSelect 
+                            workedDay 
+                            workedTimeInDay 
+                            projects 
+                            workedProject 
+                            True 
+                        ]
                 _ ->
                     th [ onDoubleClick <| SetMode EditProject ]
                         [ text <| workedProject.unProject ]
@@ -613,7 +643,13 @@ viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
         cellIdleDayType =
             case mode of
                 EditIdleDayType ->
-                    th [] [ idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) ]
+                    th [] 
+                        [ idleDayTypeSelect 
+                            idleDay 
+                            idleTimeInDay 
+                            (Just idleDayType) 
+                            True 
+                        ]
                 _ ->
                     th [ onDoubleClick <| SetMode EditIdleDayType ]
                         [ text <| IdleDayType.toString idleDayType ]
