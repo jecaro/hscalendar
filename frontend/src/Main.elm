@@ -640,30 +640,32 @@ viewNoEntry =
 view : Model -> Html Msg
 view model =
     let
-        listSectionsWithContent content =
-            [ section [ class "section" ] [ div [ class "content" ] [ content ] ]
+        viewChangeHalfDayType_ = 
+            case model.projects of
+                Success projects -> 
+                    [ viewChangeHalfDayType 
+                        model.date 
+                        model.timeInDay 
+                        (RemoteData.toMaybe model.halfDay) 
+                        projects 
+                    ]
+                _ -> []
+        viewStatus_ =
+            case model.projects of
+                Success projects ->
+                    [ viewStatus model.halfDay model.mode projects ]
+                _ -> []
+
+    in
+        div [] 
+            [ viewHero 
+            , section [ class "section" ] 
+                [ div [ class "content" ] <|
+                    viewNav model.date :: viewChangeHalfDayType_
+                ]
+            , section [ class "section" ] 
+                [ div [ class "content" ] 
+                    viewStatus_
+                ]
             ]
 
-        sectionNav =
-            listSectionsWithContent <| viewNav model.date
-
-        sectionChangeHalfDayType =
-            RemoteData.unwrap []
-                (listSectionsWithContent
-                    << viewChangeHalfDayType
-                        model.date
-                        model.timeInDay
-                        (RemoteData.toMaybe model.halfDay)
-                )
-                model.projects
-
-        sectionHalfDay =
-            RemoteData.unwrap []
-                (listSectionsWithContent << viewStatus model.halfDay model.mode)
-                model.projects
-    in
-    div [] <|
-        [ viewHero ]
-            ++ sectionNav
-            ++ sectionChangeHalfDayType
-            ++ sectionHalfDay
