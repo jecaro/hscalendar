@@ -321,35 +321,45 @@ viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Ht
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
         showRm =
-            div [ class "level-item" ]
+            [ div [ class "level-item" ]
                 [ button 
                     [ class "button"
                     , onClick <| SetEditHalfDay <| sendDelete date timeInDay
                      ] [ text "Delete" ]
                 ]
+            ]
 
         showIdle =
-            div [ class "level-item" ]
+            [ div [ class "level-item" ] 
                 [ div [ class "label" ] [ text "Set as holiday" ]
-                , idleDayTypeSelect date timeInDay Nothing
                 ]
+            , div [ class "level-item" ]
+                [ idleDayTypeSelect date timeInDay Nothing
+                ]
+            ]
 
         showWorked =
-            div [ class "level-item" ]
-                [ div [ class "label" ] [ text "Set as working" ]
-                , projectSelect date timeInDay (Project "" :: projects) (Project "")
+            [ div [ class "level-item" ] 
+                [ div [ class "label" ] [ text "Set as working" ] 
                 ]
+            , div [ class "level-item" ]
+                [ projectSelect date timeInDay (Project "" :: projects) (Project "")
+                ]
+            ]
     in
-    div [ class "level" ] <|
-        case halfDay of
-            Nothing ->
-                [ showIdle, showWorked ]
+    div [ class "level" ] 
+        [
+            div [ class "level-left" ] <|
+                case halfDay of
+                    Nothing ->
+                        showIdle ++ showWorked
 
-            Just (Api.MkHalfDayIdle _) ->
-                [ showRm, showWorked ]
+                    Just (Api.MkHalfDayIdle _) ->
+                        showRm ++ showWorked
 
-            Just (Api.MkHalfDayWorked _) ->
-                [ showRm, showIdle ]
+                    Just (Api.MkHalfDayWorked _) ->
+                        showRm ++ showIdle 
+        ]
 
 
 viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
