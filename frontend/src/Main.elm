@@ -34,6 +34,7 @@ import Html.Events exposing (onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Http exposing 
     ( Error(..)
+    , emptyBody
     , expectJson
     , expectWhatever
     , get
@@ -218,6 +219,18 @@ sendSetIdleDayType date timeInDay idleDayType =
         , tracker = Nothing
         }
 
+sendDelete : Date -> TimeInDay -> Cmd Msg
+sendDelete date timeInDay = 
+    request
+        { method = "DELETE"
+        , headers = []
+        , url = diaryUrl date timeInDay
+        , body = emptyBody
+        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -309,7 +322,10 @@ viewChangeHalfDayType date timeInDay halfDay projects =
     let
         showRm =
             div [ class "level-item" ]
-                [ button [ class "button" ] [ text "Rm" ]
+                [ button 
+                    [ class "button"
+                    , onClick <| SetEditHalfDay <| sendDelete date timeInDay
+                     ] [ text "Delete" ]
                 ]
 
         showIdle =
