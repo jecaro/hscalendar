@@ -289,26 +289,30 @@ viewNav date =
         weekdayString = format "EEEE" date
     in
     nav [ class "level" ]
-        [ div [ class "level-item" ]
-            [ button [ class "button", onClick <| SetDate previousDay ]
-                [ text "Prev" ]
-            , button [ class "button", onClick <| SetDate nextDay ]
-                [ text "Next" ]
+        [ div [ class "level-left" ]
+            [ div [ class "level-item" ]
+                [ button [ class "button", onClick <| SetDate previousDay ]
+                    [ text "Prev" ]
+                , button [ class "button", onClick <| SetDate nextDay ]
+                    [ text "Next" ]
+                ]
             ]
         , div [ class "level-item" ]
             [ p [ class "subtitle" ]
                 [ text <| toIsoString date ++ " " ++ weekdayString ]
             ]
-        , div [ class "level-item" ]
-            [ div [ class "field" ]
-                [ div [ class "control" ]
-                    [ div
-                        [ class "select"
-                        , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString
-                        ]
-                        [ select []
-                            [ option [] [ text "Morning" ]
-                            , option [] [ text "Afternoon" ]
+        , div [ class "level-right" ]
+            [ div [ class "level-item" ]
+                [ div [ class "field" ]
+                    [ div [ class "control" ]
+                        [ div
+                            [ class "select"
+                            , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString
+                            ]
+                            [ select []
+                                [ option [] [ text "Morning" ]
+                                , option [] [ text "Afternoon" ]
+                                ]
                             ]
                         ]
                     ]
