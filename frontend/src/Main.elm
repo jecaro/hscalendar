@@ -32,7 +32,7 @@ import Html exposing
 import Html.Attributes exposing (class, disabled, selected, type_, value)
 import Html.Events exposing (onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
-import Html.Extra exposing (viewMaybe)
+import Html.Extra exposing (viewIf, viewMaybe)
 import Http exposing 
     ( Error(..)
     , emptyBody
@@ -467,20 +467,20 @@ function prepend an empty item before the different types.
 idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html Msg
 idleDayTypeSelect date timeInDay current enabled =
     let
-        selected_ idleDayType =
+        defaultValue = 
             case current of
-                Nothing ->
-                    []
-
-                Just current_ ->
-                    [ selected (idleDayType == current_) ]
+                Nothing -> ""
+                Just current_ -> IdleDayType.toString current_
 
         toOption idleDayType =
-            option
-                ( (value <| IdleDayType.toString idleDayType)
-                :: selected_ idleDayType
-                )
-                [ text <| IdleDayType.toString idleDayType ]
+            let
+                idleDayTypeStr = IdleDayType.toString idleDayType
+            in
+                option 
+                    [ value idleDayTypeStr
+                    , selected (idleDayTypeStr == defaultValue)
+                    ]
+                    [ text <| IdleDayType.toString idleDayType ]
 
         setEditHalfDay =
             SetEditHalfDay
@@ -496,17 +496,12 @@ idleDayTypeSelect date timeInDay current enabled =
                     [ select 
                         [ disabled <| not enabled 
                         , onInput setEditHalfDay
-                        , value 
-                            (case current of
-                                Nothing -> ""
-                                Just current_ -> IdleDayType.toString current_)
+                        , value defaultValue
                         ] <|
                         -- Prepend empty case if needed
-                        (case current of
-                            Nothing -> [ option [ value " " ] [ text " " ] ]
-                            Just _ -> [])
-                        ++
-                        [ toOption PaidLeave
+                        [ viewIf (isNothing current) 
+                            <| option [ value " " ] [ text " " ]
+                        , toOption PaidLeave
                         , toOption FamilyEvent
                         , toOption RTTE
                         , toOption RTTS
