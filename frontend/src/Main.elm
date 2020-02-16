@@ -68,7 +68,6 @@ import Api exposing
     , Worked
     )
 import Api.HalfDay as HalfDay exposing (decoder)
-import Api.HalfDay.Extended exposing (setIdleDayType, setWorkOption)
 import Api.IdleDayType as IdleDayType exposing (encoder)
 import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (toString)
@@ -154,7 +153,9 @@ sendGetProjects : Cmd Msg
 sendGetProjects =
     get
         { url = "/project/"
-        , expect = Http.expectJson (fromResult >> ProjectsResponse) (Decode.list Project.decoder)
+        , expect = Http.expectJson 
+            (fromResult >> ProjectsResponse) 
+            (Decode.list Project.decoder)
         }
 
 sendSetOffice : Date -> TimeInDay -> Office -> Cmd Msg
@@ -238,12 +239,28 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetDate date -> 
-            let model_ = { model | date = date, halfDay = Loading, edit = NotAsked, mode = View  }
-            in ( model_, sendGetHalfDay model_.date model_.timeInDay )
+            let 
+                model_ = 
+                    { model 
+                    | date = date
+                    , halfDay = Loading
+                    , edit = NotAsked
+                    , mode = View
+                    }
+            in 
+                ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
         SetTimeInDay timeInDay -> 
-            let model_ = { model | timeInDay = timeInDay, halfDay = Loading, edit = NotAsked, mode = View  }
-            in ( model_, sendGetHalfDay model_.date model_.timeInDay )
+            let 
+                model_ = 
+                    { model 
+                    | timeInDay = timeInDay
+                    , halfDay = Loading
+                    , edit = NotAsked
+                    , mode = View  
+                    }
+            in 
+                ( model_, sendGetHalfDay model_.date model_.timeInDay )
 
         HalfDayResponse response ->
             ( { model | halfDay = response, mode = View }, Cmd.none )
@@ -252,7 +269,8 @@ update msg model =
             ( { model | projects = response }, Cmd.none )
 
         EditResponse response ->
-            ( { model | edit = response }, sendGetHalfDay model.date model.timeInDay )
+            ( { model | edit = response }
+            , sendGetHalfDay model.date model.timeInDay )
 
         SetMode mode ->
             ( { model | mode = mode }, Cmd.none )
@@ -309,7 +327,10 @@ viewNav date =
                     [ div [ class "control" ]
                         [ div
                             [ class "select"
-                            , onInput <| SetTimeInDay << withDefault Morning << TimeInDay.fromString
+                            , onInput 
+                                <| SetTimeInDay 
+                                << withDefault Morning 
+                                << TimeInDay.fromString
                             ]
                             [ select []
                                 [ option [] [ text "Morning" ]
@@ -375,7 +396,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             ]
     in
         div [ class "level" ] 
-            [ div [ class "level-left" ] (viewSetIdle ++ viewSetWorked )
+            [ div [ class "level-left" ] (viewSetIdle ++ viewSetWorked)
             , div [ class "level-right" ] viewDelete
             ]
 
@@ -407,11 +428,8 @@ officeSelect date timeInDay current =
     in
     div [ class "field" ]
         [ div [ class "control" ]
-            [ div
-                [ class "select"
-                , onInput <| setEditHalfDay
-                ]
-                [ select []
+            [ div [ class "select" ]
+                [ select [ onInput <| setEditHalfDay]
                     [ toOption Rennes
                     , toOption Home
                     , toOption Poool
@@ -433,9 +451,7 @@ projectSelect date timeInDay projects current enabled =
     in
     div [ class "field" ]
         [ div [ class "control" ]
-            [ div
-                [ class "select"
-                ]
+            [ div [ class "select" ]
                 [ select 
                     [ disabled <| not enabled
                     , onInput <| SetEditHalfDay << sendSetProject date timeInDay
@@ -654,13 +670,11 @@ viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
                     th [ onDoubleClick <| SetMode EditIdleDayType ]
                         [ text <| IdleDayType.toString idleDayType ]
     in
-    table [ class "table" ]
-        [ tbody []
-            [ tr []
-                [ cellIdleDayType
+        table [ class "table" ]
+            [ tbody []
+                [ tr [] [ cellIdleDayType]
                 ]
             ]
-        ]
 
 viewNoEntry : Html msg
 viewNoEntry =
@@ -677,31 +691,29 @@ view : Model -> Html Msg
 view model =
     let
         viewChangeHalfDayType_ = 
-            case model.projects of
-                Success projects -> 
-                    [ viewChangeHalfDayType 
+            viewMaybe 
+                (\projects -> 
+                    viewChangeHalfDayType 
                         model.date 
                         model.timeInDay 
                         (RemoteData.toMaybe model.halfDay) 
                         projects 
-                    ]
-                _ -> []
+                )
+                (RemoteData.toMaybe model.projects)
         viewStatus_ =
-            case model.projects of
-                Success projects ->
-                    [ viewStatus model.halfDay model.mode projects ]
-                _ -> []
+            viewMaybe 
+                (\projects -> viewStatus model.halfDay model.mode projects)
+                (RemoteData.toMaybe model.projects)
 
     in
         div [] 
             [ viewHero 
             , section [ class "section" ] 
-                [ div [ class "content" ] <|
-                    viewNav model.date :: viewChangeHalfDayType_
+                [ div [ class "content" ] 
+                    [ viewNav model.date, viewChangeHalfDayType_ ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] 
-                    viewStatus_
+                [ div [ class "content" ] [ viewStatus_]
                 ]
             ]
 
