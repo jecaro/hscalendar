@@ -799,11 +799,13 @@ view model =
         div [] 
             [ viewHero 
             , section [ class "section" ] 
-                [ div [ class "content" ] 
-                    [ viewNav model.date, viewChangeHalfDayType_ ]
+                [ div [ class "content" ] [ viewNav model.date ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewStatus_]
+                [ div [ class "content" ] [ viewStatus_ ]
+                ]
+            , section [ class "section" ] 
+                [ div [ class "content" ] [ viewChangeHalfDayType_ ]
                 ]
             ]
 
