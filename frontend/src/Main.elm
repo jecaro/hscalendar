@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events exposing (onMouseDown)
 import Browser.Dom exposing (focus)
 import Date exposing 
     ( Date
@@ -301,9 +302,47 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    case model.mode of
+       EditNotes _ -> onMouseDown (outsideTarget "submit")
+       _ -> Sub.none
 
+
+{-This code has been found here
+https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
+-}
+outsideTarget : String -> Decode.Decoder Msg
+outsideTarget domEltId =
+    Decode.field "target" (isOutsideDomEltId domEltId)
+        |> Decode.andThen
+            (\isOutside ->
+                if isOutside then
+                    Decode.succeed Cancel
+
+                else
+                    Decode.fail <| "inside" ++ domEltId
+            )
+
+
+isOutsideDomEltId : String -> Decode.Decoder Bool
+isOutsideDomEltId domEltId =
+    Decode.oneOf
+        [ Decode.field "id" Decode.string
+            |> Decode.andThen
+                (\id ->
+                    if domEltId == id then
+                        -- found match by id
+                        Decode.succeed False
+
+                    else
+                        -- try next decoder
+                        Decode.fail "check parent node"
+                )
+        , Decode.lazy (\_ -> isOutsideDomEltId domEltId |> Decode.field "parentNode")
+
+        -- fallback if all previous decoders failed
+        , Decode.succeed True
+        ]
 
 toInvertIsoString : Date -> String
 toInvertIsoString = format "dd-MM-yyyy"
@@ -629,6 +668,7 @@ viewWorked mode projects
                             [ div [ class "control" ]
                                 [ textarea
                                     [ class "textarea"
+                                    , id "edit"
                                     , onInput <| SetMode << EditNotes 
                                     ]
                                     [ text notes
@@ -639,6 +679,7 @@ viewWorked mode projects
                             [ div [ class "control" ]
                                 [ button
                                     [ class "button"
+                                    , id "submit"
                                     , onClick 
                                         <| SetEditHalfDay 
                                         <| sendSetNotes workedDay workedTimeInDay notes

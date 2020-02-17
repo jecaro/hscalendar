@@ -13,8 +13,7 @@
 - Redirect root to index.html
 - favicon
 - frontend
-  - click outside control should cancel
-  - same when we press the cancel key
+  - escape key should cancel
   - better toString and fromString fct for TimeOfDay
   - widget for editing time
   - date picker
@@ -25,3 +24,4 @@
   - sort imports
   - bug setting half day work when the other half day has weird left or arrived 
   time
+  - smaller controls
