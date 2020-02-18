@@ -1,3 +1,4 @@
+-- | Contains the 'FullWeek' data type
 {-# LANGUAGE TemplateHaskell #-}
 module Db.FullWeek
     ( FullWeek(..)
@@ -23,6 +24,7 @@ import qualified Db.FullDay as FullDay (FullDay(..), afternoon, empty, morning)
 import           Db.HalfDay (HalfDay, day, timeInDay)
 import           Db.TimeInDay (TimeInDay(..))
 
+-- | A 'FullWeek' contains every day of the week
 data FullWeek = MkFullWeek
     { _fullWeekMonday :: !FullDay.FullDay
     , _fullWeekTuesday :: !FullDay.FullDay
@@ -48,6 +50,7 @@ instance Display FullWeek where
         <> "Saturday:\n" <> display (fullWeek ^. saturday) <> "\n--\n"
         <> "Sunday:\n" <> display (fullWeek ^. sunday) <> "\n--"
 
+-- | Create an empty 'FullWeek'
 empty :: FullWeek
 empty = MkFullWeek
     { _fullWeekMonday = FullDay.MkFullDay Nothing Nothing
@@ -59,6 +62,7 @@ empty = MkFullWeek
     , _fullWeekSunday = FullDay.MkFullDay Nothing Nothing
     }
 
+-- | Add a 'HalfDay' into a 'FullWeek'
 add :: HalfDay -> FullWeek -> FullWeek
 add hd fullWeek =
     let (_, _, weekDay) = toWeekDate (view day hd)
