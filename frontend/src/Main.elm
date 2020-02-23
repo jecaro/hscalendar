@@ -108,7 +108,7 @@ type alias Model =
 
 
 type Msg
-    = SetDateAndTimeInDay (Date, TimeInDay)
+    = SetDateAndTimeInDay Date TimeInDay
     | HalfDayResponse (WebData HalfDay)
     | EditResponse (WebData ())
     | ProjectsResponse (WebData (List Project))
@@ -138,7 +138,7 @@ init _ =
       , edit = NotAsked
       }
     , batch 
-        [ perform (\d -> SetDateAndTimeInDay (d, Morning)) today
+        [ perform (\d -> SetDateAndTimeInDay d Morning) today
         , sendGetProjects
         ]
     )
@@ -253,7 +253,7 @@ sendDelete date timeInDay =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetDateAndTimeInDay (date, timeInDay) ->
+        SetDateAndTimeInDay date timeInDay ->
             let 
                 model_ = 
                     { model 
@@ -355,12 +355,12 @@ viewNav date timeInDay =
     let
         previous = 
             case timeInDay of
-                Morning -> (add Days -1 date, Afternoon)
-                Afternoon -> (date, Morning)
+                Morning -> SetDateAndTimeInDay (add Days -1 date) Afternoon
+                Afternoon -> SetDateAndTimeInDay date Morning
         next = 
             case timeInDay of
-                Morning -> (date, Afternoon)
-                Afternoon -> (add Days 1 date, Morning)
+                Morning -> SetDateAndTimeInDay date Afternoon
+                Afternoon -> SetDateAndTimeInDay (add Days 1 date) Morning
         weekdayString = format "EEEE" date
         toOption timeInDay_ = 
             let
@@ -375,14 +375,14 @@ viewNav date timeInDay =
                         [ div [ class "control" ]
                             [ button
                                 [ class "button"
-                                , onClick <| SetDateAndTimeInDay previous
+                                , onClick previous
                                 ]
                                 [ text "Prev" ]
                             ]
                         , div [ class "control" ] 
                             [ button
                                 [ class "button"
-                                , onClick <| SetDateAndTimeInDay next
+                                , onClick next
                                 ]
                                 [ text "Next" ]
                             ]
@@ -400,11 +400,9 @@ viewNav date timeInDay =
                             [ div
                                 [ class "select"
                                 , onInput 
-                                    <| (\t -> SetDateAndTimeInDay 
-                                            ( date
-                                            , withDefault Morning (TimeInDay.fromString t)
-                                            )
-                                        )
+                                    <| SetDateAndTimeInDay date 
+                                        << withDefault Morning 
+                                        << TimeInDay.fromString 
                                 ]
                                 [ select [
                                     value <| TimeInDay.toString timeInDay
