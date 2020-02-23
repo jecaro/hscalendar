@@ -5,8 +5,8 @@ import Api exposing (TimeInDay(..))
 toString : TimeInDay -> String
 toString timeInDay = 
   case timeInDay of
-     Morning -> "morning"
-     Afternoon -> "afternoon"
+     Morning -> "Morning"
+     Afternoon -> "Afternoon"
 
 fromString : String -> Result String TimeInDay
 fromString string = 

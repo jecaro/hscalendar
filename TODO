@@ -12,6 +12,8 @@
 - Improve display of week. Add message saying if the week is complete or not.
 - Redirect root to index.html
 - favicon
+- add version in tools
+- put docker run in a script
 - frontend
   - escape key should cancel
   - better toString and fromString fct for TimeOfDay
@@ -22,6 +24,6 @@
   - month page
   - error handling
   - sort imports
-  - bug setting half day work when the other half day has weird left or arrived 
+  - bug setting half day work when the other half day has weird left or arrived
   time
-  - smaller controls
+  - use columns instead of levels

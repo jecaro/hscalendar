@@ -108,8 +108,7 @@ type alias Model =
 
 
 type Msg
-    = SetDate Date
-    | SetTimeInDay TimeInDay
+    = SetDateAndTimeInDay (Date, TimeInDay)
     | HalfDayResponse (WebData HalfDay)
     | EditResponse (WebData ())
     | ProjectsResponse (WebData (List Project))
@@ -138,7 +137,10 @@ init _ =
       , mode = View
       , edit = NotAsked
       }
-    , batch [ perform SetDate today, sendGetProjects ]
+    , batch 
+        [ perform (\d -> SetDateAndTimeInDay (d, Morning)) today
+        , sendGetProjects
+        ]
     )
 
 diaryUrl : Date -> TimeInDay -> String
@@ -251,11 +253,12 @@ sendDelete date timeInDay =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetDate date -> 
+        SetDateAndTimeInDay (date, timeInDay) ->
             let 
                 model_ = 
                     { model 
                     | date = date
+                    , timeInDay = timeInDay
                     , halfDay = Loading
                     , edit = NotAsked
                     , mode = View
@@ -263,18 +266,6 @@ update msg model =
             in 
                 ( model_, sendGetHalfDay model_.date model_.timeInDay )
         
-        SetTimeInDay timeInDay -> 
-            let 
-                model_ = 
-                    { model 
-                    | timeInDay = timeInDay
-                    , halfDay = Loading
-                    , edit = NotAsked
-                    , mode = View  
-                    }
-            in 
-                ( model_, sendGetHalfDay model_.date model_.timeInDay )
-
         HalfDayResponse response ->
             ( { model | halfDay = response, mode = View }, Cmd.none )
 
@@ -359,53 +350,74 @@ viewHero =
             ]
         ]
 
-viewNav : Date -> Html Msg
-viewNav date =
+viewNav : Date -> TimeInDay -> Html Msg
+viewNav date timeInDay =
     let
-        previousDay = add Days -1 date
-        nextDay = add Days 1 date
+        previous = 
+            case timeInDay of
+                Morning -> (add Days -1 date, Afternoon)
+                Afternoon -> (date, Morning)
+        next = 
+            case timeInDay of
+                Morning -> (date, Afternoon)
+                Afternoon -> (add Days 1 date, Morning)
         weekdayString = format "EEEE" date
+        toOption timeInDay_ = 
+            let
+                timeInDayStr = TimeInDay.toString timeInDay_
+            in
+                option [ value timeInDayStr ] [ text timeInDayStr ]
     in
-    nav [ class "level" ]
-        [ div [ class "level-left" ]
-            [ div [ class "level-item" ]
-                [ div [ class "field", class "has-addons" ]
-                    [ div [ class "control" ]
-                        [ button [ class "button", onClick <| SetDate previousDay ]
-                            [ text "Prev" ]
-                        ]
-                    , div [ class "control" ] 
-                        [ button [ class "button", onClick <| SetDate nextDay ]
-                            [ text "Next" ]
+        nav [ class "level" ]
+            [ div [ class "level-left" ]
+                [ div [ class "level-item" ]
+                    [ div [ class "field", class "has-addons" ]
+                        [ div [ class "control" ]
+                            [ button
+                                [ class "button"
+                                , onClick <| SetDateAndTimeInDay previous
+                                ]
+                                [ text "Prev" ]
+                            ]
+                        , div [ class "control" ] 
+                            [ button
+                                [ class "button"
+                                , onClick <| SetDateAndTimeInDay next
+                                ]
+                                [ text "Next" ]
+                            ]
                         ]
                     ]
                 ]
-            ]
-        , div [ class "level-item" ]
-            [ p [ class "subtitle" ]
-                [ text <| toIsoString date ++ " " ++ weekdayString ]
-            ]
-        , div [ class "level-right" ]
-            [ div [ class "level-item" ]
-                [ div [ class "field" ]
-                    [ div [ class "control" ]
-                        [ div
-                            [ class "select"
-                            , onInput 
-                                <| SetTimeInDay 
-                                << withDefault Morning 
-                                << TimeInDay.fromString
-                            ]
-                            [ select []
-                                [ option [] [ text "Morning" ]
-                                , option [] [ text "Afternoon" ]
+            , div [ class "level-item" ]
+                [ p [ class "subtitle" ]
+                    [ text <| toIsoString date ++ " " ++ weekdayString ]
+                ]
+            , div [ class "level-right" ]
+                [ div [ class "level-item" ]
+                    [ div [ class "field" ]
+                        [ div [ class "control" ]
+                            [ div
+                                [ class "select"
+                                , onInput 
+                                    <| (\t -> SetDateAndTimeInDay 
+                                            ( date
+                                            , withDefault Morning (TimeInDay.fromString t)
+                                            )
+                                        )
+                                ]
+                                [ select [
+                                    value <| TimeInDay.toString timeInDay
+                                    ]
+                                    [ toOption Morning
+                                    , toOption Afternoon
+                                    ]
                                 ]
                             ]
                         ]
                     ]
                 ]
             ]
-        ]
 
 
 viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Html Msg
@@ -799,7 +811,7 @@ view model =
         div [] 
             [ viewHero 
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewNav model.date ]
+                [ div [ class "content" ] [ viewNav model.date model.timeInDay ]
                 ]
             , section [ class "section" ] 
                 [ div [ class "content" ] [ viewStatus_ ]
