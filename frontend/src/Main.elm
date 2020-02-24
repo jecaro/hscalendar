@@ -87,6 +87,8 @@ import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
 import Api.WorkOption as WorkOption exposing (encoder)
 
+-- Types
+
 type Mode
     = View
     | EditOffice
@@ -108,15 +110,16 @@ type alias Model =
 
 
 type Msg
-    = SetDateAndTimeInDay Date TimeInDay
-    | HalfDayResponse (WebData HalfDay)
-    | EditResponse (WebData ())
-    | ProjectsResponse (WebData (List Project))
-    | SetMode Mode
-    | SetEditHalfDay (Cmd Msg)
+    = DateAndTimeInDayChanged Date TimeInDay
+    | GotHalfDayResponse (WebData HalfDay)
+    | GotEditResponse (WebData ())
+    | GotProjectsResponse (WebData (List Project))
+    | ModeChanged Mode
+    | EditHalfDaySent (Cmd Msg)
+    | EditWasCanceled
     | NoOp
-    | Cancel
 
+-- Main
 
 main : Program () Model Msg
 main =
@@ -127,6 +130,7 @@ main =
         , view = view
         }
 
+-- Init
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
@@ -138,122 +142,17 @@ init _ =
       , edit = NotAsked
       }
     , batch 
-        [ perform (\d -> SetDateAndTimeInDay d Morning) today
-        , sendGetProjects
+        [ perform (\d -> DateAndTimeInDayChanged d Morning) today
+        , getProjects
         ]
     )
 
-diaryUrl : Date -> TimeInDay -> String
-diaryUrl date timeInDay 
-    = "/diary/" 
-    ++ toInvertIsoString date 
-    ++ "/" 
-    ++ TimeInDay.toString timeInDay
-
-idleUrl : Date -> TimeInDay -> String
-idleUrl date timeInDay
-    = "/diary/idle/" 
-    ++ toInvertIsoString date 
-    ++ "/" 
-    ++ TimeInDay.toString timeInDay
-
-sendGetHalfDay : Date -> TimeInDay -> Cmd Msg
-sendGetHalfDay date timeInDay =
-    get
-        { url = diaryUrl date timeInDay
-        , expect = Http.expectJson (fromResult >> HalfDayResponse) HalfDay.decoder
-        }
-
-sendGetProjects : Cmd Msg
-sendGetProjects =
-    get
-        { url = "/project/"
-        , expect = Http.expectJson 
-            (fromResult >> ProjectsResponse) 
-            (Decode.list Project.decoder)
-        }
-
-sendSetOffice : Date -> TimeInDay -> Office -> Cmd Msg
-sendSetOffice date timeInDay office = 
-    let
-        workOption = MkSetOffice <| SetOffice office
-    in
-        sendSetWorkOption date timeInDay workOption
-
-
-sendSetNotes : Date -> TimeInDay -> String -> Cmd Msg
-sendSetNotes date timeInDay notes = 
-    let
-        workOption = MkSetNotes <| SetNotes <| Notes notes
-    in
-        sendSetWorkOption date timeInDay workOption
-
-
-sendSetProject : Date -> TimeInDay -> String -> Cmd Msg
-sendSetProject date timeInDay project =
-    let
-        workOption = MkSetProj <| SetProj <| Project project
-    in
-    sendSetWorkOption date timeInDay workOption
-
-
-sendSetArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
-sendSetArrived date timeInDay timeOfDay =
-    let
-        workOption = MkSetArrived <| SetArrived timeOfDay
-    in
-    sendSetWorkOption date timeInDay workOption
-
-
-sendSetLeft : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
-sendSetLeft date timeInDay timeOfDay =
-    let
-        workOption = MkSetLeft <| SetLeft timeOfDay
-    in
-    sendSetWorkOption date timeInDay workOption
-
-
-sendSetWorkOption : Date -> TimeInDay -> WorkOption -> Cmd Msg
-sendSetWorkOption date timeInDay option =
-    request
-        { method = "PUT"
-        , headers = []
-        , url = diaryUrl date timeInDay
-        , body = jsonBody <| Encode.list WorkOption.encoder [ option ]
-        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-sendSetIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd Msg
-sendSetIdleDayType date timeInDay idleDayType =
-    request
-        { method = "PUT"
-        , headers = []
-        , url = idleUrl date timeInDay
-        , body = jsonBody <| IdleDayType.encoder idleDayType
-        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-sendDelete : Date -> TimeInDay -> Cmd Msg
-sendDelete date timeInDay = 
-    request
-        { method = "DELETE"
-        , headers = []
-        , url = diaryUrl date timeInDay
-        , body = emptyBody
-        , expect = expectWhatever <| EditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
+-- Update
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetDateAndTimeInDay date timeInDay ->
+        DateAndTimeInDayChanged date timeInDay ->
             let 
                 model_ = 
                     { model 
@@ -264,19 +163,19 @@ update msg model =
                     , mode = View
                     }
             in 
-                ( model_, sendGetHalfDay model_.date model_.timeInDay )
+                ( model_, getHalfDay model_.date model_.timeInDay )
         
-        HalfDayResponse response ->
+        GotHalfDayResponse response ->
             ( { model | halfDay = response, mode = View }, Cmd.none )
 
-        ProjectsResponse response ->
+        GotProjectsResponse response ->
             ( { model | projects = response }, Cmd.none )
 
-        EditResponse response ->
+        GotEditResponse response ->
             ( { model | edit = response }
-            , sendGetHalfDay model.date model.timeInDay )
+            , getHalfDay model.date model.timeInDay )
 
-        SetMode mode ->
+        ModeChanged mode ->
             let 
                 cmd = 
                     if mode == View 
@@ -285,58 +184,15 @@ update msg model =
             in
                 ( { model | mode = mode }, cmd )
 
-        SetEditHalfDay request -> 
+        EditHalfDaySent request -> 
             ( { model | edit = Loading }, request )
         
-        Cancel -> 
+        EditWasCanceled -> 
             ( { model | mode = View }, Cmd.none )
 
         NoOp -> ( model, Cmd.none )
 
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    case model.mode of
-       EditNotes _ -> onMouseDown (outsideTarget [ "submit", "edit" ])
-       _ -> Sub.none
-
-
-{-This code has been found here
-https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
--}
-outsideTarget : List String -> Decode.Decoder Msg
-outsideTarget domEltIds =
-    Decode.field "target" (isOutsideDomEltId domEltIds)
-        |> Decode.andThen
-            (\isOutside ->
-                if isOutside then
-                    Decode.succeed Cancel
-                else
-                    Decode.fail <| "inside " ++ concat domEltIds
-            )
-
-
-isOutsideDomEltId : List String -> Decode.Decoder Bool
-isOutsideDomEltId domEltIds =
-    Decode.oneOf
-        [ Decode.field "id" Decode.string
-            |> Decode.andThen
-                (\id ->
-                    if member id domEltIds then
-                        -- found match by id
-                        Decode.succeed False
-                    else
-                        -- try next decoder
-                        Decode.fail "check parent node"
-                )
-        , Decode.lazy (\_ -> isOutsideDomEltId domEltIds |> Decode.field "parentNode")
-        -- fallback if all previous decoders failed
-        , Decode.succeed True
-        ]
-
-toInvertIsoString : Date -> String
-toInvertIsoString = format "dd-MM-yyyy"
-
+-- View
 
 viewHero : Html msg
 viewHero =
@@ -355,12 +211,12 @@ viewNav date timeInDay =
     let
         previous = 
             case timeInDay of
-                Morning -> SetDateAndTimeInDay (add Days -1 date) Afternoon
-                Afternoon -> SetDateAndTimeInDay date Morning
+                Morning -> DateAndTimeInDayChanged (add Days -1 date) Afternoon
+                Afternoon -> DateAndTimeInDayChanged date Morning
         next = 
             case timeInDay of
-                Morning -> SetDateAndTimeInDay date Afternoon
-                Afternoon -> SetDateAndTimeInDay (add Days 1 date) Morning
+                Morning -> DateAndTimeInDayChanged date Afternoon
+                Afternoon -> DateAndTimeInDayChanged (add Days 1 date) Morning
         weekdayString = format "EEEE" date
         toOption timeInDay_ = 
             let
@@ -400,7 +256,7 @@ viewNav date timeInDay =
                             [ div
                                 [ class "select"
                                 , onInput 
-                                    <| SetDateAndTimeInDay date 
+                                    <| DateAndTimeInDayChanged date 
                                         << withDefault Morning 
                                         << TimeInDay.fromString 
                                 ]
@@ -436,7 +292,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             [ div [ class "level-item" ]
                 [ button 
                     [ class "button"
-                    , onClick <| SetEditHalfDay <| sendDelete date timeInDay
+                    , onClick <| EditHalfDaySent <| delete date timeInDay
                     , disabled <| isNothing halfDay
                     ] [ text "Delete" ]
                 ]
@@ -495,8 +351,8 @@ officeSelect date timeInDay current =
             option [ selected <| office == current ]
                 [ text <| Office.toString office ]
         setEditHalfDay =
-            SetEditHalfDay
-                << sendSetOffice date timeInDay
+            EditHalfDaySent
+                << setOffice date timeInDay
                 << withDefault Rennes
                 << Office.fromString
     in
@@ -506,7 +362,7 @@ officeSelect date timeInDay current =
                 [ select 
                     [ id "edit"
                     , onInput setEditHalfDay
-                    , onBlur Cancel
+                    , onBlur EditWasCanceled
                     ]
                     [ toOption Rennes
                     , toOption Home
@@ -540,8 +396,8 @@ projectSelect date timeInDay projects current enabled =
                 [ div [ class "select" ]
                     [ select 
                         [ disabled <| not enabled
-                        , onBlur Cancel
-                        , onInput <| SetEditHalfDay << sendSetProject date timeInDay
+                        , onBlur EditWasCanceled
+                        , onInput <| EditHalfDaySent << setProject date timeInDay
                         , value defaultValue.unProject
                         -- if there is a default value, it means that it is the
                         -- select used for editing current halfday
@@ -576,8 +432,8 @@ idleDayTypeSelect date timeInDay current enabled =
                     [ text <| IdleDayType.toString idleDayType ]
 
         setEditHalfDay =
-            SetEditHalfDay
-                << sendSetIdleDayType date timeInDay
+            EditHalfDaySent
+                << setIdleDayType date timeInDay
                 << withDefault PaidLeave
                 << IdleDayType.fromString
     in
@@ -588,7 +444,7 @@ idleDayTypeSelect date timeInDay current enabled =
                     ]
                     [ select 
                         [ disabled <| not enabled 
-                        , onBlur Cancel
+                        , onBlur EditWasCanceled
                         , onInput setEditHalfDay
                         , value defaultValue
                         -- if there is a default value, it means that it is the
@@ -622,7 +478,7 @@ arrivedOrLeftInput callback timeOfDay =
                 , value <| TimeOfDay.toString timeOfDay
                 , onEnter callback
                 , id "edit"
-                , onBlur Cancel
+                , onBlur EditWasCanceled
                 ]
                 []
             ]
@@ -633,8 +489,8 @@ arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
-            SetEditHalfDay
-                << sendSetArrived date timeInDay
+            EditHalfDaySent
+                << setArrived date timeInDay
                 << withDefault timeOfDay
                 << TimeOfDay.fromString
     in
@@ -644,8 +500,8 @@ leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
-            SetEditHalfDay
-                << sendSetLeft date timeInDay
+            EditHalfDaySent
+                << setLeft date timeInDay
                 << withDefault timeOfDay
                 << TimeOfDay.fromString
     in
@@ -667,7 +523,7 @@ viewWorked mode projects
                 EditOffice ->
                     th [] [ officeSelect workedDay workedTimeInDay workedOffice ]
                 _ ->
-                    th [ onDoubleClick <| SetMode EditOffice ]
+                    th [ onDoubleClick <| ModeChanged EditOffice ]
                         [ text <| Office.toString workedOffice ]
         cellNotes =
             case mode of
@@ -678,7 +534,7 @@ viewWorked mode projects
                                 [ textarea
                                     [ class "textarea"
                                     , id "edit"
-                                    , onInput <| SetMode << EditNotes 
+                                    , onInput <| ModeChanged << EditNotes 
                                     ]
                                     [ text notes
                                     ]
@@ -690,8 +546,8 @@ viewWorked mode projects
                                     [ class "button"
                                     , id "submit"
                                     , onClick 
-                                        <| SetEditHalfDay 
-                                        <| sendSetNotes workedDay workedTimeInDay notes
+                                        <| EditHalfDaySent 
+                                        <| setNotes workedDay workedTimeInDay notes
                                     ]
                                     [ text "Submit"
                                     ]
@@ -699,7 +555,7 @@ viewWorked mode projects
                             ]
                         ]
                 _ ->
-                    td [ onDoubleClick <| SetMode (EditNotes workedNotes.unNotes) ]
+                    td [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
                         [ text <| workedNotes.unNotes ]
         cellProject =
             case mode of
@@ -713,12 +569,12 @@ viewWorked mode projects
                             True 
                         ]
                 _ ->
-                    th [ onDoubleClick <| SetMode EditProject ]
+                    th [ onDoubleClick <| ModeChanged EditProject ]
                         [ text <| workedProject.unProject ]
         divViewArrivedOrLeft mode_ timeOfDay =
             div
                 [ class "is-inline-block"
-                , onDoubleClick <| SetMode mode_
+                , onDoubleClick <| ModeChanged mode_
                 ]
                 [ text <| TimeOfDay.toString timeOfDay ]
         divArrived =
@@ -767,7 +623,7 @@ viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
                             True 
                         ]
                 _ ->
-                    th [ onDoubleClick <| SetMode EditIdleDayType ]
+                    th [ onDoubleClick <| ModeChanged EditIdleDayType ]
                         [ text <| IdleDayType.toString idleDayType ]
     in
         table [ class "table" ]
@@ -818,4 +674,157 @@ view model =
                 [ div [ class "content" ] [ viewChangeHalfDayType_ ]
                 ]
             ]
+
+-- Requests
+
+toInvertIsoString : Date -> String
+toInvertIsoString = format "dd-MM-yyyy"
+
+diaryUrl : Date -> TimeInDay -> String
+diaryUrl date timeInDay 
+    = "/diary/" 
+    ++ toInvertIsoString date 
+    ++ "/" 
+    ++ TimeInDay.toString timeInDay
+
+idleUrl : Date -> TimeInDay -> String
+idleUrl date timeInDay
+    = "/diary/idle/" 
+    ++ toInvertIsoString date 
+    ++ "/" 
+    ++ TimeInDay.toString timeInDay
+
+getHalfDay : Date -> TimeInDay -> Cmd Msg
+getHalfDay date timeInDay =
+    get
+        { url = diaryUrl date timeInDay
+        , expect = Http.expectJson (fromResult >> GotHalfDayResponse) HalfDay.decoder
+        }
+
+getProjects : Cmd Msg
+getProjects =
+    get
+        { url = "/project/"
+        , expect = Http.expectJson 
+            (fromResult >> GotProjectsResponse) 
+            (Decode.list Project.decoder)
+        }
+
+setOffice : Date -> TimeInDay -> Office -> Cmd Msg
+setOffice date timeInDay office = 
+    let
+        workOption = MkSetOffice <| SetOffice office
+    in
+        setWorkOption date timeInDay workOption
+
+
+setNotes : Date -> TimeInDay -> String -> Cmd Msg
+setNotes date timeInDay notes = 
+    let
+        workOption = MkSetNotes <| SetNotes <| Notes notes
+    in
+        setWorkOption date timeInDay workOption
+
+
+setProject : Date -> TimeInDay -> String -> Cmd Msg
+setProject date timeInDay project =
+    let
+        workOption = MkSetProj <| SetProj <| Project project
+    in
+    setWorkOption date timeInDay workOption
+
+
+setArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+setArrived date timeInDay timeOfDay =
+    let
+        workOption = MkSetArrived <| SetArrived timeOfDay
+    in
+    setWorkOption date timeInDay workOption
+
+
+setLeft : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+setLeft date timeInDay timeOfDay =
+    let
+        workOption = MkSetLeft <| SetLeft timeOfDay
+    in
+    setWorkOption date timeInDay workOption
+
+
+setWorkOption : Date -> TimeInDay -> WorkOption -> Cmd Msg
+setWorkOption date timeInDay option =
+    request
+        { method = "PUT"
+        , headers = []
+        , url = diaryUrl date timeInDay
+        , body = jsonBody <| Encode.list WorkOption.encoder [ option ]
+        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+setIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd Msg
+setIdleDayType date timeInDay idleDayType =
+    request
+        { method = "PUT"
+        , headers = []
+        , url = idleUrl date timeInDay
+        , body = jsonBody <| IdleDayType.encoder idleDayType
+        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+delete : Date -> TimeInDay -> Cmd Msg
+delete date timeInDay = 
+    request
+        { method = "DELETE"
+        , headers = []
+        , url = diaryUrl date timeInDay
+        , body = emptyBody
+        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+-- Subscriptions
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.mode of
+       EditNotes _ -> onMouseDown (outsideTarget [ "submit", "edit" ])
+       _ -> Sub.none
+
+
+{-This code has been found here
+https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
+-}
+outsideTarget : List String -> Decode.Decoder Msg
+outsideTarget domEltIds =
+    Decode.field "target" (isOutsideDomEltId domEltIds)
+        |> Decode.andThen
+            (\isOutside ->
+                if isOutside then
+                    Decode.succeed EditWasCanceled
+                else
+                    Decode.fail <| "inside " ++ concat domEltIds
+            )
+
+
+isOutsideDomEltId : List String -> Decode.Decoder Bool
+isOutsideDomEltId domEltIds =
+    Decode.oneOf
+        [ Decode.field "id" Decode.string
+            |> Decode.andThen
+                (\id ->
+                    if member id domEltIds then
+                        -- found match by id
+                        Decode.succeed False
+                    else
+                        -- try next decoder
+                        Decode.fail "check parent node"
+                )
+        , Decode.lazy (\_ -> isOutsideDomEltId domEltIds |> Decode.field "parentNode")
+        -- fallback if all previous decoders failed
+        , Decode.succeed True
+        ]
 
