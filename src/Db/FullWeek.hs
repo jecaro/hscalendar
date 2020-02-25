@@ -4,43 +4,54 @@ module Db.FullWeek
     ( FullWeek(..)
     , add
     , empty
-    , monday
-    , tuesday
-    , wednesday
-    , thursday
     , friday
+    , monday
     , saturday
     , sunday
+    , thursday
+    , tuesday
+    , wednesday
     )
 where
 
 import RIO
 
 import           Data.Aeson (FromJSON, ToJSON)
-import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Lens.Micro.Platform (makeFields, (?~))
 
 import qualified Db.FullDay as FullDay (FullDay(..), afternoon, empty, morning)
 import           Db.HalfDay (HalfDay, day, timeInDay)
 import           Db.TimeInDay (TimeInDay(..))
+import qualified Db.Week as Week
+    ( Week
+    , friday
+    , fromDay
+    , monday
+    , saturday
+    , sunday
+    , thursday
+    , tuesday
+    , wednesday
+    )
 
 -- | A 'FullWeek' contains every day of the week
-data FullWeek = MkFullWeek
-    { _fullWeekMonday :: !FullDay.FullDay
-    , _fullWeekTuesday :: !FullDay.FullDay
-    , _fullWeekWednesday :: !FullDay.FullDay
-    , _fullWeekThursday :: !FullDay.FullDay
-    , _fullWeekFriday :: !FullDay.FullDay
-    , _fullWeekSaturday :: !FullDay.FullDay
-    , _fullWeekSunday :: !FullDay.FullDay
+data FullWeek a = MkFullWeek
+    { _fullWeekWeek :: !Week.Week
+    , _fullWeekMonday :: FullDay.FullDay a
+    , _fullWeekTuesday :: FullDay.FullDay a
+    , _fullWeekWednesday :: FullDay.FullDay a
+    , _fullWeekThursday :: FullDay.FullDay a
+    , _fullWeekFriday :: FullDay.FullDay a
+    , _fullWeekSaturday :: FullDay.FullDay a
+    , _fullWeekSunday :: FullDay.FullDay a
     }
-    deriving (Eq, Generic, Show)
+    deriving (Eq, Functor, Generic, Show)
 makeFields ''FullWeek
 
-instance FromJSON FullWeek
-instance ToJSON FullWeek
+instance FromJSON (FullWeek (Maybe HalfDay))
+instance ToJSON (FullWeek (Maybe HalfDay))
 
-instance Display FullWeek where
+instance Display (FullWeek (Maybe HalfDay)) where
     display fullWeek
         =  "Monday:\n" <> display (fullWeek ^. monday) <> "\n--\n"
         <> "Tuesday:\n" <> display (fullWeek ^. tuesday) <> "\n--\n"
@@ -51,22 +62,25 @@ instance Display FullWeek where
         <> "Sunday:\n" <> display (fullWeek ^. sunday) <> "\n--"
 
 -- | Create an empty 'FullWeek'
-empty :: FullWeek
-empty = MkFullWeek
-    { _fullWeekMonday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekTuesday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekWednesday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekThursday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekFriday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekSaturday = FullDay.MkFullDay Nothing Nothing
-    , _fullWeekSunday = FullDay.MkFullDay Nothing Nothing
+empty :: a -> Week.Week -> FullWeek a
+empty a week' =
+    MkFullWeek
+    { _fullWeekWeek = week'
+    , _fullWeekMonday = FullDay.empty a $ Week.monday week'
+    , _fullWeekTuesday = FullDay.empty a $ Week.tuesday week'
+    , _fullWeekWednesday = FullDay.empty a $ Week.wednesday week'
+    , _fullWeekThursday = FullDay.empty a $ Week.thursday week'
+    , _fullWeekFriday = FullDay.empty a $ Week.friday week'
+    , _fullWeekSaturday = FullDay.empty a $ Week.saturday week'
+    , _fullWeekSunday = FullDay.empty a $ Week.sunday week'
     }
 
 -- | Add a 'HalfDay' into a 'FullWeek'
-add :: HalfDay -> FullWeek -> FullWeek
+add :: HalfDay -> FullWeek (Maybe HalfDay) -> Maybe (FullWeek (Maybe HalfDay))
 add hd fullWeek =
-    let (_, _, weekDay) = toWeekDate (view day hd)
-        dayLens = case weekDay of
+    let day' = view day hd
+        (week', dayNb) = Week.fromDay (view day hd)
+        dayLens = case dayNb of
                       1 -> monday
                       2 -> tuesday
                       3 -> wednesday
@@ -78,6 +92,8 @@ add hd fullWeek =
         tidLens = case hd ^. timeInDay of
                       Morning -> FullDay.morning
                       Afternoon -> FullDay.afternoon
-        lensDoingNothing = lens (const FullDay.empty) const
-    in fullWeek & dayLens . tidLens ?~ hd
+        lensDoingNothing = lens (const $ FullDay.empty Nothing day') const
+     in if week' == (fullWeek ^. week)
+          then Just (fullWeek & dayLens . tidLens ?~ hd)
+          else Nothing
 

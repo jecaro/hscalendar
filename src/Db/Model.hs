@@ -331,7 +331,9 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 weekGet
-    :: (MonadIO m, MonadUnliftIO m) => Week.Week -> SqlPersistT m FullWeek
+    :: (MonadIO m, MonadUnliftIO m)
+    => Week.Week
+    -> SqlPersistT m (FullWeek (Maybe HalfDay))
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
@@ -343,7 +345,7 @@ weekGet week = do
         return (hd, mbHdw, mbProj))
     hdList <- mapM dbToHalfDayInt tupleList
     return $ toFullWeek hdList
-  where toFullWeek = foldr add empty
+  where toFullWeek = foldr (\hd fw -> fromMaybe fw $ add hd fw) (empty Nothing week)
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()

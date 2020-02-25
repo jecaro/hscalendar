@@ -158,6 +158,7 @@ tests:
 
 default-extensions:
   - DataKinds
+  - DeriveFunctor
   - DeriveGeneric
   - FlexibleContexts
   - FlexibleInstances

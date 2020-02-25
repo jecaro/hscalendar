@@ -51,5 +51,5 @@ toWeek (MkCustomWeekNum weekNum) = do
     day <- today
     let (year, _, _) = Time.toGregorian day
     return $ MkWeek year weekNum
-toWeek CurrentWeek = fromDay <$> today
+toWeek CurrentWeek = fst . fromDay <$> today
 

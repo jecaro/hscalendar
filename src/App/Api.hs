@@ -67,7 +67,7 @@ type HSCalendarApi =
    :<|> Summary "Display a week"
            :> "week"
            :> Capture "week" CustomWeek
-           :> Get '[JSON] FullWeek
+           :> Get '[JSON] (FullWeek (Maybe HalfDay))
    :<|> Summary "Set a non-working half-day"
            :> "diary"
            :> "idle"
