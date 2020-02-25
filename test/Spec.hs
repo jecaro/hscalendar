@@ -24,6 +24,7 @@ import           Test.Hspec
     , beforeAll
     , context
     , describe
+    , expectationFailure
     , hspec
     , it
     , Selector
@@ -44,7 +45,7 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
-import           Db.FullWeek (add, empty)
+import           Db.FullWeek (FullWeek(..), add, empty)
 import qualified Db.IdleDayType as IDT (IdleDayType(..))
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
@@ -147,7 +148,10 @@ day1 :: Time.Day
 day1 = Time.fromGregorian 1979 03 22
 
 week1 :: Week
-week1 = fromDay day1
+week1 = fst $ fromDay day1
+
+emptyWeek1 :: FullWeek (Maybe HalfDay)
+emptyWeek1 = empty Nothing week1
 
 tid1 :: TimeInDay
 tid1 = Morning
@@ -577,7 +581,7 @@ testHdApi runDB =
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` empty
+                res `shouldBe` empty Nothing week1
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
@@ -589,7 +593,11 @@ testHdApi runDB =
                 res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) empty
+                let weekWithOneDayMaybe =
+                        add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyWeek1
+                case weekWithOneDayMaybe of
+                    Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
+                    Just week -> res `shouldBe` week
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
@@ -603,7 +611,11 @@ testHdApi runDB =
                 worked `shouldBe` defaultWorked day1 tid1 project1
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` add (defaultWorked day1 tid1 project1) empty
+                let weekWithOneDayMaybe =
+                        add (defaultWorked day1 tid1 project1) emptyWeek1
+                case weekWithOneDayMaybe of
+                    Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
+                    Just week -> res `shouldBe` week
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
