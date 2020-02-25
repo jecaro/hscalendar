@@ -164,7 +164,7 @@ hHdGet cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-hWeekGet :: HasConnPool env => CustomWeek -> RIO env FullWeek
+hWeekGet :: HasConnPool env => CustomWeek -> RIO env (FullWeek (Maybe HalfDay))
 hWeekGet cw = do
     -- Get actual week
     week <- toWeek cw
