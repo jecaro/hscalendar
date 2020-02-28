@@ -4,6 +4,7 @@ module Db.FullWeek
     ( FullWeek(..)
     , add
     , empty
+    , full
     , friday
     , monday
     , saturday
@@ -19,7 +20,13 @@ import RIO
 import           Data.Aeson (FromJSON, ToJSON)
 import           Lens.Micro.Platform (makeFields, (?~))
 
-import qualified Db.FullDay as FullDay (FullDay(..), afternoon, empty, morning)
+import qualified Db.FullDay as FullDay
+    ( FullDay(..)
+    , afternoon
+    , empty
+    , morning
+    , ok
+    )
 import           Db.HalfDay (HalfDay, day, timeInDay)
 import           Db.TimeInDay (TimeInDay(..))
 import qualified Db.Week as Week
@@ -37,32 +44,26 @@ import qualified Db.Week as Week
 -- | A 'FullWeek' contains every day of the week
 data FullWeek a = MkFullWeek
     { _fullWeekWeek :: !Week.Week
-    , _fullWeekMonday :: FullDay.FullDay a
-    , _fullWeekTuesday :: FullDay.FullDay a
-    , _fullWeekWednesday :: FullDay.FullDay a
-    , _fullWeekThursday :: FullDay.FullDay a
-    , _fullWeekFriday :: FullDay.FullDay a
-    , _fullWeekSaturday :: FullDay.FullDay a
-    , _fullWeekSunday :: FullDay.FullDay a
+    , _fullWeekMonday :: a
+    , _fullWeekTuesday :: a
+    , _fullWeekWednesday :: a
+    , _fullWeekThursday :: a
+    , _fullWeekFriday :: a
+    , _fullWeekSaturday :: a
+    , _fullWeekSunday :: a
     }
-    deriving (Eq, Functor, Generic, Show)
+    deriving (Eq, Foldable, Functor, Generic, Show, Traversable)
 makeFields ''FullWeek
 
 instance FromJSON (FullWeek (Maybe HalfDay))
 instance ToJSON (FullWeek (Maybe HalfDay))
 
-instance Display (FullWeek (Maybe HalfDay)) where
-    display fullWeek
-        =  "Monday:\n" <> display (fullWeek ^. monday) <> "\n--\n"
-        <> "Tuesday:\n" <> display (fullWeek ^. tuesday) <> "\n--\n"
-        <> "Wednesday:\n" <> display (fullWeek ^. wednesday) <> "\n--\n"
-        <> "Thursday:\n" <> display (fullWeek ^. thursday) <> "\n--\n"
-        <> "Friday:\n" <> display (fullWeek ^. friday) <> "\n--\n"
-        <> "Saturday:\n" <> display (fullWeek ^. saturday) <> "\n--\n"
-        <> "Sunday:\n" <> display (fullWeek ^. sunday) <> "\n--"
+instance Display (FullWeek (FullDay.FullDay (Maybe HalfDay))) where
+    display fw = line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) fw
+        where line = "----------------------------------------"
 
 -- | Create an empty 'FullWeek'
-empty :: a -> Week.Week -> FullWeek a
+empty :: a -> Week.Week -> FullWeek (FullDay.FullDay a)
 empty a week' =
     MkFullWeek
     { _fullWeekWeek = week'
@@ -76,7 +77,10 @@ empty a week' =
     }
 
 -- | Add a 'HalfDay' into a 'FullWeek'
-add :: HalfDay -> FullWeek (Maybe HalfDay) -> Maybe (FullWeek (Maybe HalfDay))
+add
+    :: HalfDay
+    -> FullWeek (FullDay.FullDay (Maybe HalfDay))
+    -> Maybe (FullWeek (FullDay.FullDay (Maybe HalfDay)))
 add hd fullWeek =
     let day' = view day hd
         (week', dayNb) = Week.fromDay (view day hd)
@@ -97,3 +101,6 @@ add hd fullWeek =
           then Just (fullWeek & dayLens . tidLens ?~ hd)
           else Nothing
 
+-- | Check if the week is complete: every open day has two entries
+full :: FullWeek (FullDay.FullDay (Maybe HalfDay)) -> Bool
+full = all FullDay.ok

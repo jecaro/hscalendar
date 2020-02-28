@@ -7,11 +7,9 @@ import           RIO
 import qualified RIO.Time as Time
     ( Day
     , TimeOfDay(..)
-    , defaultTimeLocale
-    , formatTime
     , toGregorian
     )
-import qualified RIO.Text as Text (intercalate, pack)
+import qualified RIO.Text as Text (intercalate)
 
 import           Data.Attoparsec.Text
     ( Parser
@@ -22,11 +20,8 @@ import           Formatting.Extended (formatTwoDigitsPadZero)
 
 instance Display Time.Day where
     textDisplay day = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
-            <> " "
-            <> Text.pack weekDay
         where (y, m, d) = Time.toGregorian day
               intY = fromIntegral y
-              weekDay = Time.formatTime Time.defaultTimeLocale "%a" day
 
 instance Display Time.TimeOfDay where
     textDisplay (Time.TimeOfDay h m _) =

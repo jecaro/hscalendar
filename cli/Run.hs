@@ -27,6 +27,7 @@ import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
     )
+import           Db.FullWeek (full)
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
@@ -90,6 +91,9 @@ run (DiaryWeek cw) = do
     week <- toWeek cw
     hds <- runDB $ weekGet week
     logInfo $ display hds
+    logInfo $ if full hds
+                 then "The week is complete"
+                 else "The week is missing entries"
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do

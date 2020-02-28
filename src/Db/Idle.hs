@@ -28,5 +28,4 @@ instance FromJSON Idle
 
 instance Display Idle where
     display idle
-        =  display (idle ^. day) <> " " <> display (idle ^. timeInDay) <> "\n"
-        <> display (idle ^. dayType)
+        =  "\t\t" <> display (idle ^. dayType)

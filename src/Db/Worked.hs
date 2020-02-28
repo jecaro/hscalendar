@@ -35,15 +35,14 @@ instance ToJSON Worked
 
 instance Display Worked where
     display worked
-        =  display (worked ^. day) <> " " <> display (worked ^. timeInDay) <> "\n"
-        <> display (worked ^. office)
+        =  "\t\t" <> display (worked ^. office)
             <> ": "
             <> display (worked ^. arrived)
             <> " - "
             <> display (worked ^. left)
             <> "\n"
-        <> "Project: " <> display (worked ^. project) <> "\n"
-        <> "Notes:" <> eolAfterNoteLabel
+        <> "\t\tProject: " <> display (worked ^. project) <> "\n"
+        <> "\t\tNotes:" <> eolAfterNoteLabel
         <> display (worked ^. notes)
       where eolAfterNoteLabel
               | Text.null (unNotes $ worked ^. notes) = ""
