@@ -3,6 +3,7 @@ module HalfDayWidget exposing
     , Mode(..)
     , Msg(..)
     , init
+    , setDate
     , viewChangeHalfDayType
     , viewStatus
     , update
@@ -114,6 +115,20 @@ init timeInDay =
     , mode = View
     , edit = NotAsked
     }
+
+setDate : State -> Date -> ( State, Cmd Msg )
+setDate state date = 
+    let
+        state_ =
+            { state
+            | date = date
+            , halfDay = Loading
+            , edit = NotAsked
+            , mode = View
+            }
+        cmd = getHalfDay GotHalfDayResponse state_.date state_.timeInDay
+    in
+        ( state_, cmd)
 
 -- Update
 

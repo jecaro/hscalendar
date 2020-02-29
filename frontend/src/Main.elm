@@ -48,11 +48,12 @@ import Api exposing
 import HalfDayWidget as HDW exposing 
     ( Mode(..)
     , Msg(..)
+    , setDate
     , update
     , viewChangeHalfDayType
     , viewStatus
     )
-import Request exposing (getHalfDay, getProjects)
+import Request exposing (getProjects)
 
 -- Types
 
@@ -100,35 +101,13 @@ update msg model =
     case msg of
         DateChanged date ->
             let 
-                morning = model.morning
-                morning_ = 
-                    { morning
-                    | date = date
-                    , halfDay = Loading
-                    , edit = NotAsked
-                    , mode = View
-                    }
-                afternoon = model.afternoon
-                afternoon_ = 
-                    { afternoon
-                    | date = date
-                    , halfDay = Loading
-                    , edit = NotAsked
-                    , mode = View
-                    }
-                model_ = 
-                    { model
-                    | morning = morning_
-                    , afternoon = afternoon_
-                    }
-                cmdGetMorning = 
-                    Cmd.map 
-                        MorningMsg 
-                        (getHalfDay GotHalfDayResponse model_.morning.date model_.morning.timeInDay) 
-                cmdGetAfternoon = 
-                    Cmd.map 
-                        AfternoonMsg 
-                        (getHalfDay GotHalfDayResponse model_.afternoon.date model_.afternoon.timeInDay) 
+                (morning, cmdMorning) = setDate model.morning date
+                (afternoon, cmdAfternoon) = setDate model.afternoon date
+                
+                cmdGetMorning = Cmd.map MorningMsg cmdMorning
+                cmdGetAfternoon = Cmd.map AfternoonMsg cmdAfternoon
+                
+                model_ = { model | morning = morning, afternoon = afternoon }
             in 
                 ( model_, batch [ cmdGetMorning, cmdGetAfternoon ] )
 
@@ -145,8 +124,7 @@ update msg model =
                     | projects = response
                     }                
             in
-            
-            ( { model | morning = morning_, afternoon = afternoon_ }, Cmd.none )
+                ( { model | morning = morning_, afternoon = afternoon_ }, Cmd.none )
         
         MorningMsg morningMsg -> 
             let
