@@ -5,7 +5,7 @@ module HalfDayWidget exposing
     , init
     , setDate
     , viewChangeHalfDayType
-    , viewStatus
+    , view
     , update
     )
 
@@ -224,8 +224,8 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             ]
 
 
-viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
-viewStatus halfDay mode projects =
+view : WebData HalfDay -> Mode -> List Project -> Html Msg
+view halfDay mode projects =
     case halfDay of
         NotAsked -> p [] []
         Loading -> p [] [ text "Loading ..." ]

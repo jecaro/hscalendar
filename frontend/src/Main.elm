@@ -51,7 +51,7 @@ import HalfDayWidget as HDW exposing
     , setDate
     , update
     , viewChangeHalfDayType
-    , viewStatus
+    , view
     )
 import Request exposing (getProjects)
 
@@ -212,13 +212,13 @@ view model =
                         projects 
                 )
                 (RemoteData.toMaybe model.morning.projects)
-        viewMorningStatus_ =
+        viewMorning =
             viewMaybe 
-                (\projects -> viewStatus model.morning.halfDay model.morning.mode projects)
+                (\projects -> HDW.view model.morning.halfDay model.morning.mode projects)
                 (RemoteData.toMaybe model.morning.projects)
-        viewAfternoonStatus_ =
+        viewAfternoon =
             viewMaybe 
-                (\projects -> viewStatus model.afternoon.halfDay model.afternoon.mode projects)
+                (\projects -> HDW.view model.afternoon.halfDay model.afternoon.mode projects)
                 (RemoteData.toMaybe model.afternoon.projects)
 
     in
@@ -228,13 +228,13 @@ view model =
                 [ div [ class "content" ] [ viewNav model.morning.date ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map MorningMsg viewMorningStatus_ ]
+                [ div [ class "content" ] [ Html.map MorningMsg viewMorning ]
                 ]
             , section [ class "section" ] 
                 [ div [ class "content" ] [ Html.map MorningMsg viewMorningChangeHalfDayType_ ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoonStatus_ ]
+                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoon ]
                 ]
             , section [ class "section" ] 
                 [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoonChangeHalfDayType_ ]
