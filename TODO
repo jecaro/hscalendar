@@ -27,3 +27,4 @@
   - bug setting half day work when the other half day has weird left or arrived
   time
   - use columns instead of levels
+  - bug cancel edit notes afternoon

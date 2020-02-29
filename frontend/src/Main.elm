@@ -100,6 +100,11 @@ type Mode
 
 
 type alias Model =
+    { morning : ModelHalfDay
+    , afternoon : ModelHalfDay
+    }
+
+type alias ModelHalfDay = 
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
@@ -108,14 +113,17 @@ type alias Model =
     , mode : Mode
     }
 
+type Msg 
+    = GotProjectsResponse (WebData (List Project))
+    | DateChanged Date
+    | MorningMsg MsgHalfDay 
+    | AfternoonMsg MsgHalfDay
 
-type Msg
-    = DateAndTimeInDayChanged Date TimeInDay
-    | GotHalfDayResponse (WebData HalfDay)
+type MsgHalfDay
+    = GotHalfDayResponse (WebData HalfDay)
     | GotEditResponse (WebData ())
-    | GotProjectsResponse (WebData (List Project))
     | ModeChanged Mode
-    | EditHalfDaySent (Cmd Msg)
+    | EditHalfDaySent (Cmd MsgHalfDay)
     | EditWasCanceled
     | NoOp
 
@@ -134,15 +142,21 @@ main =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( { date = fromCalendarDate 2020 Jan 1
-      , timeInDay = Morning
-      , halfDay = NotAsked
-      , projects = NotAsked
-      , mode = View
-      , edit = NotAsked
+    let
+        baseModel = 
+            { date = fromCalendarDate 2020 Jan 1
+            , timeInDay = Morning
+            , halfDay = NotAsked
+            , projects = NotAsked
+            , mode = View
+            , edit = NotAsked
+            }
+    in
+    ( { morning = { baseModel | timeInDay = Morning }
+      , afternoon = { baseModel | timeInDay = Afternoon }
       }
     , batch 
-        [ perform (\d -> DateAndTimeInDayChanged d Morning) today
+        [ perform (\d -> DateChanged d) today
         , getProjects
         ]
     )
@@ -150,26 +164,74 @@ init _ =
 -- Update
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg model = 
     case msg of
-        DateAndTimeInDayChanged date timeInDay ->
+        DateChanged date ->
             let 
-                model_ = 
-                    { model 
+                morning = model.morning
+                morning_ = 
+                    { morning
                     | date = date
-                    , timeInDay = timeInDay
                     , halfDay = Loading
                     , edit = NotAsked
                     , mode = View
                     }
+                afternoon = model.afternoon
+                afternoon_ = 
+                    { afternoon
+                    | date = date
+                    , halfDay = Loading
+                    , edit = NotAsked
+                    , mode = View
+                    }
+                model_ = 
+                    { model
+                    | morning = morning_
+                    , afternoon = afternoon_
+                    }
+                cmdGetMorning = 
+                    Cmd.map MorningMsg (getHalfDay model_.morning.date model_.morning.timeInDay) 
+                cmdGetAfternoon = 
+                    Cmd.map AfternoonMsg (getHalfDay model_.afternoon.date model_.afternoon.timeInDay) 
             in 
-                ( model_, getHalfDay model_.date model_.timeInDay )
-        
-        GotHalfDayResponse response ->
-            ( { model | halfDay = response, mode = View }, Cmd.none )
+                ( model_, batch [ cmdGetMorning, cmdGetAfternoon ] )
 
         GotProjectsResponse response ->
-            ( { model | projects = response }, Cmd.none )
+            let
+                morning = model.morning
+                morning_ = 
+                    { morning
+                    | projects = response
+                    }                
+                afternoon = model.afternoon
+                afternoon_ = 
+                    { afternoon
+                    | projects = response
+                    }                
+            in
+            
+            ( { model | morning = morning_, afternoon = afternoon_ }, Cmd.none )
+        
+        MorningMsg morningMsg -> 
+            let
+                (morning, cmd) = updateHalfDay morningMsg model.morning
+            in
+                ( {model | morning = morning}, Cmd.map MorningMsg cmd )
+
+        AfternoonMsg afternoonMsg -> 
+            let
+                (afternoon, cmd) = updateHalfDay afternoonMsg model.afternoon
+            in
+                ( {model | afternoon = afternoon}, Cmd.map AfternoonMsg cmd )
+
+
+
+
+updateHalfDay : MsgHalfDay -> ModelHalfDay -> ( ModelHalfDay, Cmd MsgHalfDay )
+updateHalfDay msg model =
+    case msg of
+        GotHalfDayResponse response ->
+            ( { model | halfDay = response, mode = View }, Cmd.none )
 
         GotEditResponse response ->
             ( { model | edit = response }
@@ -206,23 +268,12 @@ viewHero =
             ]
         ]
 
-viewNav : Date -> TimeInDay -> Html Msg
-viewNav date timeInDay =
+viewNav : Date -> Html Msg
+viewNav date =
     let
-        previous = 
-            case timeInDay of
-                Morning -> DateAndTimeInDayChanged (add Days -1 date) Afternoon
-                Afternoon -> DateAndTimeInDayChanged date Morning
-        next = 
-            case timeInDay of
-                Morning -> DateAndTimeInDayChanged date Afternoon
-                Afternoon -> DateAndTimeInDayChanged (add Days 1 date) Morning
+        previous = DateChanged (add Days -1 date)
+        next = DateChanged (add Days 1 date)
         weekdayString = format "EEEE" date
-        toOption timeInDay_ = 
-            let
-                timeInDayStr = TimeInDay.toString timeInDay_
-            in
-                option [ value timeInDayStr ] [ text timeInDayStr ]
     in
         nav [ class "level" ]
             [ div [ class "level-left" ]
@@ -249,32 +300,10 @@ viewNav date timeInDay =
                 [ p [ class "subtitle" ]
                     [ text <| toIsoString date ++ " " ++ weekdayString ]
                 ]
-            , div [ class "level-right" ]
-                [ div [ class "level-item" ]
-                    [ div [ class "field" ]
-                        [ div [ class "control" ]
-                            [ div
-                                [ class "select"
-                                , onInput 
-                                    <| DateAndTimeInDayChanged date 
-                                        << withDefault Morning 
-                                        << TimeInDay.fromString 
-                                ]
-                                [ select [
-                                    value <| TimeInDay.toString timeInDay
-                                    ]
-                                    [ toOption Morning
-                                    , toOption Afternoon
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
             ]
 
 
-viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Html Msg
+viewChangeHalfDayType : Date -> TimeInDay -> Maybe HalfDay -> List Project -> Html MsgHalfDay
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
         isWorked = 
@@ -331,7 +360,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             ]
 
 
-viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
+viewStatus : WebData HalfDay -> Mode -> List Project -> Html MsgHalfDay
 viewStatus halfDay mode projects =
     case halfDay of
         NotAsked -> p [] []
@@ -344,7 +373,7 @@ viewStatus halfDay mode projects =
             viewIdle mode idle
 
 
-officeSelect : Date -> TimeInDay -> Office -> Html Msg
+officeSelect : Date -> TimeInDay -> Office -> Html MsgHalfDay
 officeSelect date timeInDay current =
     let
         toOption office =
@@ -373,7 +402,7 @@ officeSelect date timeInDay current =
             ]
         ]
 
-projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html Msg
+projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html MsgHalfDay
 projectSelect date timeInDay projects current enabled =
     let
         defaultValue = 
@@ -413,7 +442,7 @@ projectSelect date timeInDay projects current enabled =
 {- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
 function prepend an empty item before the different types.
 -}
-idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html Msg
+idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html MsgHalfDay
 idleDayTypeSelect date timeInDay current enabled =
     let
         defaultValue = 
@@ -468,7 +497,7 @@ idleDayTypeSelect date timeInDay current enabled =
                 ]
             ]
 
-arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
+arrivedOrLeftInput : (String -> MsgHalfDay) -> TimeOfDay -> Html MsgHalfDay
 arrivedOrLeftInput callback timeOfDay =
     div [ class "field", class "is-inline-block" ]
         [ div [ class "control" ]
@@ -485,7 +514,7 @@ arrivedOrLeftInput callback timeOfDay =
         ]
 
 
-arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html MsgHalfDay
 arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
@@ -496,7 +525,7 @@ arrivedInput date timeInDay timeOfDay =
     in
     arrivedOrLeftInput setEditHalfDay timeOfDay
 
-leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+leftInput : Date -> TimeInDay -> TimeOfDay -> Html MsgHalfDay
 leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
@@ -508,7 +537,7 @@ leftInput date timeInDay timeOfDay =
     arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
-viewWorked : Mode -> List Project -> Worked -> Html Msg
+viewWorked : Mode -> List Project -> Worked -> Html MsgHalfDay
 viewWorked mode projects
     { workedDay
     , workedTimeInDay
@@ -609,7 +638,7 @@ viewWorked mode projects
         ]
 
 
-viewIdle : Mode -> Idle -> Html Msg
+viewIdle : Mode -> Idle -> Html MsgHalfDay
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
     let
         cellIdleDayType =
@@ -646,32 +675,52 @@ viewNoEntry =
 view : Model -> Html Msg
 view model =
     let
-        viewChangeHalfDayType_ = 
+        viewMorningChangeHalfDayType_ = 
             viewMaybe 
                 (\projects -> 
                     viewChangeHalfDayType 
-                        model.date 
-                        model.timeInDay 
-                        (RemoteData.toMaybe model.halfDay) 
+                        model.morning.date 
+                        model.morning.timeInDay 
+                        (RemoteData.toMaybe model.morning.halfDay) 
                         projects 
                 )
-                (RemoteData.toMaybe model.projects)
-        viewStatus_ =
+                (RemoteData.toMaybe model.morning.projects)
+        viewAfternoonChangeHalfDayType_ = 
             viewMaybe 
-                (\projects -> viewStatus model.halfDay model.mode projects)
-                (RemoteData.toMaybe model.projects)
+                (\projects -> 
+                    viewChangeHalfDayType 
+                        model.afternoon.date 
+                        model.afternoon.timeInDay 
+                        (RemoteData.toMaybe model.afternoon.halfDay) 
+                        projects 
+                )
+                (RemoteData.toMaybe model.morning.projects)
+        viewMorningStatus_ =
+            viewMaybe 
+                (\projects -> viewStatus model.morning.halfDay model.morning.mode projects)
+                (RemoteData.toMaybe model.morning.projects)
+        viewAfternoonStatus_ =
+            viewMaybe 
+                (\projects -> viewStatus model.afternoon.halfDay model.afternoon.mode projects)
+                (RemoteData.toMaybe model.afternoon.projects)
 
     in
         div [] 
             [ viewHero 
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewNav model.date model.timeInDay ]
+                [ div [ class "content" ] [ viewNav model.morning.date ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewStatus_ ]
+                [ div [ class "content" ] [ Html.map MorningMsg viewMorningStatus_ ]
                 ]
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewChangeHalfDayType_ ]
+                [ div [ class "content" ] [ Html.map MorningMsg viewMorningChangeHalfDayType_ ]
+                ]
+            , section [ class "section" ] 
+                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoonStatus_ ]
+                ]
+            , section [ class "section" ] 
+                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoonChangeHalfDayType_ ]
                 ]
             ]
 
@@ -694,7 +743,7 @@ idleUrl date timeInDay
     ++ "/" 
     ++ TimeInDay.toString timeInDay
 
-getHalfDay : Date -> TimeInDay -> Cmd Msg
+getHalfDay : Date -> TimeInDay -> Cmd MsgHalfDay
 getHalfDay date timeInDay =
     get
         { url = diaryUrl date timeInDay
@@ -710,7 +759,7 @@ getProjects =
             (Decode.list Project.decoder)
         }
 
-setOffice : Date -> TimeInDay -> Office -> Cmd Msg
+setOffice : Date -> TimeInDay -> Office -> Cmd MsgHalfDay
 setOffice date timeInDay office = 
     let
         workOption = MkSetOffice <| SetOffice office
@@ -718,7 +767,7 @@ setOffice date timeInDay office =
         setWorkOption date timeInDay workOption
 
 
-setNotes : Date -> TimeInDay -> String -> Cmd Msg
+setNotes : Date -> TimeInDay -> String -> Cmd MsgHalfDay
 setNotes date timeInDay notes = 
     let
         workOption = MkSetNotes <| SetNotes <| Notes notes
@@ -726,7 +775,7 @@ setNotes date timeInDay notes =
         setWorkOption date timeInDay workOption
 
 
-setProject : Date -> TimeInDay -> String -> Cmd Msg
+setProject : Date -> TimeInDay -> String -> Cmd MsgHalfDay
 setProject date timeInDay project =
     let
         workOption = MkSetProj <| SetProj <| Project project
@@ -734,7 +783,7 @@ setProject date timeInDay project =
     setWorkOption date timeInDay workOption
 
 
-setArrived : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+setArrived : Date -> TimeInDay -> TimeOfDay -> Cmd MsgHalfDay
 setArrived date timeInDay timeOfDay =
     let
         workOption = MkSetArrived <| SetArrived timeOfDay
@@ -742,7 +791,7 @@ setArrived date timeInDay timeOfDay =
     setWorkOption date timeInDay workOption
 
 
-setLeft : Date -> TimeInDay -> TimeOfDay -> Cmd Msg
+setLeft : Date -> TimeInDay -> TimeOfDay -> Cmd MsgHalfDay
 setLeft date timeInDay timeOfDay =
     let
         workOption = MkSetLeft <| SetLeft timeOfDay
@@ -750,7 +799,7 @@ setLeft date timeInDay timeOfDay =
     setWorkOption date timeInDay workOption
 
 
-setWorkOption : Date -> TimeInDay -> WorkOption -> Cmd Msg
+setWorkOption : Date -> TimeInDay -> WorkOption -> Cmd MsgHalfDay
 setWorkOption date timeInDay option =
     request
         { method = "PUT"
@@ -762,7 +811,7 @@ setWorkOption date timeInDay option =
         , tracker = Nothing
         }
 
-setIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd Msg
+setIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd MsgHalfDay
 setIdleDayType date timeInDay idleDayType =
     request
         { method = "PUT"
@@ -774,7 +823,7 @@ setIdleDayType date timeInDay idleDayType =
         , tracker = Nothing
         }
 
-delete : Date -> TimeInDay -> Cmd Msg
+delete : Date -> TimeInDay -> Cmd MsgHalfDay
 delete date timeInDay = 
     request
         { method = "DELETE"
@@ -790,15 +839,15 @@ delete date timeInDay =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.mode of
-       EditNotes _ -> onMouseDown (outsideTarget [ "submit", "edit" ])
+    case model.morning.mode of
+       EditNotes _ -> Sub.map MorningMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
        _ -> Sub.none
 
 
 {-This code has been found here
 https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
 -}
-outsideTarget : List String -> Decode.Decoder Msg
+outsideTarget : List String -> Decode.Decoder MsgHalfDay
 outsideTarget domEltIds =
     Decode.field "target" (isOutsideDomEltId domEltIds)
         |> Decode.andThen
