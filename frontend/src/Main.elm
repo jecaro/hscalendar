@@ -24,11 +24,10 @@ import Html exposing
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Extra exposing (viewMaybe)
-import Http exposing (Error(..), expectJson, get)
-import Json.Decode as Decode exposing (list)
+import Json.Decode as Decode
 import List exposing (member)
 import Platform.Cmd exposing (batch)
-import RemoteData exposing (RemoteData(..), WebData, fromResult)
+import RemoteData exposing (RemoteData(..), WebData)
 import String exposing (concat)
 import Task exposing (perform)
 import Time exposing (Month(..))
@@ -46,18 +45,16 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-import Api.Project as Project exposing (decoder)
-import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 
 import HalfDayWidget exposing 
     ( ModelHalfDay
     , Mode(..)
     , MsgHalfDay(..)
-    , getHalfDay
     , updateHalfDay
     , viewChangeHalfDayType
     , viewStatus
     )
+import Request exposing (getHalfDay, getProjects)
 
 -- Types
 
@@ -104,7 +101,7 @@ init _ =
       }
     , batch 
         [ perform (\d -> DateChanged d) today
-        , getProjects
+        , getProjects GotProjectsResponse
         ]
     )
 
@@ -137,9 +134,13 @@ update msg model =
                     , afternoon = afternoon_
                     }
                 cmdGetMorning = 
-                    Cmd.map MorningMsg (getHalfDay model_.morning.date model_.morning.timeInDay) 
+                    Cmd.map 
+                        MorningMsg 
+                        (getHalfDay GotHalfDayResponse model_.morning.date model_.morning.timeInDay) 
                 cmdGetAfternoon = 
-                    Cmd.map AfternoonMsg (getHalfDay model_.afternoon.date model_.afternoon.timeInDay) 
+                    Cmd.map 
+                        AfternoonMsg 
+                        (getHalfDay GotHalfDayResponse model_.afternoon.date model_.afternoon.timeInDay) 
             in 
                 ( model_, batch [ cmdGetMorning, cmdGetAfternoon ] )
 
@@ -277,15 +278,6 @@ view model =
             ]
 
 -- Requests
-
-getProjects : Cmd Msg
-getProjects =
-    get
-        { url = "/project/"
-        , expect = Http.expectJson 
-            (fromResult >> GotProjectsResponse) 
-            (Decode.list Project.decoder)
-        }
 
 
 -- Subscriptions

@@ -2,14 +2,13 @@ module HalfDayWidget exposing
     ( ModelHalfDay
     , Mode(..)
     , MsgHalfDay(..)
-    , getHalfDay
     , updateHalfDay
     , viewChangeHalfDayType
     , viewStatus
     )
 
 import Browser.Dom exposing (focus)
-import Date exposing (Date, Unit(..), format)
+import Date exposing (Date, Unit(..))
 import Html exposing 
     ( Html
     , button
@@ -37,19 +36,10 @@ import Html.Attributes exposing
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (viewIf)
-import Http exposing 
-    ( Error(..)
-    , emptyBody
-    , expectJson
-    , expectWhatever
-    , get
-    , jsonBody
-    , request
-    )
-import Json.Encode as Encode exposing (list)
+import Http exposing (Error(..))
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
-import RemoteData exposing (RemoteData(..), WebData, fromResult)
+import RemoteData exposing (RemoteData(..), WebData)
 import Task exposing (attempt)
 import Time exposing (Month(..))
 
@@ -57,7 +47,6 @@ import Api exposing
     ( HalfDay(..)
     , Idle
     , IdleDayType(..)
-    , Notes
     , Office(..)
     , Project
     , SetArrived(..)
@@ -69,13 +58,20 @@ import Api exposing
     , WorkOption(..)
     , Worked
     )
-import Api.HalfDay as HalfDay exposing (decoder)
-import Api.IdleDayType as IdleDayType exposing (encoder)
 import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (toString)
-import Api.TimeInDay.Extended as TimeInDay exposing (fromString, toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
-import Api.WorkOption as WorkOption exposing (encoder)
+
+import Request exposing 
+    ( getHalfDay
+    , setArrived
+    , setIdleDayType
+    , setLeft
+    , setNotes
+    , setOffice
+    , setProject
+    , delete
+    )
 
 -- Types
 
@@ -119,7 +115,7 @@ updateHalfDay msg model =
 
         GotEditResponse response ->
             ( { model | edit = response }
-            , getHalfDay model.date model.timeInDay )
+            , getHalfDay GotHalfDayResponse model.date model.timeInDay )
 
         ModeChanged mode ->
             let 
@@ -164,7 +160,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             [ div [ class "level-item" ]
                 [ button 
                     [ class "button"
-                    , onClick <| EditHalfDaySent <| delete date timeInDay
+                    , onClick <| EditHalfDaySent <| delete GotEditResponse date timeInDay
                     , disabled <| isNothing halfDay
                     ] [ text "Delete" ]
                 ]
@@ -224,7 +220,7 @@ officeSelect date timeInDay current =
                 [ text <| Office.toString office ]
         setEditHalfDay =
             EditHalfDaySent
-                << setOffice date timeInDay
+                << setOffice GotEditResponse date timeInDay
                 << withDefault Rennes
                 << Office.fromString
     in
@@ -269,7 +265,9 @@ projectSelect date timeInDay projects current enabled =
                     [ select 
                         [ disabled <| not enabled
                         , onBlur EditWasCanceled
-                        , onInput <| EditHalfDaySent << setProject date timeInDay
+                        , onInput 
+                            <| EditHalfDaySent 
+                            << setProject GotEditResponse date timeInDay
                         , value defaultValue.unProject
                         -- if there is a default value, it means that it is the
                         -- select used for editing current halfday
@@ -305,7 +303,7 @@ idleDayTypeSelect date timeInDay current enabled =
 
         setEditHalfDay =
             EditHalfDaySent
-                << setIdleDayType date timeInDay
+                << setIdleDayType GotEditResponse date timeInDay
                 << withDefault PaidLeave
                 << IdleDayType.fromString
     in
@@ -362,22 +360,22 @@ arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
             EditHalfDaySent
-                << setArrived date timeInDay
+                << setArrived GotEditResponse date timeInDay
                 << withDefault timeOfDay
                 << TimeOfDay.fromString
     in
-    arrivedOrLeftInput setEditHalfDay timeOfDay
+        arrivedOrLeftInput setEditHalfDay timeOfDay
 
 leftInput : Date -> TimeInDay -> TimeOfDay -> Html MsgHalfDay
 leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
             EditHalfDaySent
-                << setLeft date timeInDay
+                << setLeft GotEditResponse date timeInDay
                 << withDefault timeOfDay
                 << TimeOfDay.fromString
     in
-    arrivedOrLeftInput setEditHalfDay timeOfDay
+        arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
 viewWorked : Mode -> List Project -> Worked -> Html MsgHalfDay
@@ -419,7 +417,7 @@ viewWorked mode projects
                                     , id "submit"
                                     , onClick 
                                         <| EditHalfDaySent 
-                                        <| setNotes workedDay workedTimeInDay notes
+                                        <| setNotes GotEditResponse workedDay workedTimeInDay notes
                                     ]
                                     [ text "Submit"
                                     ]
@@ -513,108 +511,3 @@ viewNoEntry =
                 ]
             ]
         ]
-
-
-
--- Requests
-
-toInvertIsoString : Date -> String
-toInvertIsoString = format "dd-MM-yyyy"
-
-diaryUrl : Date -> TimeInDay -> String
-diaryUrl date timeInDay 
-    = "/diary/" 
-    ++ toInvertIsoString date 
-    ++ "/" 
-    ++ TimeInDay.toString timeInDay
-
-idleUrl : Date -> TimeInDay -> String
-idleUrl date timeInDay
-    = "/diary/idle/" 
-    ++ toInvertIsoString date 
-    ++ "/" 
-    ++ TimeInDay.toString timeInDay
-
-getHalfDay : Date -> TimeInDay -> Cmd MsgHalfDay
-getHalfDay date timeInDay =
-    get
-        { url = diaryUrl date timeInDay
-        , expect = Http.expectJson (fromResult >> GotHalfDayResponse) HalfDay.decoder
-        }
-
-setOffice : Date -> TimeInDay -> Office -> Cmd MsgHalfDay
-setOffice date timeInDay office = 
-    let
-        workOption = MkSetOffice <| SetOffice office
-    in
-        setWorkOption date timeInDay workOption
-
-
-setNotes : Date -> TimeInDay -> String -> Cmd MsgHalfDay
-setNotes date timeInDay notes = 
-    let
-        workOption = MkSetNotes <| SetNotes <| Notes notes
-    in
-        setWorkOption date timeInDay workOption
-
-
-setProject : Date -> TimeInDay -> String -> Cmd MsgHalfDay
-setProject date timeInDay project =
-    let
-        workOption = MkSetProj <| SetProj <| Project project
-    in
-    setWorkOption date timeInDay workOption
-
-
-setArrived : Date -> TimeInDay -> TimeOfDay -> Cmd MsgHalfDay
-setArrived date timeInDay timeOfDay =
-    let
-        workOption = MkSetArrived <| SetArrived timeOfDay
-    in
-    setWorkOption date timeInDay workOption
-
-
-setLeft : Date -> TimeInDay -> TimeOfDay -> Cmd MsgHalfDay
-setLeft date timeInDay timeOfDay =
-    let
-        workOption = MkSetLeft <| SetLeft timeOfDay
-    in
-    setWorkOption date timeInDay workOption
-
-
-setWorkOption : Date -> TimeInDay -> WorkOption -> Cmd MsgHalfDay
-setWorkOption date timeInDay option =
-    request
-        { method = "PUT"
-        , headers = []
-        , url = diaryUrl date timeInDay
-        , body = jsonBody <| Encode.list WorkOption.encoder [ option ]
-        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-setIdleDayType : Date -> TimeInDay -> IdleDayType -> Cmd MsgHalfDay
-setIdleDayType date timeInDay idleDayType =
-    request
-        { method = "PUT"
-        , headers = []
-        , url = idleUrl date timeInDay
-        , body = jsonBody <| IdleDayType.encoder idleDayType
-        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-delete : Date -> TimeInDay -> Cmd MsgHalfDay
-delete date timeInDay = 
-    request
-        { method = "DELETE"
-        , headers = []
-        , url = diaryUrl date timeInDay
-        , body = emptyBody
-        , expect = expectWhatever <| GotEditResponse << RemoteData.fromResult
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
