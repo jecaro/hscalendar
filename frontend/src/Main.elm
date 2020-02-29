@@ -7,7 +7,6 @@ import Date exposing
     , Unit(..)
     , add
     , format
-    , fromCalendarDate
     , today
     , toIsoString
     )
@@ -85,18 +84,8 @@ main =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    let
-        baseModel = 
-            { date = fromCalendarDate 2020 Jan 1
-            , timeInDay = Morning
-            , halfDay = NotAsked
-            , projects = NotAsked
-            , mode = View
-            , edit = NotAsked
-            }
-    in
-    ( { morning = { baseModel | timeInDay = Morning }
-      , afternoon = { baseModel | timeInDay = Afternoon }
+    ( { morning = HDW.init Morning
+      , afternoon = HDW.init Afternoon
       }
     , batch 
         [ perform (\d -> DateChanged d) today
@@ -170,8 +159,6 @@ update msg model =
                 (afternoon, cmd) = HDW.update afternoonMsg model.afternoon
             in
                 ( {model | afternoon = afternoon}, Cmd.map AfternoonMsg cmd )
-
-
 
 
 -- View

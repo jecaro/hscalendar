@@ -2,13 +2,14 @@ module HalfDayWidget exposing
     ( State
     , Mode(..)
     , Msg(..)
-    , update
+    , init
     , viewChangeHalfDayType
     , viewStatus
+    , update
     )
 
 import Browser.Dom exposing (focus)
-import Date exposing (Date, Unit(..))
+import Date exposing (Date, Unit(..), fromCalendarDate)
 import Html exposing 
     ( Html
     , button
@@ -102,10 +103,19 @@ type Msg
     | EditWasCanceled
     | NoOp
 
+-- init
+
+init : TimeInDay -> State
+init timeInDay = 
+    { date = fromCalendarDate 2020 Jan 1
+    , timeInDay = timeInDay
+    , halfDay = NotAsked
+    , projects = NotAsked
+    , mode = View
+    , edit = NotAsked
+    }
+
 -- Update
-
-
-
 
 update : Msg -> State -> ( State, Cmd Msg )
 update msg model =
