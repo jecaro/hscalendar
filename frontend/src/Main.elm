@@ -238,9 +238,12 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.morning.mode of
-       EditNotes _ -> Sub.map MorningMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
-       _ -> Sub.none
+    case (model.morning.mode, model.afternoon.mode) of
+        (EditNotes _, _) -> 
+            Sub.map MorningMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
+        (_, EditNotes _) -> 
+            Sub.map AfternoonMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
+        _ -> Sub.none
 
 
 {-This code has been found here
