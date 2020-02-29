@@ -1,8 +1,8 @@
 module HalfDayWidget exposing 
-    ( ModelHalfDay
+    ( State
     , Mode(..)
-    , MsgHalfDay(..)
-    , updateHalfDay
+    , Msg(..)
+    , update
     , viewChangeHalfDayType
     , viewStatus
     )
@@ -85,7 +85,7 @@ type Mode
     | EditLeft
 
 
-type alias ModelHalfDay = 
+type alias State = 
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
@@ -94,11 +94,11 @@ type alias ModelHalfDay =
     , mode : Mode
     }
 
-type MsgHalfDay
+type Msg
     = GotHalfDayResponse (WebData HalfDay)
     | GotEditResponse (WebData ())
     | ModeChanged Mode
-    | EditHalfDaySent (Cmd MsgHalfDay)
+    | EditHalfDaySent (Cmd Msg)
     | EditWasCanceled
     | NoOp
 
@@ -107,8 +107,8 @@ type MsgHalfDay
 
 
 
-updateHalfDay : MsgHalfDay -> ModelHalfDay -> ( ModelHalfDay, Cmd MsgHalfDay )
-updateHalfDay msg model =
+update : Msg -> State -> ( State, Cmd Msg )
+update msg model =
     case msg of
         GotHalfDayResponse response ->
             ( { model | halfDay = response, mode = View }, Cmd.none )
@@ -142,7 +142,7 @@ viewChangeHalfDayType
   -> TimeInDay 
   -> Maybe HalfDay 
   -> List Project 
-  -> Html MsgHalfDay
+  -> Html Msg
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
         isWorked = 
@@ -199,7 +199,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             ]
 
 
-viewStatus : WebData HalfDay -> Mode -> List Project -> Html MsgHalfDay
+viewStatus : WebData HalfDay -> Mode -> List Project -> Html Msg
 viewStatus halfDay mode projects =
     case halfDay of
         NotAsked -> p [] []
@@ -212,7 +212,7 @@ viewStatus halfDay mode projects =
             viewIdle mode idle
 
 
-officeSelect : Date -> TimeInDay -> Office -> Html MsgHalfDay
+officeSelect : Date -> TimeInDay -> Office -> Html Msg
 officeSelect date timeInDay current =
     let
         toOption office =
@@ -241,7 +241,7 @@ officeSelect date timeInDay current =
             ]
         ]
 
-projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html MsgHalfDay
+projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html Msg
 projectSelect date timeInDay projects current enabled =
     let
         defaultValue = 
@@ -283,7 +283,7 @@ projectSelect date timeInDay projects current enabled =
 {- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
 function prepend an empty item before the different types.
 -}
-idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html MsgHalfDay
+idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html Msg
 idleDayTypeSelect date timeInDay current enabled =
     let
         defaultValue = 
@@ -338,7 +338,7 @@ idleDayTypeSelect date timeInDay current enabled =
                 ]
             ]
 
-arrivedOrLeftInput : (String -> MsgHalfDay) -> TimeOfDay -> Html MsgHalfDay
+arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
 arrivedOrLeftInput callback timeOfDay =
     div [ class "field", class "is-inline-block" ]
         [ div [ class "control" ]
@@ -355,7 +355,7 @@ arrivedOrLeftInput callback timeOfDay =
         ]
 
 
-arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html MsgHalfDay
+arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
@@ -366,7 +366,7 @@ arrivedInput date timeInDay timeOfDay =
     in
         arrivedOrLeftInput setEditHalfDay timeOfDay
 
-leftInput : Date -> TimeInDay -> TimeOfDay -> Html MsgHalfDay
+leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
@@ -378,7 +378,7 @@ leftInput date timeInDay timeOfDay =
         arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
-viewWorked : Mode -> List Project -> Worked -> Html MsgHalfDay
+viewWorked : Mode -> List Project -> Worked -> Html Msg
 viewWorked mode projects
     { workedDay
     , workedTimeInDay
@@ -479,7 +479,7 @@ viewWorked mode projects
         ]
 
 
-viewIdle : Mode -> Idle -> Html MsgHalfDay
+viewIdle : Mode -> Idle -> Html Msg
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
     let
         cellIdleDayType =

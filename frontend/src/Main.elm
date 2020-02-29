@@ -46,11 +46,10 @@ import Api exposing
     , WorkOption(..)
     )
 
-import HalfDayWidget exposing 
-    ( ModelHalfDay
-    , Mode(..)
-    , MsgHalfDay(..)
-    , updateHalfDay
+import HalfDayWidget as HDW exposing 
+    ( Mode(..)
+    , Msg(..)
+    , update
     , viewChangeHalfDayType
     , viewStatus
     )
@@ -60,15 +59,15 @@ import Request exposing (getHalfDay, getProjects)
 
 
 type alias Model =
-    { morning : ModelHalfDay
-    , afternoon : ModelHalfDay
+    { morning : HDW.State
+    , afternoon : HDW.State
     }
 
 type Msg 
     = GotProjectsResponse (WebData (List Project))
     | DateChanged Date
-    | MorningMsg MsgHalfDay 
-    | AfternoonMsg MsgHalfDay
+    | MorningMsg HDW.Msg 
+    | AfternoonMsg HDW.Msg
 
 
 -- Main
@@ -162,13 +161,13 @@ update msg model =
         
         MorningMsg morningMsg -> 
             let
-                (morning, cmd) = updateHalfDay morningMsg model.morning
+                (morning, cmd) = HDW.update morningMsg model.morning
             in
                 ( {model | morning = morning}, Cmd.map MorningMsg cmd )
 
         AfternoonMsg afternoonMsg -> 
             let
-                (afternoon, cmd) = updateHalfDay afternoonMsg model.afternoon
+                (afternoon, cmd) = HDW.update afternoonMsg model.afternoon
             in
                 ( {model | afternoon = afternoon}, Cmd.map AfternoonMsg cmd )
 
@@ -292,7 +291,7 @@ subscriptions model =
 {-This code has been found here
 https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
 -}
-outsideTarget : List String -> Decode.Decoder MsgHalfDay
+outsideTarget : List String -> Decode.Decoder HDW.Msg
 outsideTarget domEltIds =
     Decode.field "target" (isOutsideDomEltId domEltIds)
         |> Decode.andThen
