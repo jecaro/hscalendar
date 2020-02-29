@@ -91,7 +91,6 @@ type alias State =
     { date : Date
     , timeInDay : TimeInDay
     , halfDay : WebData HalfDay
-    , projects : WebData (List Project)
     , edit : WebData ()
     , mode : Mode
     }
@@ -111,7 +110,6 @@ init timeInDay =
     { date = fromCalendarDate 2020 Jan 1
     , timeInDay = timeInDay
     , halfDay = NotAsked
-    , projects = NotAsked
     , mode = View
     , edit = NotAsked
     }

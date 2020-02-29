@@ -61,6 +61,7 @@ import Request exposing (getProjects)
 type alias Model =
     { morning : HDW.State
     , afternoon : HDW.State
+    , projects : WebData (List Project)
     }
 
 type Msg 
@@ -87,6 +88,7 @@ init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { morning = HDW.init Morning
       , afternoon = HDW.init Afternoon
+      , projects = Loading
       }
     , batch 
         [ perform (\d -> DateChanged d) today
@@ -111,32 +113,20 @@ update msg model =
             in 
                 ( model_, batch [ cmdGetMorning, cmdGetAfternoon ] )
 
-        GotProjectsResponse response ->
-            let
-                morning = model.morning
-                morning_ = 
-                    { morning
-                    | projects = response
-                    }                
-                afternoon = model.afternoon
-                afternoon_ = 
-                    { afternoon
-                    | projects = response
-                    }                
-            in
-                ( { model | morning = morning_, afternoon = afternoon_ }, Cmd.none )
+        GotProjectsResponse response -> 
+            ( { model | projects = response }, Cmd.none )
         
         MorningMsg morningMsg -> 
             let
                 (morning, cmd) = HDW.update morningMsg model.morning
             in
-                ( {model | morning = morning}, Cmd.map MorningMsg cmd )
+                ( { model | morning = morning }, Cmd.map MorningMsg cmd )
 
         AfternoonMsg afternoonMsg -> 
             let
                 (afternoon, cmd) = HDW.update afternoonMsg model.afternoon
             in
-                ( {model | afternoon = afternoon}, Cmd.map AfternoonMsg cmd )
+                ( { model | afternoon = afternoon }, Cmd.map AfternoonMsg cmd )
 
 
 -- View
@@ -201,7 +191,7 @@ view model =
                         (RemoteData.toMaybe model.morning.halfDay) 
                         projects 
                 )
-                (RemoteData.toMaybe model.morning.projects)
+                (RemoteData.toMaybe model.projects)
         viewAfternoonChangeHalfDayType_ = 
             viewMaybe 
                 (\projects -> 
@@ -211,15 +201,15 @@ view model =
                         (RemoteData.toMaybe model.afternoon.halfDay) 
                         projects 
                 )
-                (RemoteData.toMaybe model.morning.projects)
+                (RemoteData.toMaybe model.projects)
         viewMorning =
             viewMaybe 
                 (\projects -> HDW.view model.morning.halfDay model.morning.mode projects)
-                (RemoteData.toMaybe model.morning.projects)
+                (RemoteData.toMaybe model.projects)
         viewAfternoon =
             viewMaybe 
                 (\projects -> HDW.view model.afternoon.halfDay model.afternoon.mode projects)
-                (RemoteData.toMaybe model.afternoon.projects)
+                (RemoteData.toMaybe model.projects)
 
     in
         div [] 
