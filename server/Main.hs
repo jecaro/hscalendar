@@ -198,8 +198,9 @@ hHdSetWork cd tid wopts = do
         ]
 
 -- | optparse options
-data Options = Options { optionVerbose :: !Bool, -- ^ Verbose mode for wai logging
-                         optionPort    :: !Int } -- ^ Server port
+data Options = Options
+    Bool -- ^ Verbose mode for wai logging
+    Int  -- ^ Server port
 
 options :: Parser Options
 options = Options
