@@ -56,8 +56,8 @@ import           App.CommandLine
     )
 import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
-import           Db.FullDay (FullDay)
-import           Db.FullWeek (FullWeek)
+import           Db.DayF (DayF)
+import           Db.WeekF (WeekF)
 import           Db.HalfDay (HalfDay, displayHdWithDate)
 import           Db.IdleDayType (IdleDayType)
 import           Db.Project (Project)
@@ -89,7 +89,7 @@ data ProtectedClient env = ProtectedClient
     , projRm :: Project -> RIO env NoContent
     , projRename :: RenameArgs -> RIO env NoContent
     , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
-    , weekGet :: CustomWeek -> RIO env (FullWeek (FullDay (Maybe HalfDay)))
+    , weekGet :: CustomWeek -> RIO env (WeekF (DayF (Maybe HalfDay)))
     , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
     , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
     , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent

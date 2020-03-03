@@ -93,8 +93,8 @@ import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
 
-import           Db.FullDay (FullDay(..))
-import           Db.FullWeek (FullWeek(..), add, empty)
+import           Db.DayF (DayF(..))
+import           Db.WeekF (WeekF(..), add, empty)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
@@ -334,7 +334,7 @@ hdGet day tid =
 weekGet
     :: (MonadIO m, MonadUnliftIO m)
     => Week.Week
-    -> SqlPersistT m (FullWeek (FullDay (Maybe HalfDay)))
+    -> SqlPersistT m (WeekF (DayF (Maybe HalfDay)))
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
@@ -345,8 +345,8 @@ weekGet week = do
         orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
         return (hd, mbHdw, mbProj))
     hdList <- mapM dbToHalfDayInt tupleList
-    return $ toFullWeek hdList
-  where toFullWeek = foldr (\hd fw -> fromMaybe fw $ add hd fw) (empty Nothing week)
+    return $ toWeekF hdList
+  where toWeekF = foldr (\hd fw -> fromMaybe fw $ add hd fw) (empty Nothing week)
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()

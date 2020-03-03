@@ -14,10 +14,11 @@
 - favicon
 - add version in tools
 - put docker run in a script
-- Better naming for FullWeek (FullDay (Maybe HalfDay))
+- Better naming for WeekF (DayF (Maybe HalfDay))
 - server
   - Redirect root to index.html
   - favicon
+  - warning
 - frontend
   - escape key should cancel
   - better toString and fromString fct for TimeOfDay

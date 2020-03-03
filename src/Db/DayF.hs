@@ -1,8 +1,8 @@
--- | Contains the 'FullDay' data type
+-- | Contains the 'DayF' data type
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Db.FullDay
-    ( FullDay(..)
+module Db.DayF
+    ( DayF(..)
     , afternoon
     , day
     , empty
@@ -22,36 +22,32 @@ import           Lens.Micro.Platform (makeFields)
 
 import           Db.HalfDay (HalfDay)
 
--- | A 'FullDay' contains a 'HalfDay' for the morning and a 'HalfDay' for the
+-- | A 'DayF' contains a 'HalfDay' for the morning and a 'HalfDay' for the
 -- afternoon
-data FullDay a = MkFullDay
-    { _fullDayDay :: !Time.Day
-    , _fullDayMorning :: !a
-    , _fullDayAfternoon :: !a
+data DayF a = MkDayF
+    { _dayFDay :: !Time.Day
+    , _dayFMorning :: !a
+    , _dayFAfternoon :: !a
     }
     deriving (Eq, Foldable, Functor, Generic, Show, Traversable)
-makeFields ''FullDay
+makeFields ''DayF
 
-instance FromJSON (FullDay (Maybe HalfDay))
-instance ToJSON (FullDay (Maybe HalfDay))
+instance FromJSON (DayF (Maybe HalfDay))
+instance ToJSON (DayF (Maybe HalfDay))
 
 instance Display (Maybe HalfDay) where
     display (Just hd) = display hd
     display Nothing = "\t\tNothing"
 
-instance Display (FullDay (Maybe HalfDay)) where
-    display fullDay
-        =  weekDay (fullDay ^. day) <> " " <> display (fullDay ^. day) <> "\n"
-        <> "\tMorning\n" <> display (fullDay ^. morning) <> "\n"
-        <> "\tAfternoon\n" <> display (fullDay ^. afternoon)
+instance Display (DayF (Maybe HalfDay)) where
+    display dayF
+        =  weekDay (dayF ^. day) <> " " <> display (dayF ^. day) <> "\n"
+        <> "\tMorning\n" <> display (dayF ^. morning) <> "\n"
+        <> "\tAfternoon\n" <> display (dayF ^. afternoon)
 
--- | Create an empty 'FullDay'
-empty :: a -> Time.Day -> FullDay a
-empty a day' = MkFullDay
-    { _fullDayDay = day'
-    , _fullDayMorning = a
-    , _fullDayAfternoon = a
-    }
+-- | Create an empty 'DayF'
+empty :: a -> Time.Day -> DayF a
+empty a day' = MkDayF day' a a
 
 -- | Indicate if a day is an open day or a weekend day
 openDay :: Time.Day -> Bool
@@ -61,12 +57,12 @@ openDay d = weekNb >= 1 && weekNb <= 5
 -- | Check if a day is ok. A day is ok if
 -- - It's an open day and it's got an entry for the morning and the afternoon
 -- - It's saturday or sunday
-ok :: FullDay (Maybe HalfDay) -> Bool
-ok (MkFullDay d m a) = openDay d && workAllDay || not (openDay d)
+ok :: DayF (Maybe HalfDay) -> Bool
+ok (MkDayF d m a) = openDay d && workAllDay || not (openDay d)
     where workAllDay = isJust m && isJust a
 
 
 -- | Check if a day is over worked, ie work during the week end
-overWork :: FullDay (Maybe HalfDay) -> Bool
-overWork (MkFullDay d m a) = not (openDay d) && (isJust m || isJust a)
+overWork :: DayF (Maybe HalfDay) -> Bool
+overWork (MkDayF d m a) = not (openDay d) && (isJust m || isJust a)
 

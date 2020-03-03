@@ -26,8 +26,8 @@ import           App.CustomDay (CustomDay(..))
 import           App.CustomWeek (CustomWeek(..))
 import           App.WorkOption (WorkOption(..))
 
-import           Db.FullDay (FullDay)
-import           Db.FullWeek (FullWeek)
+import           Db.DayF (DayF)
+import           Db.WeekF (WeekF)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login)
@@ -68,7 +68,7 @@ type HSCalendarApi =
    :<|> Summary "Display a week"
            :> "week"
            :> Capture "week" CustomWeek
-           :> Get '[JSON] (FullWeek (FullDay (Maybe HalfDay)))
+           :> Get '[JSON] (WeekF (DayF (Maybe HalfDay)))
    :<|> Summary "Set a non-working half-day"
            :> "diary"
            :> "idle"
