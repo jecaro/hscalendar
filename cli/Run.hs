@@ -27,7 +27,7 @@ import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
     )
-import           Db.FullWeek (full)
+import           Db.FullWeek (full, overWork)
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
@@ -94,6 +94,8 @@ run (DiaryWeek cw) = do
     logInfo $ if full hds
                  then "The week is complete"
                  else "The week is missing entries"
+    when (overWork hds) $
+        logInfo "Work has been done during the week-end"
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do

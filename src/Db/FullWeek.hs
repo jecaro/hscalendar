@@ -7,6 +7,7 @@ module Db.FullWeek
     , full
     , friday
     , monday
+    , overWork
     , saturday
     , sunday
     , thursday
@@ -26,6 +27,7 @@ import qualified Db.FullDay as FullDay
     , empty
     , morning
     , ok
+    , overWork
     )
 import           Db.HalfDay (HalfDay, day, timeInDay)
 import           Db.TimeInDay (TimeInDay(..))
@@ -104,3 +106,7 @@ add hd fullWeek =
 -- | Check if the week is complete: every open day has two entries
 full :: FullWeek (FullDay.FullDay (Maybe HalfDay)) -> Bool
 full = all FullDay.ok
+
+-- | Check if some work has been done during the week-end
+overWork :: FullWeek (FullDay.FullDay (Maybe HalfDay)) -> Bool
+overWork = any FullDay.overWork

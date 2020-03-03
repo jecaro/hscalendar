@@ -3,11 +3,12 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Db.FullDay
     ( FullDay(..)
+    , afternoon
     , day
     , empty
     , morning
     , ok
-    , afternoon
+    , overWork
     )
 where
 
@@ -52,15 +53,22 @@ empty a day' = MkFullDay
     , _fullDayAfternoon = a
     }
 
+-- | Indicate if a day is an open day or a weekend day
+openDay :: Time.Day -> Bool
+openDay d = weekNb >= 1 && weekNb <= 5
+    where (_, _, weekNb) = toWeekDate d
+
 -- | Check if a day is ok. A day is ok if
 -- - It's an open day and it's got an entry for the morning and the afternoon
 -- - It's saturday or sunday
 ok :: FullDay (Maybe HalfDay) -> Bool
-ok (MkFullDay d m a) = openDay && workAllDay || not openDay
-    where (_, _, weekNb) = toWeekDate d
-          openDay = weekNb >= 1 && weekNb <= 5
-          workAllDay = isJust m && isJust a
+ok (MkFullDay d m a) = openDay d && workAllDay || not (openDay d)
+    where workAllDay = isJust m && isJust a
 
+
+-- | Check if a day is over worked, ie work during the week end
+overWork :: FullDay (Maybe HalfDay) -> Bool
+overWork (MkFullDay d m a) = not (openDay d) && (isJust m || isJust a)
 
 -- | Return the day of the week in a string
 weekDay :: FullDay (Maybe HalfDay) -> Utf8Builder

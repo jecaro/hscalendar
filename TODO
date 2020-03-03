@@ -15,6 +15,7 @@
 - add version in tools
 - put docker run in a script
 - Better naming for FullWeek (FullDay (Maybe HalfDay))
+- Display one day after edit
 - server
   - Redirect root to index.html
   - favicon
