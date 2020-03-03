@@ -41,6 +41,7 @@ import           Options.Applicative as Opt
     )
 
 import qualified App.CustomDay as CD (CustomDay(..), parser)
+import qualified App.CustomMonth as CM (CustomMonth(..), parser)
 import qualified App.CustomWeek as CW (CustomWeek(..), parser)
 import           App.WorkOption
     ( WorkOption(..)
@@ -63,6 +64,7 @@ data Options = Options { optVerbose :: !Bool,
 -- | Commands handle by command line
 data Cmd = Migrate                                             |
            DiaryDisplay CD.CustomDay TimeInDay                 |
+           DiaryMonth CM.CustomMonth                           |
            DiaryWeek CW.CustomWeek                             |
            DiaryEdit CD.CustomDay TimeInDay                    |
            DiaryHoliday CD.CustomDay TimeInDay IDT.IdleDayType |
@@ -85,6 +87,9 @@ readTimeOfDay = attoReadM Time.parser
 
 readCustomDay :: ReadM CD.CustomDay
 readCustomDay = attoReadM CD.parser
+
+readCustomMonth :: ReadM CM.CustomMonth
+readCustomMonth = attoReadM CM.parser
 
 readCustomWeek :: ReadM CW.CustomWeek
 readCustomWeek = attoReadM CW.parser
@@ -126,6 +131,10 @@ diaryDisplay = DiaryDisplay
     <$> argument readCustomDay (metavar "DAY")
     <*> tidOption
 
+diaryMonth :: Opt.Parser Cmd
+diaryMonth = DiaryMonth
+    <$> argument readCustomMonth (metavar "MONTH")
+
 diaryWeek :: Opt.Parser Cmd
 diaryWeek = DiaryWeek
     <$> argument readCustomWeek (metavar "WEEK")
@@ -162,6 +171,7 @@ tidOption =   flag' Morning (long "morning" <> short 'm')
 diaryCmd :: Opt.Parser Cmd
 diaryCmd = hsubparser
     (  command "display" (info diaryDisplay (progDesc "Display entry"))
+    <> command "month"   (info diaryMonth   (progDesc "Display monthly review"))
     <> command "week"    (info diaryWeek    (progDesc "Display weekly review"))
     <> command "work"    (info diaryWork    (progDesc "Set work entry"))
     <> command "holiday" (info diaryHoliday (progDesc "Set holiday entry"))

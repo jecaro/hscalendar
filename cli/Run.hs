@@ -21,6 +21,7 @@ import           App.App
     )
 import           App.CommandLine (Cmd(..))
 import           App.CustomDay (toDay)
+import           App.CustomMonth (toMonth)
 import           App.CustomWeek (toWeek)
 import           App.Editor (editorToOptions)
 import           App.WorkOption
@@ -85,13 +86,18 @@ run (DiaryDisplay cd tid) = do
        Left e@(HdNotFound _ _) -> logInfo $ displayShow e
        Right hd -> logInfo $ displayHdWithDate hd
 
-
 -- Display a complete week
 run (DiaryWeek cw) = do
     -- Get actual week
     week <- toWeek cw
     hds <- runDB $ weekGet week
     logInfo $ display hds
+
+-- Display a complete month
+run (DiaryMonth cm) = do
+    -- Get actual month
+    m <- toMonth cm
+    logInfo $ displayShow m
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
