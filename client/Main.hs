@@ -58,7 +58,7 @@ import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
 import           Db.FullDay (FullDay)
 import           Db.FullWeek (FullWeek)
-import           Db.HalfDay (HalfDay)
+import           Db.HalfDay (HalfDay, displayHdWithDate)
 import           Db.IdleDayType (IdleDayType)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
@@ -186,7 +186,7 @@ run ProtectedClient{..} (ProjRename p1 p2) =
     void $ projRename $ MkRenameArgs p1 p2
 
 run ProtectedClient{..} (DiaryDisplay cd tid) =
-    hdGet cd tid >>= logInfo . display
+    hdGet cd tid >>= logInfo . displayHdWithDate
 
 run ProtectedClient{..} (DiaryWeek cw) =
     weekGet cw >>= logInfo . display

@@ -20,7 +20,8 @@ import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Formatting.Extended (formatTwoDigitsPadZero)
 
 instance Display Time.Day where
-    textDisplay day = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
+    textDisplay day =  weekDay day <> " "
+                    <> Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
         where (y, m, d) = Time.toGregorian day
               intY = fromIntegral y
 
@@ -33,7 +34,7 @@ parser :: Parser Time.TimeOfDay
 parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
 
 -- | Return the day of the week in a string
-weekDay :: Time.Day -> Utf8Builder
+weekDay :: IsString s => Time.Day -> s
 weekDay d = case dayNb of
                  1 -> "Monday"
                  2 -> "Tuesday"

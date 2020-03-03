@@ -1,5 +1,5 @@
 -- | Functions related to the type 'HalfDay'
-module Db.HalfDay (HalfDay(..), day, timeInDay)
+module Db.HalfDay (HalfDay(..), day, displayHdWithDate, timeInDay)
 where
 
 import           RIO
@@ -21,6 +21,10 @@ instance FromJSON HalfDay
 instance Display HalfDay where
     display (MkHalfDayWorked worked) = display worked
     display (MkHalfDayIdle idle) = display idle
+
+displayHdWithDate :: HalfDay -> Utf8Builder
+displayHdWithDate hd = display (hd ^. day) <> "\n" <> display hd
+
 
 -- | Dispatch the day lens of the sum type
 -- code inspired by: https://stackoverflow.com/questions/52832649/how-can-i-write-a-lens-for-a-sum-type

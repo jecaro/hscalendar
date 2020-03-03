@@ -43,6 +43,7 @@ import           Db.Model
     , projRm
     , weekGet
     )
+import           Db.HalfDay as HalfDay (displayHdWithDate)
 import           Db.Project (unProject)
 
 
@@ -82,7 +83,8 @@ run (DiaryDisplay cd tid) = do
     -- Display output
     case eiHd of
        Left e@(HdNotFound _ _) -> logInfo $ displayShow e
-       Right hd -> logInfo $ display hd
+       Right hd -> logInfo $ displayHdWithDate hd
+
 
 -- Display a complete week
 run (DiaryWeek cw) = do
