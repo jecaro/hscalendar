@@ -14,6 +14,7 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (Day)
+import           RIO.Time.Extended (weekDay)
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
@@ -40,8 +41,7 @@ instance Display (Maybe HalfDay) where
 
 instance Display (FullDay (Maybe HalfDay)) where
     display fullDay
-        =  weekDay fullDay <> " "
-        <> display (fullDay ^. day) <> "\n"
+        =  weekDay (fullDay ^. day) <> " " <> display (fullDay ^. day) <> "\n"
         <> "\tMorning\n" <> display (fullDay ^. morning) <> "\n"
         <> "\tAfternoon\n" <> display (fullDay ^. afternoon)
 
@@ -69,17 +69,4 @@ ok (MkFullDay d m a) = openDay d && workAllDay || not (openDay d)
 -- | Check if a day is over worked, ie work during the week end
 overWork :: FullDay (Maybe HalfDay) -> Bool
 overWork (MkFullDay d m a) = not (openDay d) && (isJust m || isJust a)
-
--- | Return the day of the week in a string
-weekDay :: FullDay (Maybe HalfDay) -> Utf8Builder
-weekDay fd = case dayNb of
-                 1 -> "Monday"
-                 2 -> "Tuesday"
-                 3 -> "Wednesday"
-                 4 -> "Thursday"
-                 5 -> "Friday"
-                 6 -> "Saturday"
-                 7 -> "Sunday"
-                 _ -> error "The day number must be between one and seven"
-    where (_, _, dayNb) = toWeekDate (fd ^. day)
 

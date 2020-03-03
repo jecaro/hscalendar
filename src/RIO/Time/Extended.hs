@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- | Additional functions related to "RIO.Time"
-module RIO.Time.Extended (parser)
+module RIO.Time.Extended (parser, weekDay)
 where
 
 import           RIO
@@ -16,6 +16,7 @@ import           Data.Attoparsec.Text
     , decimal
     , char
     )
+import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Formatting.Extended (formatTwoDigitsPadZero)
 
 instance Display Time.Day where
@@ -30,3 +31,17 @@ instance Display Time.TimeOfDay where
 -- | Parse a 'Time.TimeOfDay' without handling the seconds
 parser :: Parser Time.TimeOfDay
 parser = (\h m -> Time.TimeOfDay h m 0) <$> decimal <*> (char ':' *> decimal)
+
+-- | Return the day of the week in a string
+weekDay :: Time.Day -> Utf8Builder
+weekDay d = case dayNb of
+                 1 -> "Monday"
+                 2 -> "Tuesday"
+                 3 -> "Wednesday"
+                 4 -> "Thursday"
+                 5 -> "Friday"
+                 6 -> "Saturday"
+                 7 -> "Sunday"
+                 _ -> error "The day number must be between one and seven"
+    where (_, _, dayNb) = toWeekDate d
+
