@@ -57,8 +57,8 @@ data FullWeek a = MkFullWeek
     deriving (Eq, Foldable, Functor, Generic, Show, Traversable)
 makeFields ''FullWeek
 
-instance FromJSON (FullWeek (Maybe HalfDay))
-instance ToJSON (FullWeek (Maybe HalfDay))
+instance FromJSON (FullWeek (FullDay.FullDay (Maybe HalfDay)))
+instance ToJSON (FullWeek (FullDay.FullDay (Maybe HalfDay)))
 
 instance Display (FullWeek (FullDay.FullDay (Maybe HalfDay))) where
     display fw = line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) fw

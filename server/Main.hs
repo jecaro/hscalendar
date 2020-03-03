@@ -57,6 +57,7 @@ import           App.WorkOption
     , runWorkOptions
     , WorkOption(..)
     )
+import           Db.FullDay (FullDay)
 import           Db.FullWeek (FullWeek)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
@@ -164,7 +165,10 @@ hHdGet cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> return hd
 
-hWeekGet :: HasConnPool env => CustomWeek -> RIO env (FullWeek (Maybe HalfDay))
+hWeekGet
+    :: HasConnPool env
+    => CustomWeek
+    -> RIO env (FullWeek (FullDay (Maybe HalfDay)))
 hWeekGet cw = do
     -- Get actual week
     week <- toWeek cw
