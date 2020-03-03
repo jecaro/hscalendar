@@ -1,7 +1,7 @@
 -- | Contains the 'WeekF' data type
 {-# LANGUAGE TemplateHaskell #-}
 module Db.WeekF
-    ( WeekF(..)
+    ( WeekWithDays
     , add
     , empty
     , full
@@ -56,6 +56,9 @@ data WeekF a = MkWeekF
     }
     deriving (Eq, Foldable, Functor, Generic, Show, Traversable)
 makeFields ''WeekF
+
+-- | Specialization for the type actually used
+type WeekWithDays = WeekF (DayF.DayF (Maybe HalfDay))
 
 instance FromJSON (WeekF (DayF.DayF (Maybe HalfDay)))
 instance ToJSON (WeekF (DayF.DayF (Maybe HalfDay)))

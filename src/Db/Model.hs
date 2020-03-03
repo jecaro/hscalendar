@@ -93,8 +93,7 @@ import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
 
-import           Db.DayF (DayF(..))
-import           Db.WeekF (WeekF(..), add, empty)
+import           Db.WeekF (WeekWithDays, add, empty)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
@@ -334,7 +333,7 @@ hdGet day tid =
 weekGet
     :: (MonadIO m, MonadUnliftIO m)
     => Week.Week
-    -> SqlPersistT m (WeekF (DayF (Maybe HalfDay)))
+    -> SqlPersistT m WeekWithDays
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
