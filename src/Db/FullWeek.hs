@@ -61,8 +61,16 @@ instance FromJSON (FullWeek (FullDay.FullDay (Maybe HalfDay)))
 instance ToJSON (FullWeek (FullDay.FullDay (Maybe HalfDay)))
 
 instance Display (FullWeek (FullDay.FullDay (Maybe HalfDay))) where
-    display fw = line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) fw
+    display fw =  line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) fw
+               <> full'
+               <> overWork'
         where line = "----------------------------------------"
+              full' = if full fw
+                          then "\nThe week is complete"
+                          else "\nThe week is missing entries"
+              overWork' = if overWork fw
+                              then "\nWork has been done during the week-end"
+                              else ""
 
 -- | Create an empty 'FullWeek'
 empty :: a -> Week.Week -> FullWeek (FullDay.FullDay a)
