@@ -45,6 +45,7 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
+import           Db.FullDay (FullDay(..))
 import           Db.FullWeek (FullWeek(..), add, empty)
 import qualified Db.IdleDayType as IDT (IdleDayType(..))
 import           Db.HalfDay (HalfDay(..))
@@ -150,7 +151,7 @@ day1 = Time.fromGregorian 1979 03 22
 week1 :: Week
 week1 = fst $ fromDay day1
 
-emptyWeek1 :: FullWeek (Maybe HalfDay)
+emptyWeek1 :: FullWeek (FullDay (Maybe HalfDay))
 emptyWeek1 = empty Nothing week1
 
 tid1 :: TimeInDay
