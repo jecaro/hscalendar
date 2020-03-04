@@ -1,6 +1,9 @@
-module Api.Office.Extended exposing (fromString, toString)
+module Api.Office.Extended exposing (fromString, offices, toString)
 
 import Api exposing (Office(..))
+
+offices : List Office
+offices = [ Home, Rennes, Poool, OutOfOffice ]
 
 toString : Office -> String
 toString office = 

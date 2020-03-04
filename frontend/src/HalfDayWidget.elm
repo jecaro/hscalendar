@@ -35,6 +35,7 @@ import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (viewIf)
 import Http exposing (Error(..))
+import List exposing (map)
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData)
@@ -58,7 +59,7 @@ import Api exposing
     , Worked
     )
 import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
-import Api.Office.Extended as Office exposing (toString)
+import Api.Office.Extended as Office exposing (offices, toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
 
 import Request exposing 
@@ -182,14 +183,14 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                     [ class "button"
                     , onClick <| EditHalfDaySent <| delete GotEditResponse date timeInDay
                     , disabled <| isNothing halfDay
-                    ] [ text "Delete" ]
+                    ]
+                    [ text "Delete" ]
                 ]
             ]
 
         viewSetIdle =
             [ div [ class "level-item" ] 
-                [ div [ class "label" ] [ text "Set as holiday" ]
-                ]
+                [ div [ class "label" ] [ text "Set as holiday" ] ]
             , div [ class "level-item" ]
                 [ idleDayTypeSelect 
                     date 
@@ -201,8 +202,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
 
         viewSetWorked =
             [ div [ class "level-item" ] 
-                [ div [ class "label" ] [ text "Set as working" ] 
-                ]
+                [ div [ class "label" ] [ text "Set as working" ] ]
             , div [ class "level-item" ]
                 [ projectSelect 
                     date 
@@ -251,11 +251,7 @@ officeSelect date timeInDay current =
                     , onInput setEditHalfDay
                     , onBlur EditWasCanceled
                     ]
-                    [ toOption Rennes
-                    , toOption Home
-                    , toOption Poool
-                    , toOption OutOfOffice
-                    ]
+                    (map toOption offices)
                 ]
             ]
 
