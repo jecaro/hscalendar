@@ -16,15 +16,11 @@ import Html exposing
     , button
     , div
     , input
+    , label
     , option
     , p
     , select
-    , table
-    , tbody
     , textarea
-    , td
-    , th
-    , tr
     , text
     )
 import Html.Attributes exposing 
@@ -42,6 +38,7 @@ import Http exposing (Error(..))
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData)
+import String exposing (length)
 import Task exposing (attempt)
 import Time exposing (Month(..))
 
@@ -247,8 +244,7 @@ officeSelect date timeInDay current =
                 << withDefault Rennes
                 << Office.fromString
     in
-    div [ class "field" ]
-        [ div [ class "control" ]
+        div [ class "control" ]
             [ div [ class "select" ]
                 [ select 
                     [ id "edit"
@@ -262,7 +258,6 @@ officeSelect date timeInDay current =
                     ]
                 ]
             ]
-        ]
 
 projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html Msg
 projectSelect date timeInDay projects current enabled =
@@ -282,26 +277,25 @@ projectSelect date timeInDay projects current enabled =
                 ]
                 [ text project.unProject ]
     in
-        div [ class "field" ]
-            [ div [ class "control" ]
-                [ div [ class "select" ]
-                    [ select 
-                        [ disabled <| not enabled
-                        , onBlur EditWasCanceled
-                        , onInput 
-                            <| EditHalfDaySent 
-                            << setProject GotEditResponse date timeInDay
-                        , value defaultValue.unProject
-                        -- if there is a default value, it means that it is the
-                        -- select used for editing current halfday
-                        , id <| if isJust current
-                            then "edit" 
-                            else ""
-                        ]
-                        <| List.map toOption projects_ 
-                    ]
-                ]
-            ]
+        div [ class "control" ]
+          [ div [ class "select" ]
+              [ select 
+                  [ disabled <| not enabled
+                  , onBlur EditWasCanceled
+                  , onInput 
+                      <| EditHalfDaySent 
+                      << setProject GotEditResponse date timeInDay
+                  , value defaultValue.unProject
+                  -- if there is a default value, it means that it is the
+                  -- select used for editing current halfday
+                  , id <| if isJust current
+                      then "edit" 
+                      else ""
+                  ]
+                  <| List.map toOption projects_ 
+              ]
+          ]
+
 
 {- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
 function prepend an empty item before the different types.
@@ -330,51 +324,45 @@ idleDayTypeSelect date timeInDay current enabled =
                 << withDefault PaidLeave
                 << IdleDayType.fromString
     in
-        div [ class "field" ]
-            [ div [ class "control" ]
-                [ div
-                    [ class "select"
-                    ]
-                    [ select 
-                        [ disabled <| not enabled 
-                        , onBlur EditWasCanceled
-                        , onInput setEditHalfDay
-                        , value defaultValue
-                        -- if there is a default value, it means that it is the
-                        -- select used for editing current halfday
-                        , id <| if isJust current
-                            then "edit" 
-                            else ""
-                        ] <|
-                        -- Prepend empty case if needed
-                        [ viewIf (isNothing current) 
-                            <| option [ value "" ] [ text "" ]
-                        , toOption PaidLeave
-                        , toOption FamilyEvent
-                        , toOption RTTE
-                        , toOption RTTS
-                        , toOption UnpaidLeave
-                        , toOption PublicHoliday
-                        , toOption PartTime
-                        ]
+        div [ class "control" ]
+            [ div [ class "select" ]
+                [ select 
+                    [ disabled <| not enabled 
+                    , onBlur EditWasCanceled
+                    , onInput setEditHalfDay
+                    , value defaultValue
+                    -- if there is a default value, it means that it is the
+                    -- select used for editing current halfday
+                    , id <| if isJust current
+                        then "edit" 
+                        else ""
+                    ] <|
+                    -- Prepend empty case if needed
+                    [ viewIf (isNothing current) 
+                        <| option [ value "" ] [ text "" ]
+                    , toOption PaidLeave
+                    , toOption FamilyEvent
+                    , toOption RTTE
+                    , toOption RTTS
+                    , toOption UnpaidLeave
+                    , toOption PublicHoliday
+                    , toOption PartTime
                     ]
                 ]
             ]
 
 arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
 arrivedOrLeftInput callback timeOfDay =
-    div [ class "field", class "is-inline-block" ]
-        [ div [ class "control" ]
-            [ input
-                [ class "input"
-                , type_ "text"
-                , value <| TimeOfDay.toString timeOfDay
-                , onEnter callback
-                , id "edit"
-                , onBlur EditWasCanceled
-                ]
-                []
+    div [ class "control" ]
+        [ input
+            [ class "input"
+            , type_ "text"
+            , value <| TimeOfDay.toString timeOfDay
+            , onEnter callback
+            , id "edit"
+            , onBlur EditWasCanceled
             ]
+            []
         ]
 
 
@@ -412,88 +400,113 @@ viewWorked mode projects
     , workedProject } =
     let
         divOffice = 
-            case mode of
+            div [ class "field" ]
+                [ label [ class "label" ] [ text "Office" ]
+                , case mode of
                     EditOffice ->
                         officeSelect workedDay workedTimeInDay workedOffice
                     _ ->
                         div [ onDoubleClick <| ModeChanged EditOffice ]
                             [ text <| Office.toString workedOffice ]
+                ]
 
         divNotes =
-            case mode of
-                EditNotes notes ->
-                    div [ ]
-                        [ div [ class "field" ]
-                            [ div [ class "control" ]
-                                [ textarea
-                                    [ class "textarea"
-                                    , id "edit"
-                                    , onInput <| ModeChanged << EditNotes 
+            div [ class "field" ]
+                [ label [class "label"] [ text "Notes" ]
+                , case mode of
+                    EditNotes notes ->
+                        div [ ]
+                            [ div [ class "field" ]
+                                [ div [ class "control" ]
+                                    [ textarea
+                                        [ class "textarea"
+                                        , id "edit"
+                                        , onInput <| ModeChanged << EditNotes 
+                                        ]
+                                        [ text notes
+                                        ]
                                     ]
-                                    [ text notes
+                                ]
+                            , div [ class "field" ]
+                                [ div [ class "control" ]
+                                    [ button
+                                        [ class "button"
+                                        , id "submit"
+                                        , onClick 
+                                            <| EditHalfDaySent 
+                                            <| setNotes GotEditResponse workedDay workedTimeInDay notes
+                                        ]
+                                        [ text "Submit"
+                                        ]
                                     ]
                                 ]
                             ]
-                        , div [ class "field" ]
-                            [ div [ class "control" ]
-                                [ button
-                                    [ class "button"
-                                    , id "submit"
-                                    , onClick 
-                                        <| EditHalfDaySent 
-                                        <| setNotes GotEditResponse workedDay workedTimeInDay notes
-                                    ]
-                                    [ text "Submit"
-                                    ]
-                                ]
+                    _ ->
+                        div [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
+                            [ text <|
+                                if length workedNotes.unNotes /= 0 
+                                    then workedNotes.unNotes
+                                    else "Double click to edit"
                             ]
-                        ]
-                _ ->
-                    div [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
-                        [ text <| workedNotes.unNotes ]
+                ]
         divProject =
-            case mode of
-                EditProject -> 
-                    projectSelect 
-                        workedDay workedTimeInDay projects (Just workedProject) True 
-                _ ->
-                    div [ onDoubleClick <| ModeChanged EditProject ]
-                        [ text <| workedProject.unProject ]
+            div [ class "field" ]
+                [ label [ class "label" ] [ text "Project" ]
+                , case mode of
+                    EditProject -> 
+                        projectSelect 
+                            workedDay workedTimeInDay projects (Just workedProject) True 
+                    _ ->
+                        div [ onDoubleClick <| ModeChanged EditProject ]
+                            [ text <| workedProject.unProject ]
+                ]
+        
         divViewArrivedOrLeft mode_ timeOfDay =
             div
                 [ onDoubleClick <| ModeChanged mode_
                 ]
                 [ text <| TimeOfDay.toString timeOfDay ]
+        
         divArrived =
-            case mode of
-                EditArrived ->
-                    arrivedInput workedDay workedTimeInDay workedArrived
-                _ ->
-                    divViewArrivedOrLeft EditArrived workedArrived
+            div [ class "field" ]
+                [ label [ class "label" ] [ text "Arrived" ]
+                , case mode of
+                    EditArrived ->
+                        arrivedInput workedDay workedTimeInDay workedArrived
+                    _ ->
+                        divViewArrivedOrLeft EditArrived workedArrived
+                ]
+        
         divLeft =
-            case mode of
-                EditLeft ->
-                    leftInput workedDay workedTimeInDay workedLeft
-                _ ->
-                    divViewArrivedOrLeft EditLeft workedLeft
+            div [ class "field" ]
+                [ label [ class "label" ] [ text "Left" ]
+                , case mode of
+                    EditLeft ->
+                        leftInput workedDay workedTimeInDay workedLeft
+                    _ ->
+                        divViewArrivedOrLeft EditLeft workedLeft
+                ]
     in
-    div [ ]
-        [ divOffice
-        , divArrived
-        , divLeft
-        , divProject
-        , divNotes
-        ]
+        div [ ]
+            [ divOffice
+            , divArrived
+            , divLeft
+            , divProject
+            , divNotes
+            ]
 
 
 viewIdle : Mode -> Idle -> Html Msg
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
-    case mode of
-        EditIdleDayType -> 
-            idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True 
-        _ ->
-            div [ class "label", onDoubleClick <| ModeChanged EditIdleDayType ] 
-                [ text <| IdleDayType.toString idleDayType ]
+    div [ class "field" ]
+        [ label [ class "label" ] [ text "Day off" ]
+        , case mode of
+            EditIdleDayType -> 
+                idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True 
+            _ ->
+                div [ onDoubleClick <| ModeChanged EditIdleDayType ] 
+                    [ text <| IdleDayType.toString idleDayType ]
+        ]
 
 viewNoEntry : Html msg
 viewNoEntry = text "No entry"
