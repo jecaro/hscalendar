@@ -411,17 +411,18 @@ viewWorked mode projects
     , workedNotes
     , workedProject } =
     let
-        cellOffice =
+        divOffice = 
             case mode of
-                EditOffice ->
-                    th [] [ officeSelect workedDay workedTimeInDay workedOffice ]
-                _ ->
-                    th [ onDoubleClick <| ModeChanged EditOffice ]
-                        [ text <| Office.toString workedOffice ]
-        cellNotes =
+                    EditOffice ->
+                        officeSelect workedDay workedTimeInDay workedOffice
+                    _ ->
+                        div [ onDoubleClick <| ModeChanged EditOffice ]
+                            [ text <| Office.toString workedOffice ]
+
+        divNotes =
             case mode of
                 EditNotes notes ->
-                    td [ ]
+                    div [ ]
                         [ div [ class "field" ]
                             [ div [ class "control" ]
                                 [ textarea
@@ -448,26 +449,19 @@ viewWorked mode projects
                             ]
                         ]
                 _ ->
-                    td [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
+                    div [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
                         [ text <| workedNotes.unNotes ]
-        cellProject =
+        divProject =
             case mode of
-                EditProject ->
-                    th [] 
-                        [ projectSelect 
-                            workedDay 
-                            workedTimeInDay 
-                            projects 
-                            (Just workedProject)
-                            True 
-                        ]
+                EditProject -> 
+                    projectSelect 
+                        workedDay workedTimeInDay projects (Just workedProject) True 
                 _ ->
-                    th [ onDoubleClick <| ModeChanged EditProject ]
+                    div [ onDoubleClick <| ModeChanged EditProject ]
                         [ text <| workedProject.unProject ]
         divViewArrivedOrLeft mode_ timeOfDay =
             div
-                [ class "is-inline-block"
-                , onDoubleClick <| ModeChanged mode_
+                [ onDoubleClick <| ModeChanged mode_
                 ]
                 [ text <| TimeOfDay.toString timeOfDay ]
         divArrived =
@@ -483,54 +477,23 @@ viewWorked mode projects
                 _ ->
                     divViewArrivedOrLeft EditLeft workedLeft
     in
-    table [ class "table" ]
-        [ tbody []
-            [ tr []
-                [ cellOffice
-                , td []
-                    [ divArrived
-                    , div [ class "is-inline-block" ]
-                        [ text "\u{00A0}-\u{00A0}" ]
-                    , divLeft
-                    ]
-                ]
-            , tr []
-                [ cellProject
-                , cellNotes
-                ]
-            ]
+    div [ ]
+        [ divOffice
+        , divArrived
+        , divLeft
+        , divProject
+        , divNotes
         ]
 
 
 viewIdle : Mode -> Idle -> Html Msg
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
-    let
-        cellIdleDayType =
-            case mode of
-                EditIdleDayType ->
-                    th [] 
-                        [ idleDayTypeSelect 
-                            idleDay 
-                            idleTimeInDay 
-                            (Just idleDayType) 
-                            True 
-                        ]
-                _ ->
-                    th [ onDoubleClick <| ModeChanged EditIdleDayType ]
-                        [ text <| IdleDayType.toString idleDayType ]
-    in
-        table [ class "table" ]
-            [ tbody []
-                [ tr [] [ cellIdleDayType]
-                ]
-            ]
+    case mode of
+        EditIdleDayType -> 
+            idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True 
+        _ ->
+            div [ class "label", onDoubleClick <| ModeChanged EditIdleDayType ] 
+                [ text <| IdleDayType.toString idleDayType ]
 
 viewNoEntry : Html msg
-viewNoEntry =
-    table [ class "table" ]
-        [ tbody []
-            [ tr []
-                [ th [] [ text "No entry" ]
-                ]
-            ]
-        ]
+viewNoEntry = text "No entry"
