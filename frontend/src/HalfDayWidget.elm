@@ -47,6 +47,7 @@ import Api exposing
     ( HalfDay(..)
     , Idle
     , IdleDayType(..)
+    , Notes
     , Office(..)
     , Project
     , SetArrived(..)
@@ -347,6 +348,7 @@ idleDayTypeSelect date timeInDay current enabled =
                 ]
             ]
 
+
 arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
 arrivedOrLeftInput callback timeOfDay =
     div [ class "control" ]
@@ -373,6 +375,7 @@ arrivedInput date timeInDay timeOfDay =
     in
         arrivedOrLeftInput setEditHalfDay timeOfDay
 
+
 leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
 leftInput date timeInDay timeOfDay =
     let
@@ -385,6 +388,103 @@ leftInput date timeInDay timeOfDay =
         arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
+viewOffice : Mode -> Date -> TimeInDay -> Office -> Html Msg
+viewOffice mode day timeInDay office = 
+    div [ class "field" ]
+        [ label [ class "label" ] [ text "Office" ]
+        , case mode of
+            EditOffice ->
+                officeSelect day timeInDay office
+            _ ->
+                div [ onDoubleClick <| ModeChanged EditOffice ]
+                    [ text <| Office.toString office ]
+        ]
+
+
+viewProject : Mode -> List Project -> Date -> TimeInDay -> Project -> Html Msg
+viewProject mode projects day timeInDay project =
+    div [ class "field" ]
+        [ label [ class "label" ] [ text "Project" ]
+        , case mode of
+            EditProject -> 
+                projectSelect 
+                    day timeInDay projects (Just project) True 
+            _ ->
+                div [ onDoubleClick <| ModeChanged EditProject ]
+                    [ text <| project.unProject ]
+        ]
+
+
+viewArrivedOrLeft : Mode -> TimeOfDay -> Html Msg
+viewArrivedOrLeft mode timeOfDay =
+    div [ onDoubleClick <| ModeChanged mode ]
+        [ text <| TimeOfDay.toString timeOfDay ]
+
+
+viewArrived : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
+viewArrived mode day timeInDay arrived =
+    div [ class "field" ]
+        [ label [ class "label" ] [ text "Arrived" ]
+        , case mode of
+            EditArrived ->
+                arrivedInput day timeInDay arrived
+            _ ->
+                viewArrivedOrLeft EditArrived arrived
+        ]
+
+
+viewLeft : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
+viewLeft mode day timeInDay left =
+    div [ class "field" ]
+        [ label [ class "label" ] [ text "Left" ]
+        , case mode of
+            EditLeft ->
+                leftInput day timeInDay left
+            _ ->
+                viewArrivedOrLeft EditLeft left
+        ]
+
+
+viewNotes : Mode -> Date -> TimeInDay -> Notes -> Html Msg
+viewNotes mode day timeInDay notes =
+    div [ class "field" ]
+        [ label [class "label"] [ text "Notes" ]
+        , case mode of
+            EditNotes notes_ ->
+                div [ ]
+                    [ div [ class "field" ]
+                        [ div [ class "control" ]
+                            [ textarea
+                                [ class "textarea"
+                                , id "edit"
+                                , onInput <| ModeChanged << EditNotes 
+                                ]
+                                [ text notes_ ]
+                            ]
+                        ]
+                    , div [ class "field" ]
+                        [ div [ class "control" ]
+                            [ button
+                                [ class "button"
+                                , id "submit"
+                                , onClick 
+                                    <| EditHalfDaySent 
+                                    <| setNotes GotEditResponse day timeInDay notes_
+                                ]
+                                [ text "Submit" ]
+                            ]
+                        ]
+                    ]
+            _ ->
+                div [ onDoubleClick <| ModeChanged (EditNotes notes.unNotes) ]
+                    [ text <|
+                        if length notes.unNotes /= 0 
+                            then notes.unNotes
+                            else "Double click to edit"
+                    ]
+        ]
+
+
 viewWorked : Mode -> List Project -> Worked -> Html Msg
 viewWorked mode projects
     { workedDay
@@ -394,101 +494,12 @@ viewWorked mode projects
     , workedOffice
     , workedNotes
     , workedProject } =
-    let
-        divOffice = 
-            div [ class "field" ]
-                [ label [ class "label" ] [ text "Office" ]
-                , case mode of
-                    EditOffice ->
-                        officeSelect workedDay workedTimeInDay workedOffice
-                    _ ->
-                        div [ onDoubleClick <| ModeChanged EditOffice ]
-                            [ text <| Office.toString workedOffice ]
-                ]
-
-        divNotes =
-            div [ class "field" ]
-                [ label [class "label"] [ text "Notes" ]
-                , case mode of
-                    EditNotes notes ->
-                        div [ ]
-                            [ div [ class "field" ]
-                                [ div [ class "control" ]
-                                    [ textarea
-                                        [ class "textarea"
-                                        , id "edit"
-                                        , onInput <| ModeChanged << EditNotes 
-                                        ]
-                                        [ text notes
-                                        ]
-                                    ]
-                                ]
-                            , div [ class "field" ]
-                                [ div [ class "control" ]
-                                    [ button
-                                        [ class "button"
-                                        , id "submit"
-                                        , onClick 
-                                            <| EditHalfDaySent 
-                                            <| setNotes GotEditResponse workedDay workedTimeInDay notes
-                                        ]
-                                        [ text "Submit"
-                                        ]
-                                    ]
-                                ]
-                            ]
-                    _ ->
-                        div [ onDoubleClick <| ModeChanged (EditNotes workedNotes.unNotes) ]
-                            [ text <|
-                                if length workedNotes.unNotes /= 0 
-                                    then workedNotes.unNotes
-                                    else "Double click to edit"
-                            ]
-                ]
-        divProject =
-            div [ class "field" ]
-                [ label [ class "label" ] [ text "Project" ]
-                , case mode of
-                    EditProject -> 
-                        projectSelect 
-                            workedDay workedTimeInDay projects (Just workedProject) True 
-                    _ ->
-                        div [ onDoubleClick <| ModeChanged EditProject ]
-                            [ text <| workedProject.unProject ]
-                ]
-        
-        divViewArrivedOrLeft mode_ timeOfDay =
-            div
-                [ onDoubleClick <| ModeChanged mode_
-                ]
-                [ text <| TimeOfDay.toString timeOfDay ]
-        
-        divArrived =
-            div [ class "field" ]
-                [ label [ class "label" ] [ text "Arrived" ]
-                , case mode of
-                    EditArrived ->
-                        arrivedInput workedDay workedTimeInDay workedArrived
-                    _ ->
-                        divViewArrivedOrLeft EditArrived workedArrived
-                ]
-        
-        divLeft =
-            div [ class "field" ]
-                [ label [ class "label" ] [ text "Left" ]
-                , case mode of
-                    EditLeft ->
-                        leftInput workedDay workedTimeInDay workedLeft
-                    _ ->
-                        divViewArrivedOrLeft EditLeft workedLeft
-                ]
-    in
         div [ ]
-            [ divOffice
-            , divArrived
-            , divLeft
-            , divProject
-            , divNotes
+            [ viewOffice mode workedDay workedTimeInDay workedOffice
+            , viewArrived mode workedDay workedTimeInDay workedArrived
+            , viewLeft mode workedDay workedTimeInDay workedLeft
+            , viewProject mode projects workedDay workedTimeInDay workedProject
+            , viewNotes mode workedDay workedTimeInDay workedNotes
             ]
 
 
