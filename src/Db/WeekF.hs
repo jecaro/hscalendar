@@ -60,20 +60,20 @@ makeFields ''WeekF
 -- | Specialization for the type actually used
 type WeekWithDays = WeekF (DayF.DayF (Maybe HalfDay))
 
-instance FromJSON (WeekF (DayF.DayF (Maybe HalfDay)))
-instance ToJSON (WeekF (DayF.DayF (Maybe HalfDay)))
+instance FromJSON WeekWithDays
+instance ToJSON WeekWithDays
 
-instance Display (WeekF (DayF.DayF (Maybe HalfDay))) where
+instance Display WeekWithDays where
     display w =  line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) w
                <> full'
                <> overWork'
         where line = "----------------------------------------"
-              full' = if full w
-                          then "\nThe week is complete"
-                          else "\nThe week is missing entries"
-              overWork' = if overWork w
-                              then "\nWork has been done during the week-end"
-                              else ""
+              full'
+                  | full w = "\nThe week is complete"
+                  | otherwise = "\nThe week is missing entries"
+              overWork'
+                  | overWork w = "\nWork has been done during the week-end"
+                  | otherwise = ""
 
 -- | Create an empty 'WeekF'
 empty :: a -> Week.Week -> WeekF (DayF.DayF a)

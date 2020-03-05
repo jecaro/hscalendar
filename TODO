@@ -13,8 +13,6 @@
 - Change return for pure
 - Factorize sql query for week and month
 - Better type safety in DayF setter: add function
-- Change if/then/else for pattern matching
-- Sort out WeekF data types
 - server
   - Redirect root to index.html
   - favicon
