@@ -21,6 +21,7 @@ module Db.Model
     , hdSetOffice
     , hdSetProject
     -- * Other query functions
+    , monthGet
     , weekGet
     -- * Project functions
     , projAdd
@@ -93,16 +94,18 @@ import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 
 import           Data.Maybe (isJust)
 
-import           Db.WeekF (WeekWithDays, add, empty)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
+import           Db.Month (Month(..), firstDay, lastDay)
+import qualified Db.MonthF as MonthF (MonthWithDays, add, empty)
 import           Db.Notes (Notes, unNotes)
 import           Db.Office (Office(..))
 import           Db.Password (Password, unPassword)
 import           Db.Project (Project, unProject)
 import           Db.TimeInDay (TimeInDay(..), other)
-import qualified Db.Week as Week (Week(..), monday, sunday)
+import           Db.Week (Week(..), monday, sunday)
+import qualified Db.WeekF as WeekF (WeekWithDays, add, empty)
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
 import           Db.Internal.DBModel
@@ -332,12 +335,12 @@ hdGet day tid =
 -- | Get the half-days on a complete week
 weekGet
     :: (MonadIO m, MonadUnliftIO m)
-    => Week.Week
-    -> SqlPersistT m WeekWithDays
+    => Week
+    -> SqlPersistT m WeekF.WeekWithDays
 weekGet week = do
     tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (   hd ^. DBHalfDayDay >=. val (Week.monday week)
-               &&. hd ^. DBHalfDayDay <=. val (Week.sunday week)
+        where_ (   hd ^. DBHalfDayDay >=. val (monday week)
+               &&. hd ^. DBHalfDayDay <=. val (sunday week)
                )
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
@@ -345,7 +348,25 @@ weekGet week = do
         return (hd, mbHdw, mbProj))
     hdList <- mapM dbToHalfDayInt tupleList
     return $ toWeekF hdList
-  where toWeekF = foldr (\hd fw -> fromMaybe fw $ add hd fw) (empty Nothing week)
+  where toWeekF = foldr (\hd fw -> fromMaybe fw $ WeekF.add hd fw) (WeekF.empty Nothing week)
+
+
+monthGet
+    :: (MonadIO m, MonadUnliftIO m)
+    => Month
+    -> SqlPersistT m MonthF.MonthWithDays
+monthGet month = do
+    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+        where_ (   hd ^. DBHalfDayDay >=. val (firstDay month)
+               &&. hd ^. DBHalfDayDay <=. val (lastDay month)
+               )
+        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
+        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
+        orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
+        return (hd, mbHdw, mbProj))
+    hdList <- mapM dbToHalfDayInt tupleList
+    return $ toMonthF hdList
+  where toMonthF = foldr (\hd fm -> fromMaybe fm $ MonthF.add hd fm) (MonthF.empty Nothing month)
 
 -- | Set the office for a day-time in day
 hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()

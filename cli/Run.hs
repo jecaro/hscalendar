@@ -38,6 +38,7 @@ import           Db.Model
     , hdRm
     , hdSetHoliday
     , migrateAll
+    , monthGet
     , projAdd
     , projList
     , projRename
@@ -96,8 +97,9 @@ run (DiaryWeek cw) = do
 -- Display a complete month
 run (DiaryMonth cm) = do
     -- Get actual month
-    m <- toMonth cm
-    logInfo $ displayShow m
+    month <- toMonth cm
+    hds <- runDB $ monthGet month
+    logInfo $ display hds
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do
