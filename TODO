@@ -1,6 +1,5 @@
 - Import CSV
 - Stats for a year
-- Show month
 - Make diary date/TimeInDay optional default today
 - Put defaults values in config file for a week
 - Add unit tests for editor features
@@ -13,6 +12,7 @@
 - Change return for pure
 - Factorize sql query for week and month
 - Better type safety in DayF setter: add function
+- Add test for Month
 - server
   - Redirect root to index.html
   - favicon

@@ -23,15 +23,17 @@ import           Servant.API
     , (:<|>)(..))
 
 import           App.CustomDay (CustomDay(..))
+import           App.CustomMonth (CustomMonth(..))
 import           App.CustomWeek (CustomWeek(..))
 import           App.WorkOption (WorkOption(..))
 
-import           Db.WeekF (WeekWithDays)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login)
+import           Db.MonthF (MonthWithDays)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
+import           Db.WeekF (WeekWithDays)
 
 
 data RenameArgs = MkRenameArgs { from :: Project, to :: Project }
@@ -68,6 +70,10 @@ type HSCalendarApi =
            :> "week"
            :> Capture "week" CustomWeek
            :> Get '[JSON] WeekWithDays
+   :<|> Summary "Display a month"
+           :> "month"
+           :> Capture "month" CustomMonth
+           :> Get '[JSON] MonthWithDays
    :<|> Summary "Set a non-working half-day"
            :> "diary"
            :> "idle"

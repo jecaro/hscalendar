@@ -7,6 +7,8 @@ import qualified RIO.Time as Time
 import qualified RIO.Vector.Boxed as VB (Vector, generate, (!?))
 import qualified RIO.Vector.Boxed.Partial as VB ((//))
 
+import           Data.Aeson (FromJSON, ToJSON)
+
 import           Lens.Micro.Platform (makeFields, (.~), (?~))
 
 import qualified Db.DayF as DayF (DayF, afternoon, empty, morning)
@@ -23,6 +25,9 @@ data MonthF a = MkMonthF
 makeFields ''MonthF
 
 type MonthWithDays = MonthF (DayF.DayF (Maybe HalfDay.HalfDay))
+
+instance FromJSON MonthWithDays
+instance ToJSON MonthWithDays
 
 instance Display MonthWithDays where
     display m =  line <> foldMap (\d -> "\n" <> display d <> "\n" <> line) m

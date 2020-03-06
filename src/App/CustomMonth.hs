@@ -7,6 +7,7 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (toGregorian)
+import qualified RIO.Text as Text (intercalate)
 
 import           Data.Attoparsec.Text
     ( Parser
@@ -14,6 +15,10 @@ import           Data.Attoparsec.Text
     , char
     , decimal
     )
+import           Formatting.Extended (formatTwoDigitsPadZero)
+import           Servant.API (FromHttpApiData(..), ToHttpApiData(..))
+import           Servant.API.Extended (runAtto)
+
 import           App.CustomDay (today)
 import           Db.Month (Month(..))
 
@@ -22,6 +27,18 @@ data CustomMonth = MkCustomMonth Month  | -- ^ Fully defined month
                    CurrentMonth           -- ^ The current month
 
     deriving (Eq, Show)
+
+instance FromHttpApiData CustomMonth where
+    parseQueryParam = runAtto parser
+
+instance ToHttpApiData CustomMonth where
+    toQueryParam (MkCustomMonth (MkMonth year month)) =
+        Text.intercalate "-" (fmap formatTwoDigitsPadZero [yearInt, month])
+        where yearInt = fromIntegral year
+    toQueryParam (MkCustomMonthInt month) = formatTwoDigitsPadZero month
+    toQueryParam CurrentMonth = "current"
+
+
 
 parser :: Parser CustomMonth
 parser =   asciiCI "current" $> CurrentMonth

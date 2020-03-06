@@ -46,6 +46,7 @@ import qualified Servant.Client.Extended as CE (parse)
 
 import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay)
+import           App.CustomMonth (CustomMonth)
 import           App.CustomWeek (CustomWeek)
 import           App.CommandLine
     ( Cmd(..)
@@ -56,11 +57,12 @@ import           App.CommandLine
     )
 import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
-import           Db.WeekF (WeekWithDays)
 import           Db.HalfDay (HalfDay, displayHdWithDate)
 import           Db.IdleDayType (IdleDayType)
+import           Db.MonthF (MonthWithDays)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
+import           Db.WeekF (WeekWithDays)
 
 type ProtectedHSCalendarApi = HSBasicAuth :> HSCalendarApi
 
@@ -89,6 +91,7 @@ data ProtectedClient env = ProtectedClient
     , projRename :: RenameArgs -> RIO env NoContent
     , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
     , weekGet :: CustomWeek -> RIO env WeekWithDays
+    , monthGet :: CustomMonth -> RIO env MonthWithDays
     , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
     , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
     , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent
@@ -104,6 +107,7 @@ mkProtectedApi env ad =
         :<|> projRename
         :<|> hdGet
         :<|> weekGet
+        :<|> monthGet
         :<|> hdSetIdleDay
         :<|> hdSetWork
         :<|> hdRm
@@ -186,6 +190,9 @@ run ProtectedClient{..} (ProjRename p1 p2) =
 
 run ProtectedClient{..} (DiaryDisplay cd tid) =
     hdGet cd tid >>= logInfo . displayHdWithDate
+
+run ProtectedClient{..} (DiaryMonth cm) =
+    monthGet cm >>= logInfo . display
 
 run ProtectedClient{..} (DiaryWeek cw) =
     weekGet cw >>= logInfo . display

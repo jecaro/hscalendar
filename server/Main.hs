@@ -51,13 +51,13 @@ import           Servant.Server.StaticFiles (serveDirectoryWebApp)
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
 import           App.CustomDay (CustomDay(..), toDay)
+import           App.CustomMonth (CustomMonth(..), toMonth)
 import           App.CustomWeek (CustomWeek(..), toWeek)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
     , WorkOption(..)
     )
-import           Db.WeekF (WeekWithDays)
 import           Db.HalfDay (HalfDay(..))
 import           Db.IdleDayType (IdleDayType(..))
 import           Db.Login (Login, mkLogin)
@@ -72,6 +72,7 @@ import           Db.Model
     , hdRm
     , hdSetHoliday
     , migrateAll
+    , monthGet
     , projAdd
     , projList
     , projRename
@@ -79,9 +80,11 @@ import           Db.Model
     , userCheck
     , weekGet
     )
+import           Db.MonthF (MonthWithDays)
 import           Db.Password (mkPassword)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
+import           Db.WeekF (WeekWithDays)
 
 type ProtectedApi = HSBasicAuth :> (HSCalendarApi :<|> Raw)
 
@@ -99,6 +102,7 @@ rioServer =  hMigrateAll
                    :<|> hProjRename
                    :<|> hHdGet
                    :<|> hWeekGet
+                   :<|> hMonthGet
                    :<|> hHdSetIdleDay
                    :<|> hHdSetWork
                    :<|> hHdRm
@@ -170,6 +174,13 @@ hWeekGet cw = do
     week <- toWeek cw
     -- Get the list of half-day
     runDB $ weekGet week
+
+hMonthGet :: HasConnPool env => CustomMonth -> RIO env MonthWithDays
+hMonthGet cm = do
+    -- Get actual month
+    month <- toMonth cm
+    -- Get the list of half-day
+    runDB $ monthGet month
 
 hHdSetIdleDay
     :: HasConnPool env

@@ -10,8 +10,13 @@ import qualified RIO.Time as Time
     , toGregorian
     )
 
+import           Data.Aeson (FromJSON, ToJSON)
+
 data Month = MkMonth { _year :: !Integer, _month :: !Int}
     deriving (Eq, Generic, Show)
+
+instance FromJSON Month
+instance ToJSON Month
 
 firstDay :: Month -> Time.Day
 firstDay month = day month 1
