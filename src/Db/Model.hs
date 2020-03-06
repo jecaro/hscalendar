@@ -332,21 +332,14 @@ hdGet day tid =
         []    -> throwIO $ HdNotFound day tid
         (x:_) -> dbToHalfDayInt x
 
+
 -- | Get the half-days on a complete week
 weekGet
     :: (MonadIO m, MonadUnliftIO m)
     => Week
     -> SqlPersistT m WeekF.WeekWithDays
 weekGet week = do
-    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (   hd ^. DBHalfDayDay >=. val (monday week)
-               &&. hd ^. DBHalfDayDay <=. val (sunday week)
-               )
-        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
-        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
-        orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
-        return (hd, mbHdw, mbProj))
-    hdList <- mapM dbToHalfDayInt tupleList
+    hdList <- rangeGet (monday week) (sunday week)
     return $ toWeekF hdList
   where toWeekF = foldr (\hd fw -> fromMaybe fw $ WeekF.add hd fw) (WeekF.empty Nothing week)
 
@@ -356,15 +349,7 @@ monthGet
     => Month
     -> SqlPersistT m MonthF.MonthWithDays
 monthGet month = do
-    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-        where_ (   hd ^. DBHalfDayDay >=. val (firstDay month)
-               &&. hd ^. DBHalfDayDay <=. val (lastDay month)
-               )
-        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
-        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
-        orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
-        return (hd, mbHdw, mbProj))
-    hdList <- mapM dbToHalfDayInt tupleList
+    hdList <- rangeGet (firstDay month) (lastDay month)
     return $ toMonthF hdList
   where toMonthF = foldr (\hd fm -> fromMaybe fm $ MonthF.add hd fm) (MonthF.empty Nothing month)
 
@@ -528,6 +513,19 @@ dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
 dbToHalfDayInt _ = throwIO DbInconsistency
 
 -- hd private functions
+
+-- | Get a list of 'HalfDay' between a range of two 'Day'
+rangeGet :: (MonadIO m, MonadUnliftIO m) => Time.Day -> Time.Day -> SqlPersistT m [HalfDay]
+rangeGet day1 day2 = do
+    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+        where_ (   hd ^. DBHalfDayDay >=. val (day1)
+               &&. hd ^. DBHalfDayDay <=. val (day2)
+               )
+        on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
+        on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
+        orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
+        return (hd, mbHdw, mbProj))
+    mapM dbToHalfDayInt tupleList
 
 -- | Check that the constraints on the times are valid between the two half-days
 timesAreOrderedInDay

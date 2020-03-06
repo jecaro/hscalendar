@@ -10,7 +10,6 @@
 - Rework naming in CommandLine.hs
 - Better naming for Custom*
 - Change return for pure
-- Factorize sql query for week and month
 - Better type safety in DayF setter: add function
 - Add test for Month
 - server
