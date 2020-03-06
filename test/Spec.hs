@@ -45,7 +45,6 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
-import           Db.WeekF (WeekWithDays, add, empty)
 import qualified Db.IdleDayType as IDT (IdleDayType(..))
 import           Db.HalfDay (HalfDay(..))
 import           Db.Idle (Idle(..))
@@ -69,6 +68,7 @@ import           Db.Model
     , hdSetOffice
     , hdSetProject
     , migrateAll
+    , monthGet
     , projAdd
     , projExists
     , projList
@@ -83,14 +83,17 @@ import           Db.Model
     , userRename
     , weekGet
     )
-import          Db.Login (Login, mkLoginLit)
-import          Db.Notes (Notes, mkNotesLit)
-import          Db.Office (Office(..))
-import          Db.Password (Password, mkPasswordLit)
-import          Db.Project (Project, mkProjectLit)
-import          Db.TimeInDay (TimeInDay(..), other)
-import          Db.Worked (Worked(..))
-import          Db.Week (Week, fromDay)
+import           Db.Login (Login, mkLoginLit)
+import qualified Db.Month as Month (Month, fromDay)
+import qualified Db.MonthF as MonthF (MonthWithDays, add, empty)
+import           Db.Notes (Notes, mkNotesLit)
+import           Db.Office (Office(..))
+import           Db.Password (Password, mkPasswordLit)
+import           Db.Project (Project, mkProjectLit)
+import           Db.TimeInDay (TimeInDay(..), other)
+import           Db.Worked (Worked(..))
+import qualified Db.Week as Week (Week, fromDay)
+import qualified Db.WeekF as WeekF (WeekWithDays, add, empty)
 
 -- | The type for the runDB function
 type RunDB = (forall a. SqlPersistM a -> IO a)
@@ -147,11 +150,17 @@ project2 = mkProjectLit $$(refineTH "TestProject2")
 day1 :: Time.Day
 day1 = Time.fromGregorian 1979 03 22
 
-week1 :: Week
-week1 = fst $ fromDay day1
+week1 :: Week.Week
+week1 = fst $ Week.fromDay day1
 
-emptyWeek1 :: WeekWithDays
-emptyWeek1 = empty Nothing week1
+emptyWeek1 :: WeekF.WeekWithDays
+emptyWeek1 = WeekF.empty Nothing week1
+
+month1 :: Month.Month
+month1 = Month.fromDay day1
+
+emptyMonth1 :: MonthF.MonthWithDays
+emptyMonth1 = MonthF.empty Nothing month1
 
 tid1 :: TimeInDay
 tid1 = Morning
@@ -581,7 +590,10 @@ testHdApi runDB =
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
-                res `shouldBe` empty Nothing week1
+                res `shouldBe` emptyWeek1
+            it "tests getting the full month" $ do
+                res <- runDB (monthGet month1)
+                res `shouldBe` emptyMonth1
             it "tests removing an entry" $
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
@@ -594,10 +606,17 @@ testHdApi runDB =
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
                 let weekWithOneDayMaybe =
-                        add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyWeek1
+                        WeekF.add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyWeek1
                 case weekWithOneDayMaybe of
                     Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
                     Just week -> res `shouldBe` week
+            it "tests getting the full month" $ do
+                res <- runDB (monthGet month1)
+                let monthWithOneDayMaybe =
+                        MonthF.add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyMonth1
+                case monthWithOneDayMaybe of
+                    Nothing -> expectationFailure "monthWithOneDayMaybe should not be Nothing"
+                    Just month -> res `shouldBe` month
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
@@ -612,10 +631,17 @@ testHdApi runDB =
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
                 let weekWithOneDayMaybe =
-                        add (defaultWorked day1 tid1 project1) emptyWeek1
+                        WeekF.add (defaultWorked day1 tid1 project1) emptyWeek1
                 case weekWithOneDayMaybe of
                     Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
                     Just week -> res `shouldBe` week
+            it "tests getting the full month" $ do
+                res <- runDB (monthGet month1)
+                let monthWithOneDayMaybe =
+                        MonthF.add (defaultWorked day1 tid1 project1) emptyMonth1
+                case monthWithOneDayMaybe of
+                    Nothing -> expectationFailure "monthWithOneDayMaybe should not be Nothing"
+                    Just month -> res `shouldBe` month
             it "tests removing the entry" $ do
                 runDB (hdRm day1 tid1)
                 runDB (hdGet day1 tid1) `shouldThrow` hdNotFoundException
