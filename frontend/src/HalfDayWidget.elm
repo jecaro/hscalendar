@@ -179,44 +179,45 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Just (MkHalfDayIdle _) -> True
 
         viewDelete =
-            [ div [ class "level-item" ]
-                [ button 
-                    [ class "button"
-                    , onClick <| EditHalfDaySent <| delete GotEditResponse date timeInDay
-                    , disabled <| isNothing halfDay
+            div [ class "field" ]
+                [ div [ class "control" ]
+                    [ button 
+                        [ class "button"
+                        , onClick <| EditHalfDaySent <| delete GotEditResponse date timeInDay
+                        , disabled <| isNothing halfDay
+                        ]
+                        [ text "Delete" ]
                     ]
-                    [ text "Delete" ]
                 ]
-            ]
+            
 
         viewSetIdle =
-            [ div [ class "level-item" ] 
-                [ div [ class "label" ] [ text "Set as holiday" ] ]
-            , div [ class "level-item" ]
-                [ idleDayTypeSelect 
-                    date 
-                    timeInDay 
-                    Nothing 
-                    (isNothing halfDay || isWorked) 
+            div [ class "field" ] 
+                [ label [ class "label" ] [ text "Set as holiday" ] 
+                , idleDayTypeSelect 
+                        date 
+                        timeInDay 
+                        Nothing 
+                        (isNothing halfDay || isWorked) 
                 ]
-            ]
+           
 
         viewSetWorked =
-            [ div [ class "level-item" ] 
-                [ div [ class "label" ] [ text "Set as working" ] ]
-            , div [ class "level-item" ]
-                [ projectSelect 
-                    date 
-                    timeInDay 
-                    projects
-                    Nothing
-                    (isNothing halfDay || isIdle)
+            div [ class "field" ] 
+                [ label [ class "label" ] [ text "Set as working" ]
+                , projectSelect 
+                        date 
+                        timeInDay 
+                        projects
+                        Nothing
+                        (isNothing halfDay || isIdle)
                 ]
-            ]
+            
     in
-        div [ class "level" ] 
-            [ div [ class "level-left" ] (viewSetIdle ++ viewSetWorked)
-            , div [ class "level-right" ] viewDelete
+        div [ ] 
+            [ viewSetWorked
+            , viewSetIdle 
+            , viewDelete
             ]
 
 
