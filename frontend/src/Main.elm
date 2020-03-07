@@ -150,30 +150,24 @@ viewNav date =
         next = DateChanged (add Days 1 date)
         weekdayString = format "EEEE" date
     in
-        nav [ class "level" ]
-            [ div [ class "level-left" ]
-                [ div [ class "level-item" ]
+        nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
+            [ div [ class "navbar-brand" ] 
+                [ div [ class "navbar-item" ] 
                     [ div [ class "field", class "has-addons" ]
                         [ div [ class "control" ]
                             [ button
-                                [ class "button"
-                                , onClick previous
-                                ]
+                                [ class "button" , onClick previous ]
                                 [ text "Prev" ]
                             ]
-                        , div [ class "control" ] 
+                        , div [ class "control" ]
                             [ button
-                                [ class "button"
-                                , onClick next
-                                ]
+                                [ class "button" , onClick next ]
                                 [ text "Next" ]
                             ]
                         ]
                     ]
-                ]
-            , div [ class "level-item" ]
-                [ p [ class "subtitle" ]
-                    [ text <| toIsoString date ++ " " ++ weekdayString ]
+                , div [ class "navbar-item" ] 
+                    [ text <| toIsoString date ++ " " ++ weekdayString]
                 ]
             ]
 
@@ -213,21 +207,18 @@ view model =
 
     in
         div [] 
-            [ viewHero 
+            [ viewNav model.morning.date
             , section [ class "section" ] 
-                [ div [ class "content" ] [ viewNav model.morning.date ]
-                ]
-            , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map MorningMsg viewMorning ]
-                ]
-            , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map MorningMsg viewMorningChangeHalfDayType_ ]
-                ]
-            , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoon ]
-                ]
-            , section [ class "section" ] 
-                [ div [ class "content" ] [ Html.map AfternoonMsg viewAfternoonChangeHalfDayType_ ]
+                [ div [ class "content" ] 
+                    [ p [ class "title", class "is-4" ] [ text "Morning" ]
+                    , Html.map MorningMsg viewMorning 
+                    , Html.map MorningMsg viewMorningChangeHalfDayType_
+                    ]
+                , div [ class "content" ] 
+                    [ p [ class "title", class "is-4" ] [ text "Afternoon" ]
+                    , Html.map AfternoonMsg viewAfternoon 
+                    , Html.map AfternoonMsg viewAfternoonChangeHalfDayType_
+                    ]
                 ]
             ]
 
