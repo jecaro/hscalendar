@@ -14,7 +14,6 @@ import Html exposing
     ( Html
     , button
     , div
-    , h1
     , nav
     , p
     , section
@@ -130,18 +129,6 @@ update msg model =
 
 
 -- View
-
-viewHero : Html msg
-viewHero =
-    section [ class "hero", class "is-primary" ]
-        [ div [ class "hero-body" ]
-            [ div [ class "container" ]
-                [ h1 [ class "title" ]
-                    [ text "HSCalendar"
-                    ]
-                ]
-            ]
-        ]
 
 viewNav : Date -> Html Msg
 viewNav date =
