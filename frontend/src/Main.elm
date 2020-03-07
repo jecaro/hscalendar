@@ -209,12 +209,12 @@ view model =
         div [] 
             [ viewNav model.morning.date
             , section [ class "section" ] 
-                [ div [ class "content" ] 
+                [ div [ class "box" ] 
                     [ p [ class "title", class "is-4" ] [ text "Morning" ]
                     , Html.map MorningMsg viewMorning 
                     , Html.map MorningMsg viewMorningChangeHalfDayType_
                     ]
-                , div [ class "content" ] 
+                , div [ class "box" ] 
                     [ p [ class "title", class "is-4" ] [ text "Afternoon" ]
                     , Html.map AfternoonMsg viewAfternoon 
                     , Html.map AfternoonMsg viewAfternoonChangeHalfDayType_
