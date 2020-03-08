@@ -220,8 +220,8 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             
     in
         div [ ] 
-            [ viewSetWorked
-            , viewSetIdle 
+            [ viewIf (isIdle || isNothing halfDay) viewSetWorked
+            , viewIf (isWorked || isNothing halfDay) viewSetIdle 
             , viewDelete
             ]
 
