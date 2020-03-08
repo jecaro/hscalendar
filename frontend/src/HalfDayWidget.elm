@@ -472,46 +472,45 @@ viewLeft mode day timeInDay left =
         ]
 
 
-viewNotes : Mode -> Date -> TimeInDay -> Notes -> Html Msg
+viewNotes : Mode -> Date -> TimeInDay -> Notes -> List (Html Msg)
 viewNotes mode day timeInDay notes =
         case mode of
             EditNotes notes_ ->
-                div [] 
-                    [ div [ class "field", class "is-horizontal" ]
-                        [ div [ class "field-label" ] [ label [ class "label" ] [ text "Notes" ] ]
-                        , div [ class "field-body" ]
-                            [ div [ class "field" ]
-                                [ div [ class "control" ]
-                                    [ textarea
-                                        [ class "textarea"
-                                        , id "edit"
-                                        , onInput <| ModeChanged << EditNotes 
-                                        ]
-                                        [ text notes_ ]
+                [ div [ class "field", class "is-horizontal" ]
+                    [ div [ class "field-label" ] [ label [ class "label" ] [ text "Notes" ] ]
+                    , div [ class "field-body" ]
+                        [ div [ class "field" ]
+                            [ div [ class "control" ]
+                                [ textarea
+                                    [ class "textarea"
+                                    , id "edit"
+                                    , onInput <| ModeChanged << EditNotes 
                                     ]
-                                ]
-                            ]
-                        ]
-                    , div [ class "field", class "is-horizontal" ]
-                        [ div [ class "field-label" ] [ ]
-                        , div [ class "field-body" ]
-                            [ div [ class "field" ]
-                                [ div [ class "control" ]
-                                    [ button
-                                        [ class "button"
-                                        , id "submit"
-                                        , onClick 
-                                            <| EditHalfDaySent 
-                                            <| setNotes GotEditResponse day timeInDay notes_
-                                        ]
-                                        [ text "Submit" ]
-                                    ]
+                                    [ text notes_ ]
                                 ]
                             ]
                         ]
                     ]
+                , div [ class "field", class "is-horizontal" ]
+                    [ div [ class "field-label" ] [ ]
+                    , div [ class "field-body" ]
+                        [ div [ class "field" ]
+                            [ div [ class "control" ]
+                                [ button
+                                    [ class "button"
+                                    , id "submit"
+                                    , onClick 
+                                        <| EditHalfDaySent 
+                                        <| setNotes GotEditResponse day timeInDay notes_
+                                    ]
+                                    [ text "Submit" ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
             _ ->
-                div [ class "field", class "is-horizontal" ]
+                [ div [ class "field", class "is-horizontal" ]
                     [ div [ class "field-label" ]
                         [ label [ class "label" ] [ text "Notes" ] ]
                     , div 
@@ -524,6 +523,7 @@ viewNotes mode day timeInDay notes =
                                 else "Double click to edit"
                         ]
                     ]
+                ]
 
 
 viewWorked : Mode -> List Project -> Worked -> List (Html Msg)
@@ -539,8 +539,7 @@ viewWorked mode projects
         , viewArrived mode workedDay workedTimeInDay workedArrived
         , viewLeft mode workedDay workedTimeInDay workedLeft
         , viewProject mode projects workedDay workedTimeInDay workedProject
-        , viewNotes mode workedDay workedTimeInDay workedNotes
-        ]
+        ] ++ viewNotes mode workedDay workedTimeInDay workedNotes
 
 
 viewIdle : Mode -> Idle -> List (Html Msg)
