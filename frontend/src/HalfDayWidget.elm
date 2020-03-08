@@ -190,27 +190,32 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                     ]
                 ]
             
-
         viewSetIdle =
-            div [ class "field" ] 
-                [ label [ class "label" ] [ text "Set as holiday" ] 
-                , idleDayTypeSelect 
+            div [ class "field", class "is-horizontal" ]
+                [ div [ class "field-label" ] 
+                    [ label [ class "label" ] [ text "Set as holiday" ] ]
+                , div [ class "field-body" ] 
+                    [ idleDayTypeSelect 
                         date 
                         timeInDay 
                         Nothing 
                         (isNothing halfDay || isWorked) 
+                    ]
                 ]
            
 
         viewSetWorked =
-            div [ class "field" ] 
-                [ label [ class "label" ] [ text "Set as working" ]
-                , projectSelect 
+            div [ class "field", class "is-horizontal" ]
+                [ div [ class "field-label" ] 
+                    [ label [ class "label" ] [ text "Set as working" ] ]
+                , div [ class "field-body" ] 
+                    [ projectSelect 
                         date 
                         timeInDay 
                         projects
                         Nothing
                         (isNothing halfDay || isIdle)
+                    ]
                 ]
             
     in
@@ -391,28 +396,33 @@ leftInput date timeInDay timeOfDay =
 
 viewOffice : Mode -> Date -> TimeInDay -> Office -> Html Msg
 viewOffice mode day timeInDay office = 
-    div [ class "field" ]
-        [ label [ class "label" ] [ text "Office" ]
-        , case mode of
-            EditOffice ->
-                officeSelect day timeInDay office
-            _ ->
-                div [ onDoubleClick <| ModeChanged EditOffice ]
-                    [ text <| Office.toString office ]
+    div [ class "field", class "is-horizontal" ]
+        [ div [ class "field-label" ] [ label [ class "label" ] [ text "Office" ] ]
+        , div [ class "field-body" ] 
+            [ case mode of
+                EditOffice ->
+                    officeSelect day timeInDay office
+                _ ->
+                    div [ onDoubleClick <| ModeChanged EditOffice ]
+                        [ text <| Office.toString office ]
+            ]
         ]
 
 
 viewProject : Mode -> List Project -> Date -> TimeInDay -> Project -> Html Msg
 viewProject mode projects day timeInDay project =
-    div [ class "field" ]
-        [ label [ class "label" ] [ text "Project" ]
-        , case mode of
-            EditProject -> 
-                projectSelect 
-                    day timeInDay projects (Just project) True 
-            _ ->
-                div [ onDoubleClick <| ModeChanged EditProject ]
-                    [ text <| project.unProject ]
+    div [ class "field", class "is-horizontal" ]
+        [ div [ class "field-label" ] 
+            [ label [ class "label" ] [ text "Project" ] ]
+        , div [ class "field-body" ]
+            [  case mode of
+                EditProject -> 
+                    projectSelect 
+                        day timeInDay projects (Just project) True 
+                _ ->
+                    div [ onDoubleClick <| ModeChanged EditProject ]
+                        [ text <| project.unProject ]
+            ]
         ]
 
 
@@ -424,66 +434,86 @@ viewArrivedOrLeft mode timeOfDay =
 
 viewArrived : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
 viewArrived mode day timeInDay arrived =
-    div [ class "field" ]
-        [ label [ class "label" ] [ text "Arrived" ]
-        , case mode of
-            EditArrived ->
-                arrivedInput day timeInDay arrived
-            _ ->
-                viewArrivedOrLeft EditArrived arrived
+    div [ class "field", class "is-horizontal" ]
+        [ div [ class "field-label" ] 
+            [ label [ class "label" ] [ text "Arrived" ] ]
+        , div [ class "field-body" ]
+            [ case mode of
+                EditArrived ->
+                    arrivedInput day timeInDay arrived
+                _ ->
+                    viewArrivedOrLeft EditArrived arrived
+            ]
         ]
 
 
 viewLeft : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
 viewLeft mode day timeInDay left =
-    div [ class "field" ]
-        [ label [ class "label" ] [ text "Left" ]
-        , case mode of
-            EditLeft ->
-                leftInput day timeInDay left
-            _ ->
-                viewArrivedOrLeft EditLeft left
+    div [ class "field", class "is-horizontal" ]
+        [ div [ class "field-label" ]
+            [ label [ class "label" ] [ text "Left" ] ]
+        , div [ class "field-body" ]
+            [ case mode of
+                EditLeft ->
+                    leftInput day timeInDay left
+                _ ->
+                    viewArrivedOrLeft EditLeft left
+            ]
         ]
 
 
 viewNotes : Mode -> Date -> TimeInDay -> Notes -> Html Msg
 viewNotes mode day timeInDay notes =
-    div [ class "field" ]
-        [ label [class "label"] [ text "Notes" ]
-        , case mode of
+        case mode of
             EditNotes notes_ ->
-                div [ ]
-                    [ div [ class "field" ]
-                        [ div [ class "control" ]
-                            [ textarea
-                                [ class "textarea"
-                                , id "edit"
-                                , onInput <| ModeChanged << EditNotes 
+                div [] 
+                    [ div [ class "field", class "is-horizontal" ]
+                        [ div [ class "field-label" ] [ label [ class "label" ] [ text "Notes" ] ]
+                        , div [ class "field-body" ]
+                            [ div [ class "field" ]
+                                [ div [ class "control" ]
+                                    [ textarea
+                                        [ class "textarea"
+                                        , id "edit"
+                                        , onInput <| ModeChanged << EditNotes 
+                                        ]
+                                        [ text notes_ ]
+                                    ]
                                 ]
-                                [ text notes_ ]
                             ]
                         ]
-                    , div [ class "field" ]
-                        [ div [ class "control" ]
-                            [ button
-                                [ class "button"
-                                , id "submit"
-                                , onClick 
-                                    <| EditHalfDaySent 
-                                    <| setNotes GotEditResponse day timeInDay notes_
+                    , div [ class "field", class "is-horizontal" ]
+                        [ div [ class "field-label" ] [ ]
+                        , div [ class "field-body" ]
+                            [ div [ class "field" ]
+                                [ div [ class "control" ]
+                                    [ button
+                                        [ class "button"
+                                        , id "submit"
+                                        , onClick 
+                                            <| EditHalfDaySent 
+                                            <| setNotes GotEditResponse day timeInDay notes_
+                                        ]
+                                        [ text "Submit" ]
+                                    ]
                                 ]
-                                [ text "Submit" ]
                             ]
                         ]
                     ]
             _ ->
-                div [ onDoubleClick <| ModeChanged (EditNotes notes.unNotes) ]
-                    [ text <|
-                        if length notes.unNotes /= 0 
-                            then notes.unNotes
-                            else "Double click to edit"
+                div [ class "field", class "is-horizontal" ]
+                    [ div [ class "field-label" ]
+                        [ label [ class "label" ] [ text "Notes" ] ]
+                    , div 
+                        [ class "field-body"
+                        , onDoubleClick <| ModeChanged (EditNotes notes.unNotes)
+                        ]
+                        [ text <|
+                            if length notes.unNotes /= 0 
+                                then notes.unNotes
+                                else "Double click to edit"
+                        ]
                     ]
-        ]
 
 
 viewWorked : Mode -> List Project -> Worked -> Html Msg
@@ -506,14 +536,16 @@ viewWorked mode projects
 
 viewIdle : Mode -> Idle -> Html Msg
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
-    div [ class "field" ]
-        [ label [ class "label" ] [ text "Day off" ]
-        , case mode of
-            EditIdleDayType -> 
-                idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True 
-            _ ->
-                div [ onDoubleClick <| ModeChanged EditIdleDayType ] 
-                    [ text <| IdleDayType.toString idleDayType ]
+    div [ class "field", class "is-horizontal" ]
+        [ div [ class "field-label" ] [ label [ class "label" ] [ text "Day off" ] ]
+        , div [ class "field-body" ]
+            [ case mode of
+                EditIdleDayType -> 
+                    idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True 
+                _ ->
+                    div [ onDoubleClick <| ModeChanged EditIdleDayType ] 
+                        [ text <| IdleDayType.toString idleDayType ]
+            ]
         ]
 
 viewNoEntry : Html msg
