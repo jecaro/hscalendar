@@ -163,13 +163,9 @@ view : Model -> Html Msg
 view model =
     let
         viewMorning =
-            viewMaybe 
-                (\projects -> HDW.view model.morning projects)
-                (RemoteData.toMaybe model.projects)
+            viewMaybe (HDW.view model.morning) (RemoteData.toMaybe model.projects)
         viewAfternoon =
-            viewMaybe 
-                (\projects -> HDW.view model.afternoon projects)
-                (RemoteData.toMaybe model.projects)
+            viewMaybe (HDW.view model.afternoon) (RemoteData.toMaybe model.projects)
 
     in
         div [] 
@@ -185,8 +181,6 @@ view model =
                     ]
                 ]
             ]
-
--- Requests
 
 
 -- Subscriptions
