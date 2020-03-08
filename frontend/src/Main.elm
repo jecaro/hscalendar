@@ -49,7 +49,6 @@ import HalfDayWidget as HDW exposing
     , Msg(..)
     , setDate
     , update
-    , viewChangeHalfDayType
     , view
     )
 import Request exposing (getProjects)
@@ -163,33 +162,13 @@ viewNav date =
 view : Model -> Html Msg
 view model =
     let
-        viewMorningChangeHalfDayType_ = 
-            viewMaybe 
-                (\projects -> 
-                    viewChangeHalfDayType 
-                        model.morning.date 
-                        model.morning.timeInDay 
-                        (RemoteData.toMaybe model.morning.halfDay) 
-                        projects 
-                )
-                (RemoteData.toMaybe model.projects)
-        viewAfternoonChangeHalfDayType_ = 
-            viewMaybe 
-                (\projects -> 
-                    viewChangeHalfDayType 
-                        model.afternoon.date 
-                        model.afternoon.timeInDay 
-                        (RemoteData.toMaybe model.afternoon.halfDay) 
-                        projects 
-                )
-                (RemoteData.toMaybe model.projects)
         viewMorning =
             viewMaybe 
-                (\projects -> HDW.view model.morning.halfDay model.morning.mode projects)
+                (\projects -> HDW.view model.morning projects)
                 (RemoteData.toMaybe model.projects)
         viewAfternoon =
             viewMaybe 
-                (\projects -> HDW.view model.afternoon.halfDay model.afternoon.mode projects)
+                (\projects -> HDW.view model.afternoon projects)
                 (RemoteData.toMaybe model.projects)
 
     in
@@ -199,12 +178,10 @@ view model =
                 [ div [ class "box" ] 
                     [ p [ class "title", class "is-4" ] [ text "Morning" ]
                     , Html.map MorningMsg viewMorning 
-                    , Html.map MorningMsg viewMorningChangeHalfDayType_
                     ]
                 , div [ class "box" ] 
                     [ p [ class "title", class "is-4" ] [ text "Afternoon" ]
                     , Html.map AfternoonMsg viewAfternoon 
-                    , Html.map AfternoonMsg viewAfternoonChangeHalfDayType_
                     ]
                 ]
             ]

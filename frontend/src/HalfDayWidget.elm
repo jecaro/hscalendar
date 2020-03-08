@@ -4,7 +4,6 @@ module HalfDayWidget exposing
     , Msg(..)
     , init
     , setDate
-    , viewChangeHalfDayType
     , view
     , update
     )
@@ -33,7 +32,7 @@ import Html.Attributes exposing
     )
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
-import Html.Extra exposing (viewIf)
+import Html.Extra exposing (nothing, viewIf)
 import Http exposing (Error(..))
 import List exposing (map)
 import Maybe.Extra exposing (isJust, isNothing)
@@ -226,18 +225,29 @@ viewChangeHalfDayType date timeInDay halfDay projects =
             ]
 
 
-view : WebData HalfDay -> Mode -> List Project -> Html Msg
-view halfDay mode projects =
-    case halfDay of
-        NotAsked -> p [] []
-        Loading -> p [] [ text "Loading ..." ]
-        Failure (BadStatus 404) -> viewNoEntry
-        Failure _ -> p [] [ text "Error loading half-day" ]
-        Success (MkHalfDayWorked worked) ->
-            viewWorked mode projects worked
-        Success (MkHalfDayIdle idle) ->
-            viewIdle mode idle
-
+view : State -> List Project -> Html Msg
+view state projects =
+    let
+        halfDayHtml = 
+            case state.halfDay of
+                NotAsked -> [ nothing ]
+                Loading -> [ p [] [ text "Loading ..." ] ]
+                Failure (BadStatus 404) -> [ viewNoEntry ]
+                Failure _ -> [ p [] [ text "Error loading half-day" ] ]
+                Success (MkHalfDayWorked worked) ->
+                    viewWorked state.mode projects worked
+                Success (MkHalfDayIdle idle) ->
+                    viewIdle state.mode idle
+        changeHalDayHtml = 
+            [ viewChangeHalfDayType 
+                state.date 
+                state.timeInDay 
+                (RemoteData.toMaybe state.halfDay) 
+                projects 
+                ]
+    in
+    div [] (halfDayHtml ++ changeHalDayHtml)
+    
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
 officeSelect date timeInDay current =
@@ -516,7 +526,7 @@ viewNotes mode day timeInDay notes =
                     ]
 
 
-viewWorked : Mode -> List Project -> Worked -> Html Msg
+viewWorked : Mode -> List Project -> Worked -> List (Html Msg)
 viewWorked mode projects
     { workedDay
     , workedTimeInDay
@@ -525,18 +535,17 @@ viewWorked mode projects
     , workedOffice
     , workedNotes
     , workedProject } =
-        div [ ]
-            [ viewOffice mode workedDay workedTimeInDay workedOffice
-            , viewArrived mode workedDay workedTimeInDay workedArrived
-            , viewLeft mode workedDay workedTimeInDay workedLeft
-            , viewProject mode projects workedDay workedTimeInDay workedProject
-            , viewNotes mode workedDay workedTimeInDay workedNotes
-            ]
+        [ viewOffice mode workedDay workedTimeInDay workedOffice
+        , viewArrived mode workedDay workedTimeInDay workedArrived
+        , viewLeft mode workedDay workedTimeInDay workedLeft
+        , viewProject mode projects workedDay workedTimeInDay workedProject
+        , viewNotes mode workedDay workedTimeInDay workedNotes
+        ]
 
 
-viewIdle : Mode -> Idle -> Html Msg
+viewIdle : Mode -> Idle -> List (Html Msg)
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
-    div [ class "field", class "is-horizontal" ]
+    [ div [ class "field", class "is-horizontal" ]
         [ div [ class "field-label" ] [ label [ class "label" ] [ text "Day off" ] ]
         , div [ class "field-body" ]
             [ case mode of
@@ -547,6 +556,7 @@ viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
                         [ text <| IdleDayType.toString idleDayType ]
             ]
         ]
+    ]
 
 viewNoEntry : Html msg
 viewNoEntry = text "No entry"
