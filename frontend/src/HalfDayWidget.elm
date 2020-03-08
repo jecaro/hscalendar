@@ -237,7 +237,7 @@ view state projects =
                 projects 
                 ]
     in
-    div [] (halfDayHtml ++ changeHalDayHtml)
+        div [] (halfDayHtml ++ changeHalDayHtml)
     
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
@@ -520,7 +520,7 @@ viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
     ]
 
 viewNoEntry : Html msg
-viewNoEntry = text "No entry"
+viewNoEntry = viewHorizontalForm "No entry" []
 
 viewHorizontalFormWithAttr : List (Attribute msg) -> String -> List (Html msg) -> Html msg
 viewHorizontalFormWithAttr attributes label_ content =
