@@ -41,7 +41,7 @@ import Http exposing (Error(..))
 import List exposing (map)
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
-import RemoteData exposing (RemoteData(..), WebData, isLoading)
+import RemoteData exposing (RemoteData(..), WebData, isLoading, toMaybe)
 import String exposing (length)
 import Task exposing (attempt)
 import Time exposing (Month(..))
@@ -93,6 +93,7 @@ type Mode
 type alias State = 
     { date : Date
     , timeInDay : TimeInDay
+    , halfDayDisplayed : Maybe HalfDay
     , halfDay : WebData HalfDay
     , edit : WebData ()
     , mode : Mode
@@ -112,6 +113,7 @@ init : TimeInDay -> State
 init timeInDay = 
     { date = fromCalendarDate 2020 Jan 1
     , timeInDay = timeInDay
+    , halfDayDisplayed = Nothing
     , halfDay = NotAsked
     , mode = View
     , edit = NotAsked
@@ -123,6 +125,7 @@ setDate state date =
         state_ =
             { state
             | date = date
+            , halfDayDisplayed = toMaybe state.halfDay
             , halfDay = Loading
             , edit = NotAsked
             , mode = View
@@ -137,10 +140,16 @@ update : Msg -> State -> ( State, Cmd Msg )
 update msg model =
     case msg of
         GotHalfDayResponse response ->
-            ( { model | halfDay = response, mode = View }, Cmd.none )
+            ( { model 
+                | halfDayDisplayed = toMaybe response
+                , halfDay = response
+                , mode = View 
+                }
+            , Cmd.none 
+            )
 
         GotEditResponse response ->
-            ( { model | edit = response }
+            ( { model | edit = response, halfDay = Loading }
             , getHalfDay GotHalfDayResponse model.date model.timeInDay )
 
         ModeChanged mode ->
@@ -161,7 +170,6 @@ update msg model =
         NoOp -> ( model, Cmd.none )
 
 -- View
-
 
 viewChangeHalfDayType 
   : Date 
@@ -224,20 +232,17 @@ view : State -> List Project -> Html Msg
 view state projects =
     let
         halfDayHtml = 
-            case state.halfDay of
-                NotAsked -> [ nothing ]
-                Loading -> [ p [] [ text "Loading ..." ] ]
-                Failure (BadStatus 404) -> [ viewNoEntry ]
-                Failure _ -> [ p [] [ text "Error loading half-day" ] ]
-                Success (MkHalfDayWorked worked) ->
+            case state.halfDayDisplayed of
+                Nothing -> [ viewNoEntry ]
+                Just (MkHalfDayWorked worked) ->
                     viewWorked state.mode projects worked
-                Success (MkHalfDayIdle idle) ->
+                Just (MkHalfDayIdle idle) ->
                     viewIdle state.mode idle
         changeHalDayHtml = 
             [ viewChangeHalfDayType 
                 state.date 
                 state.timeInDay 
-                (RemoteData.toMaybe state.halfDay) 
+                state.halfDayDisplayed 
                 projects 
             ]
         loadingIcon = 
