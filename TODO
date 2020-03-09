@@ -27,4 +27,5 @@
   - sort imports
   - bug setting half day work when the other half day has weird left or arrived
   time
-  - use columns instead of levels
+  - better handling of loading icon
+  - notes line break

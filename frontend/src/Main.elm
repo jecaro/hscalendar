@@ -15,7 +15,6 @@ import Html exposing
     , button
     , div
     , nav
-    , p
     , section
     , text
     )
@@ -171,14 +170,8 @@ view model =
         div [] 
             [ viewNav model.morning.date
             , section [ class "section" ] 
-                [ div [ class "box" ] 
-                    [ p [ class "title", class "is-4" ] [ text "Morning" ]
-                    , Html.map MorningMsg viewMorning 
-                    ]
-                , div [ class "box" ] 
-                    [ p [ class "title", class "is-4" ] [ text "Afternoon" ]
-                    , Html.map AfternoonMsg viewAfternoon 
-                    ]
+                [ Html.map MorningMsg viewMorning
+                , Html.map AfternoonMsg viewAfternoon 
                 ]
             ]
 

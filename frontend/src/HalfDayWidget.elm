@@ -15,11 +15,14 @@ import Html exposing
     , Html
     , button
     , div
+    , header
+    , i
     , input
     , label
     , option
     , p
     , select
+    , span
     , textarea
     , text
     )
@@ -38,7 +41,7 @@ import Http exposing (Error(..))
 import List exposing (map)
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
-import RemoteData exposing (RemoteData(..), WebData)
+import RemoteData exposing (RemoteData(..), WebData, isLoading)
 import String exposing (length)
 import Task exposing (attempt)
 import Time exposing (Month(..))
@@ -61,6 +64,7 @@ import Api exposing
     )
 import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (offices, toString)
+import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
 
 import Request exposing 
@@ -235,9 +239,30 @@ view state projects =
                 state.timeInDay 
                 (RemoteData.toMaybe state.halfDay) 
                 projects 
-                ]
+            ]
+        loadingIcon = 
+            if isLoading state.halfDay || isLoading state.edit
+                then 
+                    div [ class "card-header-icon" ]
+                        [ span [ class "icon" ] 
+                            [ i [ class "fas fa-spinner fa-spin" ] [ ] ] 
+                        ]
+                else
+                    nothing 
     in
-        div [] (halfDayHtml ++ changeHalDayHtml)
+        div [ class "card" ] 
+            [ header [ class "card-header" ] 
+                [ div [ class "card-header-title" ] 
+                    [ div [ class "title", class "is-4" ]
+                        [ text <| TimeInDay.toString state.timeInDay ] 
+                    ]
+                , loadingIcon
+                ]
+            , div [ class "card-content" ]
+                [ div [ class "content" ] 
+                    (halfDayHtml ++ changeHalDayHtml)
+                ]
+            ] 
     
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
