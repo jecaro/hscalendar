@@ -2,7 +2,7 @@
 SRC = src/Main.elm
 
 # The fronted files to install
-FRONTEND= elm.js index.html bulma.min.css
+FRONTEND= elm.js index.html bulma.min.css fontawesome-free-5.12.1-web
 
 # Toggle debug mode with "make debug=1"
 ifdef debug
@@ -24,7 +24,7 @@ clean:
 ifdef destdir
 install: all
 	mkdir -p $(destdir)
-	cp $(FRONTEND) $(destdir)
+	cp -r $(FRONTEND) $(destdir)
 endif
 
 .PHONY: clean
