@@ -13,6 +13,7 @@ import Date exposing (Date, Unit(..), fromCalendarDate)
 import Html exposing 
     ( Attribute
     , Html
+    , br
     , button
     , div
     , header
@@ -38,7 +39,7 @@ import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (nothing, viewIf)
 import Http exposing (Error(..))
-import List exposing (map)
+import List exposing (intersperse, map)
 import Maybe.Extra exposing (isJust, isNothing)
 import Result exposing (withDefault)
 import RemoteData exposing (RemoteData(..), WebData, isLoading, toMaybe)
@@ -512,12 +513,14 @@ viewNotes mode day timeInDay notes =
             _ ->
                 [ viewHorizontalFormWithAttr 
                     [ onDoubleClick <| ModeChanged (EditNotes notes.unNotes) ]
-                    "Notes"
-                    [ text <|
-                            if length notes.unNotes /= 0 
-                                then notes.unNotes
-                                else "Double click to edit"
-                    ]
+                    "Notes" 
+                    ( if length notes.unNotes /= 0 
+                        then
+                            intersperse (br [] [])
+                                (map text (String.lines notes.unNotes))
+                        else 
+                            [ text "Double click to edit" ]
+                    )
                 ]
 
 
