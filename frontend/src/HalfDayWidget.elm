@@ -13,6 +13,7 @@ import Date exposing (Date, Unit(..), fromCalendarDate)
 import Html exposing 
     ( Attribute
     , Html
+    , article
     , br
     , button
     , div
@@ -142,16 +143,27 @@ update msg model =
     case msg of
         GotHalfDayResponse response ->
             ( { model 
-                | halfDayDisplayed = toMaybe response
+                | halfDayDisplayed = 
+                    case response of
+                        -- Copy the data
+                        Success a -> Just a
+                        -- 404 is not an error, there is no entry
+                        Failure (BadStatus 404) -> Nothing
+                        -- Other than that is an error, we keep displaying
+                        -- backup data
+                        _ -> model.halfDayDisplayed
                 , halfDay = response
                 , mode = View 
                 }
             , Cmd.none 
             )
 
-        GotEditResponse response ->
+        GotEditResponse ((Success _) as response) ->
             ( { model | edit = response, halfDay = Loading }
             , getHalfDay GotHalfDayResponse model.date model.timeInDay )
+
+        -- We don't ask for up to date half-day in case of an error
+        GotEditResponse response -> ( { model | edit = response }, Cmd.none )
 
         ModeChanged mode ->
             let 
@@ -177,7 +189,7 @@ viewChangeHalfDayType
   -> TimeInDay 
   -> Maybe HalfDay 
   -> List Project 
-  -> Html Msg
+  -> List (Html Msg)
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
         isWorked = 
@@ -192,7 +204,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Just (MkHalfDayIdle _) -> True
 
         viewDelete =
-            div [ class "field" ]
+            viewHorizontalForm ""
                 [ div [ class "control" ]
                     [ button 
                         [ class "button"
@@ -222,11 +234,10 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                         (isNothing halfDay || isIdle)
                 ]
     in
-        div [ ] 
-            [ viewIf (isIdle || isNothing halfDay) viewSetWorked
-            , viewIf (isWorked || isNothing halfDay) viewSetIdle 
-            , viewDelete
-            ]
+        [ viewIf (isIdle || isNothing halfDay) viewSetWorked
+        , viewIf (isWorked || isNothing halfDay) viewSetIdle 
+        , viewDelete
+        ]
 
 
 view : State -> List Project -> Html Msg
@@ -240,12 +251,11 @@ view state projects =
                 Just (MkHalfDayIdle idle) ->
                     viewIdle state.mode idle
         changeHalDayHtml = 
-            [ viewChangeHalfDayType 
+            viewChangeHalfDayType 
                 state.date 
                 state.timeInDay 
                 state.halfDayDisplayed 
                 projects 
-            ]
         loadingIcon = 
             if isLoading state.halfDay || isLoading state.edit
                 then 
@@ -266,10 +276,42 @@ view state projects =
                 ]
             , div [ class "card-content" ]
                 [ div [ class "content" ] 
-                    (halfDayHtml ++ changeHalDayHtml)
+                    (  halfDayHtml 
+                    ++ changeHalDayHtml 
+                    ++ [ viewErrorHalfDay state.halfDay
+                       , viewErrorEdit state.edit
+                       ]
+                    )
                 ]
             ] 
     
+viewError : String -> Html msg
+viewError message =
+    article [ class "message", class "is-danger" ] 
+        [ div [ class "message-header" ]
+            [ p [] [ text "Error" ] ]
+        , div [ class "message-body" ] 
+            [ p [] 
+                [ text message
+                , br [] [] 
+                , text "Try reloading the page"
+                ] 
+            ]
+        ]
+
+viewErrorEdit : WebData a -> Html msg
+viewErrorEdit edit =
+    case edit of
+       Failure _ -> viewError "Error sending edit command"
+       _ -> nothing
+
+viewErrorHalfDay : WebData a -> Html msg
+viewErrorHalfDay halfDay =
+    case halfDay of
+        -- 404 is not an error, there is no entry
+       Failure (BadStatus 404) -> nothing
+       Failure _ -> viewError "Error getting data from the server"
+       _ -> nothing
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
 officeSelect date timeInDay current =
