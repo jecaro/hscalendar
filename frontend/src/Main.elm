@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Browser
+import Browser exposing (element)
 import Browser.Events exposing (onMouseDown)
 import Date exposing 
     ( Date
@@ -72,7 +72,7 @@ type Msg
 
 main : Program () Model Msg
 main =
-    Browser.element
+    element
         { init = init
         , subscriptions = subscriptions
         , update = update
