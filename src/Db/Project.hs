@@ -51,7 +51,7 @@ instance FromJSON Project where
         p <- o .: "unProject"
         case mkProject p of
             Nothing -> fail "Bad project name"
-            Just project -> return project
+            Just project -> pure project
 
 instance Display Project where
     display = display . unProject
@@ -76,7 +76,7 @@ instance Arbitrary Project where
         let minSize = 1
         n <- choose (minSize, minSize `max` (s `min` projNameMaxLength))
         xs <- vectorOf n (elements projNameAllowedChars)
-        return (MkProject (Text.pack xs))
+        pure (MkProject (Text.pack xs))
 
 -- | Simple type to refine 'Text' for project names
 data ProjName
@@ -102,4 +102,4 @@ parser = do
     str <- many1 $ satisfy $ inClass projNameAllowedChars
     case mkProject (Text.pack str) of
         Nothing -> fail "Unable to parse project"
-        Just p  -> return p
+        Just p  -> pure p

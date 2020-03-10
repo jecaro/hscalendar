@@ -163,9 +163,9 @@ editorToOptions hdGet cd tid = do
             readFileUtf8 filename
         )
     if fileContent == oldRecord
-        then return []
+        then pure []
         else case parse fileContent of
             Left e@(ParserError _) -> throwIO e
             Left e@EmptyFileError  -> throwIO e
-            Right options          -> return options
+            Right options          -> pure options
 

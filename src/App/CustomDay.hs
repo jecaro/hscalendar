@@ -63,13 +63,13 @@ toDay :: (MonadIO m) => CustomDay -> m Time.Day
 toDay Today        = today
 toDay Yesterday    = Time.addDays (-1) <$> today
 toDay Tomorrow     = Time.addDays 1 <$> today
-toDay (MkDay x)    = return x
+toDay (MkDay x)    = pure x
 toDay (MkDayNum d) = do
     (y, m, _) <- Time.toGregorian <$> today
-    return $ Time.fromGregorian y m d
+    pure $ Time.fromGregorian y m d
 toDay (MkDayMonthNum d m) = do
     (y, _, _) <- Time.toGregorian <$> today
-    return $ Time.fromGregorian y m d
+    pure $ Time.fromGregorian y m d
 
 -- | Parser for a 'CustomDay'
 parser :: Parser CustomDay

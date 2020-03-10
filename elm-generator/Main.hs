@@ -74,13 +74,13 @@ stringToPath outDirStr@('/':_) = parseAbsDir outDirStr
 stringToPath outDirStr = do
     currentDir <- getCurrentDir
     outDir <- parseRelDir outDirStr
-    return $ currentDir </> outDir
+    pure $ currentDir </> outDir
 
 -- | Convert an Elm module path to an absolute file path
 moduleNameToFilename :: Path Abs Dir -> [Text] -> Maybe (Path Abs File)
 moduleNameToFilename dir [x] = do
     xPath <- parseRelFile $ Text.unpack x <> ".elm"
-    return $ dir </> xPath
+    pure $ dir </> xPath
 moduleNameToFilename dir (x:xs) = do
      xPath <- parseRelDir $ Text.unpack x
      moduleNameToFilename (dir </> xPath) xs

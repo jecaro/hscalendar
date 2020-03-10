@@ -170,7 +170,7 @@ runWorkOptions day tid wopts = do
     -- Create it with a project if needed
     otherOpts <- case (eiHd, findProjCmd wopts) of
         -- Everything is there
-        (Right (MkHalfDayWorked _), _) -> return wopts
+        (Right (MkHalfDayWorked _), _) -> pure wopts
         -- Nothing or holiday but a project
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
@@ -187,7 +187,7 @@ runWorkOptions day tid wopts = do
                 left    = maybe dLeft (\(SetLeft a) -> a) mbLeft
             -- Carry on, we have now everything to create the hwd
             runDB $ hdSetWork day tid proj (config ^. defaultOffice) arrived left
-            return otherOpts''
+            pure otherOpts''
         -- Holiday but no project
         (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
         -- No hd, but no project either
@@ -197,6 +197,6 @@ runWorkOptions day tid wopts = do
     let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
     case mbAL of
         Just (SetArrived a, SetLeft l) -> runDB $ hdSetArrivedAndLeft day tid a l
-        Nothing -> return ()
+        Nothing -> pure ()
     -- Then apply remaining commands
     runDB $ mapM_ (dispatchEdit day tid) otherOpts'

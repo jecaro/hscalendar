@@ -126,7 +126,7 @@ defaultConfig = do
     defaultSqliteFile <- getFileInConfigDir $(mkRelFile "database.db")
     let morning'   = DefaultHours (Time.TimeOfDay 8 20 0)  (Time.TimeOfDay 12 0 0)
         afternoon' = DefaultHours (Time.TimeOfDay 13 30 0) (Time.TimeOfDay 17 0 0)
-    return $ Config { _configDbConfig =
+    pure $ Config { _configDbConfig =
                           DBConfig { _dbConfigBackend          = Sqlite
                                    , _dbConfigConnectionString = Text.pack $ toFilePath defaultSqliteFile
                                    , _dbConfigNbConnections    = 1
@@ -160,7 +160,7 @@ getConfig = do
     mbNbConnectionsStr <- liftIO $ lookupEnv "NB_CONNECTIONS"
     let mbNbConnections = readMaybe =<< mbNbConnectionsStr
     -- Update the config with that
-    return $ config & dbConfig %~ (connectionString %~ (`fromMaybe` mbDatabaseUrl))
+    pure $ config & dbConfig %~ (connectionString %~ (`fromMaybe` mbDatabaseUrl))
                                 . (backend          %~ (`fromMaybe` mbBackend))
                                 . (nbConnections    %~ (`fromMaybe` mbNbConnections))
 

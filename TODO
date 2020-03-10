@@ -9,7 +9,6 @@
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
 - Better naming for Custom*
-- Change return for pure
 - Better type safety in DayF setter: add function
 - server
   - Redirect root to index.html

@@ -57,7 +57,7 @@ instance Arbitrary Notes where
     arbitrary = sized $ \s -> do
         n <- choose (0, s `min` notesMaxLength)
         xs <- vectorOf n (arbitrary `suchThat` printableOrEOLOrTab)
-        return $ MkNotes $ Text.pack xs
+        pure $ MkNotes $ Text.pack xs
 
 instance ToJSON Notes
 instance FromJSON Notes where
@@ -65,7 +65,7 @@ instance FromJSON Notes where
         n <- o .: "unNotes"
         case mkNotes n of
             Nothing -> fail "Bad notes content"
-            Just notes -> return notes
+            Just notes -> pure notes
 
 instance Display Notes where
     display = display . unNotes
@@ -96,5 +96,5 @@ parser = do
     str <- many $ satisfy printableOrEOLOrTab
     case mkNotes (Text.pack str) of
         Nothing -> fail "Unable to parse notes"
-        Just p  -> return p
+        Just p  -> pure p
 

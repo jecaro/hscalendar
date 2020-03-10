@@ -227,7 +227,7 @@ prop_projAddProjExists runDB project = Q.monadic (ioProperty . runDB) $ do
         projRm project
         noExists <- projExists project
         cleanDB
-        return (exists, noExists)
+        pure (exists, noExists)
 
     Q.assert (exists && not noExists)
 
@@ -236,9 +236,9 @@ prop_projAddProjAdd :: RunDB -> Project -> Property
 prop_projAddProjAdd runDB project =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         projAdd project
-        res <- catch (projAdd project >> return False) (\(ProjExists _) -> return True)
+        res <- catch (projAdd project >> pure False) (\(ProjExists _) -> pure True)
         cleanDB
-        return res
+        pure res
 
     Q.assert exceptionRaised
 
@@ -249,7 +249,7 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
         mapM_ projAdd projects
         res <- projList
         cleanDB
-        return res
+        pure res
 
     Q.assert $ dbProjects == L.sort projects
 
@@ -274,9 +274,9 @@ prop_hdSetWorkNoProj :: RunDB -> Time.Day -> TimeInDay -> Project -> Property
 prop_hdSetWorkNoProj runDB day tid project = Q.monadic (ioProperty . runDB) $ do
     -- Impossible to set a work hd without an existing project
     exceptionRaised <- Q.run $ do
-        res <- catch (hdSetWorkDefault day tid project >> return False) (\(ProjNotFound _) -> return True)
+        res <- catch (hdSetWorkDefault day tid project >> pure False) (\(ProjNotFound _) -> pure True)
         cleanDB
-        return res
+        pure res
 
     Q.assert exceptionRaised
 
@@ -294,7 +294,7 @@ prop_hdSetWork runDB day tid project office arrived left = Q.monadic (ioProperty
     exceptionRaised <- Q.run $ catch (do
         projAdd project
         hdSetWorkDefault day (other tid) project
-        hdSetWork day tid project office arrived left >> return False) (\TimesAreWrong -> return True)
+        hdSetWork day tid project office arrived left >> pure False) (\TimesAreWrong -> pure True)
 
     testDBAndTimes day tid arrived left exceptionRaised
     Q.run cleanDB
@@ -320,7 +320,7 @@ testDBAndTimes day tid arrived left exceptionRaised = do
                            Right entity          -> toMbWorked entity
         -- other is always present in the DB
         mbOWorked <- toMbWorked <$> hdGet day (other tid)
-        return (mbWorked, mbOWorked)
+        pure (mbWorked, mbOWorked)
 
     let beforeOtherArrived = beforeArrived left mbOWorked
         afterOtherLeft = afterLeft arrived mbOWorked
@@ -360,11 +360,11 @@ prop_hdSetArrived runDB day tid project tod = Q.monadic (ioProperty . runDB) $ d
         mbWorked  <- toMbWorked <$> hdGet day tid
         mbOWorked <- toMbWorked <$> hdGet day (other tid)
         -- Return current and other hdw
-        return (mbWorked, mbOWorked)
+        pure (mbWorked, mbOWorked)
 
     -- Update arrived time and get new value
-    exceptionRaised <- Q.run $ catch (hdSetArrived day tid tod >> return False)
-        (\TimesAreWrong -> return True)
+    exceptionRaised <- Q.run $ catch (hdSetArrived day tid tod >> pure False)
+        (\TimesAreWrong -> pure True)
     mbWorked' <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
@@ -388,11 +388,11 @@ prop_hdSetLeft runDB day tid project tod = Q.monadic (ioProperty . runDB) $ do
         mbWorked  <- toMbWorked <$> hdGet day tid
         mbOWorked <- toMbWorked <$> hdGet day (other tid)
         -- Return current and other hdw
-        return (mbWorked, mbOWorked)
+        pure (mbWorked, mbOWorked)
 
     -- Update left time and get new value
-    exceptionRaised <- Q.run $ catch (hdSetLeft day tid tod >> return False)
-        (\TimesAreWrong -> return True)
+    exceptionRaised <- Q.run $ catch (hdSetLeft day tid tod >> pure False)
+        (\TimesAreWrong -> pure True)
     mbWorked' <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
@@ -423,8 +423,8 @@ prop_hdSetArrivedAndLeft runDB day tid project arrived left = Q.monadic (ioPrope
 
     -- Update times and get new value
     exceptionRaised <- Q.run $ catch
-        (hdSetArrivedAndLeft day tid arrived left >> return False)
-        (\TimesAreWrong -> return True)
+        (hdSetArrivedAndLeft day tid arrived left >> pure False)
+        (\TimesAreWrong -> pure True)
 
     testDBAndTimes day tid arrived left exceptionRaised
 
@@ -440,7 +440,7 @@ prop_hdSetNotes runDB day tid project notes = Q.monadic (ioProperty . runDB) $ d
         hdSetNotes day tid notes
         res <- toMbWorked <$> hdGet day tid
         cleanDB
-        return res
+        pure res
 
     Q.assert $ maybe False ((==) notes . _workedNotes) mbWorked
 
@@ -454,7 +454,7 @@ prop_hdSetOffice runDB day tid project office = Q.monadic (ioProperty . runDB) $
         hdSetOffice day tid office
         res <- toMbWorked <$> hdGet day tid
         cleanDB
-        return res
+        pure res
 
     Q.assert $ maybe False ((==) office . _workedOffice) mbWorked
 
@@ -468,8 +468,8 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
 
     -- Update project and get new value
     exceptionRaised <- Q.run $ catch
-        (hdSetProject day tid project' >> return False)
-        (\(ProjNotFound _) -> return True)
+        (hdSetProject day tid project' >> pure False)
+        (\(ProjNotFound _) -> pure True)
     mbWorked <- toMbWorked <$> Q.run (hdGet day tid)
     Q.run cleanDB
 
@@ -487,7 +487,7 @@ prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ d
         userRm login
         noExists <- userExists login
         cleanDB
-        return (exists, checks, noExists)
+        pure (exists, checks, noExists)
 
     Q.assert (exists && checks && not noExists)
 
@@ -496,9 +496,9 @@ prop_userAddUserAdd :: RunDB -> Login -> Password -> Property
 prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
         userAdd login password
-        res <- catch (userAdd login password >> return False) (\(UserExists _) -> return True)
+        res <- catch (userAdd login password >> pure False) (\(UserExists _) -> pure True)
         cleanDB
-        return res
+        pure res
 
     Q.assert exceptionRaised
 
@@ -509,7 +509,7 @@ prop_userList runDB (UserUniqueList users) = Q.monadic (ioProperty . runDB) $ do
         mapM_ (uncurry userAdd) users
         res <- userList
         cleanDB
-        return res
+        pure res
 
     Q.assert $ dbUsers == L.sort (fst <$> users)
 

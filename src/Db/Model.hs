@@ -202,7 +202,7 @@ cleanDB = do
 userCheck :: (MonadIO m) => Login -> Password -> SqlPersistT m Bool
 userCheck login password = do
     (Entity _ (DBUser _ hash)) <- userGetInt login
-    return $ validatePassword (encodeUtf8 $ unPassword password) (encodeUtf8 hash)
+    pure $ validatePassword (encodeUtf8 $ unPassword password) (encodeUtf8 hash)
 
 -- | Add a new user
 userAdd
@@ -247,7 +247,7 @@ userGetInt :: (MonadIO m) => Login -> SqlPersistT m (Entity DBUser)
 userGetInt login = getBy (UniqueLogin $ unLogin login) >>=
     \case
         Nothing -> throwIO $ UserNotFound login
-        Just e -> return e
+        Just e -> pure e
 
 -- | Throw an exception if a user already exists
 guardUserNotExistsInt :: (MonadIO m) => Login -> SqlPersistT m ()
@@ -259,7 +259,7 @@ guardUserNotExistsInt login = do
 hashTxt :: MonadRandom m => Password -> m Text
 hashTxt password = do
     hash <- hashPassword 12 (encodeUtf8 $ unPassword password)
-    return $ decodeUtf8With lenientDecode hash
+    pure $ decodeUtf8With lenientDecode hash
 
 -- Exported project functions
 
@@ -304,7 +304,7 @@ projGetInt :: (MonadIO m) => Project -> SqlPersistT m (Key DBProject)
 projGetInt project = getBy (UniqueName $ unProject project) >>=
     \case
         Nothing             -> throwIO $ ProjNotFound project
-        Just (Entity pId _) -> return pId
+        Just (Entity pId _) -> pure pId
 
 -- | Guard to check if a project is already present in the db. If so, raise an
 -- exception
@@ -327,7 +327,7 @@ hdGet day tid =
                 hd ^. DBHalfDayTimeInDay  ==. val tid)
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
-        return (hd, mbHdw, mbProj)) >>=
+        pure (hd, mbHdw, mbProj)) >>=
     \case
         []    -> throwIO $ HdNotFound day tid
         (x:_) -> dbToHalfDayInt x
@@ -340,7 +340,7 @@ weekGet
     -> SqlPersistT m WeekF.WeekWithDays
 weekGet week = do
     hdList <- rangeGet (monday week) (sunday week)
-    return $ toWeekF hdList
+    pure $ toWeekF hdList
   where toWeekF = foldr (\hd fw -> fromMaybe fw $ WeekF.add hd fw) (WeekF.empty Nothing week)
 
 
@@ -350,7 +350,7 @@ monthGet
     -> SqlPersistT m MonthF.MonthWithDays
 monthGet month = do
     hdList <- rangeGet (firstDay month) (lastDay month)
-    return $ toMonthF hdList
+    pure $ toMonthF hdList
   where toMonthF = foldr (\hd fm -> fromMaybe fm $ MonthF.add hd fm) (MonthF.empty Nothing month)
 
 -- | Set the office for a day-time in day
@@ -455,7 +455,7 @@ hdSetWork day tid project office tArrived tLeft = do
         Right (Entity hdId _) -> do
           -- Update entry
           update hdId [DBHalfDayType =. DBWorked]
-          return hdId
+          pure hdId
     let hdw' = hdw { dBHalfDayWorkedProjectId = projId
                    , dBHalfDayWorkedHalfDayId = hdId }
     getBy (UniqueHalfDayId hdId) >>=
@@ -478,7 +478,7 @@ hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity DBHalf
 hdGetInt day tid = getBy (DayAndTimeInDay day tid) >>=
     \case
         Nothing -> throwIO $ HdNotFound day tid
-        Just e  -> return e
+        Just e  -> pure e
 
 -- | Private function to get a half-day work along with the project from a day
 -- and a time in day
@@ -493,8 +493,8 @@ hdHdwProjGetInt day tid = do
                 hd  ^. DBHalfDayTimeInDay       ==. val tid             &&.
                 hdw ^. DBHalfDayWorkedProjectId ==. proj ^. DBProjectId &&.
                 hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId)
-        return (hd, hdw, proj)
-    maybe (throwIO $ HdNotFound day tid) return (L.headMaybe hdHdwProjs)
+        pure (hd, hdw, proj)
+    maybe (throwIO $ HdNotFound day tid) pure (L.headMaybe hdHdwProjs)
 
 -- | Convert output of a join query to a 'HalfDay'. Throw an exception in case
 -- of inconsistencies in the DB along the way
@@ -505,11 +505,11 @@ dbToHalfDayInt
 dbToHalfDayInt (Entity _ hd, Nothing, Nothing) =
     case dbToIdle hd of
         Nothing -> throwIO DbInconsistency
-        Just idle -> return $ MkHalfDayIdle idle
+        Just idle -> pure $ MkHalfDayIdle idle
 dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
     case dbToWorked hd hdw proj of
         Nothing -> throwIO DbInconsistency
-        Just worked -> return $ MkHalfDayWorked worked
+        Just worked -> pure $ MkHalfDayWorked worked
 dbToHalfDayInt _ = throwIO DbInconsistency
 
 -- hd private functions
@@ -524,7 +524,7 @@ rangeGet day1 day2 = do
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
         orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
-        return (hd, mbHdw, mbProj))
+        pure (hd, mbHdw, mbProj))
     mapM dbToHalfDayInt tupleList
 
 -- | Check that the constraints on the times are valid between the two half-days

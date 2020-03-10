@@ -61,7 +61,7 @@ instance Arbitrary Login where
     arbitrary = sized $ \s -> do
         n <- choose (0, s `min` loginMaxLength)
         xs <- vectorOf n (elements loginAllowedChars)
-        return $ MkLogin $ Text.pack xs
+        pure $ MkLogin $ Text.pack xs
 
 instance FromJSON Login
 instance ToJSON Login
@@ -92,4 +92,4 @@ parser = do
     str <- many1 $ satisfy $ inClass loginAllowedChars
     case mkLogin (Text.pack str) of
         Nothing -> fail "Unable to parse login"
-        Just p  -> return p
+        Just p  -> pure p

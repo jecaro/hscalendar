@@ -115,11 +115,11 @@ authCheckInRIO (BasicAuthData authName authPass) = do
         (Just login, Just password) -> do
             eiAuthenticated <- try $ runDB $ userCheck login password
             case eiAuthenticated of
-                Left (UserNotFound _) -> return NoSuchUser
+                Left (UserNotFound _) -> pure NoSuchUser
                 Right authenticated -> if authenticated
-                                           then return (Authorized login)
-                                           else return BadPassword
-        _ -> return Unauthorized
+                                           then pure (Authorized login)
+                                           else pure BadPassword
+        _ -> pure Unauthorized
 
 authCheck :: App -> BasicAuthCheck Login
 authCheck app = BasicAuthCheck (runRIO app . authCheckInRIO)
@@ -137,23 +137,23 @@ server app = serveWithContext protectedApi context (mainServer app)
     where context = authCheck app :. EmptyContext
 
 hMigrateAll :: HasConnPool env => RIO env NoContent
-hMigrateAll = runDB $ runMigration migrateAll >> return NoContent
+hMigrateAll = runDB $ runMigration migrateAll >> pure NoContent
 
 hProjList :: HasConnPool env => RIO env [Project]
 hProjList = runDB projList
 
 hProjRm :: HasConnPool env => Project -> RIO env NoContent
-hProjRm project = catches (runDB (projRm project) >> return NoContent)
+hProjRm project = catches (runDB (projRm project) >> pure NoContent)
         [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
 hProjAdd :: HasConnPool env => Project -> RIO env NoContent
-hProjAdd project = catch (runDB (projAdd project) >> return NoContent)
+hProjAdd project = catch (runDB (projAdd project) >> pure NoContent)
         (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
 
 hProjRename :: HasConnPool env => RenameArgs -> RIO env NoContent
-hProjRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> return NoContent)
+hProjRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> pure NoContent)
     [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
@@ -166,7 +166,7 @@ hHdGet cd tid = do
     try (runDB $ hdGet day tid) >>=
         \case
             Left (HdNotFound _ _) -> throwM err404
-            Right hd -> return hd
+            Right hd -> pure hd
 
 hWeekGet :: HasConnPool env => CustomWeek -> RIO env WeekWithDays
 hWeekGet cw = do
@@ -188,12 +188,12 @@ hHdSetIdleDay
 hHdSetIdleDay cd tid idt = do
     day <- toDay cd
     runDB $ hdSetHoliday day tid idt
-    return NoContent
+    pure NoContent
 
 hHdRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
 hHdRm cd tid = do
     day <- toDay cd
-    catch (runDB (hdRm day tid) >> return NoContent)
+    catch (runDB (hdRm day tid) >> pure NoContent)
         (\(HdNotFound _ _) -> throwM err404)
 
 hHdSetWork
@@ -202,7 +202,7 @@ hHdSetWork
 hHdSetWork cd tid wopts = do
     day <- toDay cd
     -- Create the record in DB
-    catches (runWorkOptions day tid wopts >> return NoContent)
+    catches (runWorkOptions day tid wopts >> pure NoContent)
         [ Handler (\e@TimesAreWrong      -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\e@ProjCmdIsMandatory -> throwM err409 { errBody = DBLC.pack $ show e } )
         , Handler (\(ProjNotFound _)     -> throwM err404)
@@ -234,7 +234,7 @@ main = do
         app <- ask
         logger <-
             if verbose
-                then return logStdoutDev
+                then pure logStdoutDev
                 else liftIO $ mkRequestLogger def { outputFormat = Apache FromHeader }
         logInfo $ "Start server on port: " <> display port
         liftIO . run port $ logger (server app)

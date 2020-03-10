@@ -47,7 +47,7 @@ parser =   asciiCI "current" $> CurrentMonth
     where mkMonth year month = MkCustomMonth (MkMonth year month)
 
 toMonth :: (MonadIO m) => CustomMonth -> m Month
-toMonth (MkCustomMonth month) = return month
+toMonth (MkCustomMonth month) = pure month
 toMonth (MkCustomMonthInt m) = mkMonth . Time.toGregorian <$> today
   where mkMonth (y, _, _) = MkMonth y m
 toMonth CurrentMonth = mkMonth . Time.toGregorian <$> today

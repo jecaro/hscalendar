@@ -120,7 +120,7 @@ nt :: ClientEnv -> ClientM a -> RIO env a
 nt clientEnv actions = liftIO (runClientM actions clientEnv) >>=
     \case
         Left err -> throwIO err
-        Right res -> return res
+        Right res -> pure res
 
 baseUrlAndBasicAuthData :: Opt.Parser (BaseUrl, BasicAuthData)
 baseUrlAndBasicAuthData = argument readUrlAndAuthData (metavar "URL...")
@@ -134,7 +134,7 @@ parseBaseUrlAndAuthData = do
     _ <- char ':'
     port <- decimal
     let baseUrl = BaseUrl scheme host port ""
-    return (baseUrl, authData)
+    pure (baseUrl, authData)
 
 readUrlAndAuthData :: ReadM (BaseUrl, BasicAuthData)
 readUrlAndAuthData = attoReadM parseBaseUrlAndAuthData
@@ -148,7 +148,7 @@ optionsInfo = info (optionsAndURI <**> helper) idm
 
 handleError :: (HasLogFunc env) => ClientError -> RIO env ()
 handleError (FailureResponse _ response) = logError $
-    "The server returns an error\n" <> display response
+    "The server returned an error\n" <> display response
 handleError (ConnectionError text) = logError $
     "Unable to connect to the server\n" <> display text
 handleError e = logError $ "Error\n" <> displayShow e

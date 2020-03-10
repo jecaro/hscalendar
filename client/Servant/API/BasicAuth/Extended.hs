@@ -16,7 +16,7 @@ parse = do
     login <- many (satisfy $ inClass "0-9a-zA-Z_")
     _ <- char ':'
     password <- many (satisfy (\c -> isPrint c && c /= '@'))
-    return $ BasicAuthData
+    pure $ BasicAuthData
         (encodeUtf8 $ Text.pack login) (encodeUtf8 $ Text.pack password)
 
 

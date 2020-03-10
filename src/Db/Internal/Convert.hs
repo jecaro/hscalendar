@@ -65,7 +65,7 @@ dbToWorked (DBHalfDay day timeInDay DBWorked)
     (DBHalfDayWorked dbNotes arrived left office _ _) dbProject = do
         notes <- mkNotes dbNotes
         project <- dbToProject dbProject
-        return MkWorked
+        pure MkWorked
             { _workedDay       = day
             , _workedTimeInDay = timeInDay
             , _workedArrived   = arrived

@@ -61,7 +61,7 @@ instance Arbitrary Password where
     arbitrary = sized $ \s -> do
         n <- choose (0, s `min` passwordMaxLength)
         xs <- vectorOf n (arbitrary `suchThat` isPrint)
-        return $ MkPassword $ Text.pack xs
+        pure $ MkPassword $ Text.pack xs
 
 instance FromJSON Password
 instance ToJSON Password
@@ -88,4 +88,4 @@ parser = do
     str <- many1 $ satisfy isPrint
     case mkPassword (Text.pack str) of
         Nothing -> fail "Unable to parse password"
-        Just p  -> return p
+        Just p  -> pure p

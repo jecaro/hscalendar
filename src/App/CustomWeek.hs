@@ -46,10 +46,10 @@ parser =   asciiCI "current" $> CurrentWeek
     where mkWeek year weekNum = MkCustomWeek (MkWeek year weekNum)
 
 toWeek :: (MonadIO m) => CustomWeek -> m Week
-toWeek (MkCustomWeek week) = return week
+toWeek (MkCustomWeek week) = pure week
 toWeek (MkCustomWeekNum weekNum) = do
     day <- today
     let (year, _, _) = Time.toGregorian day
-    return $ MkWeek year weekNum
+    pure $ MkWeek year weekNum
 toWeek CurrentWeek = fst . fromDay <$> today
 
