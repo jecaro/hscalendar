@@ -1,5 +1,5 @@
-module App.CustomMonth
-    ( CustomMonth(..)
+module App.MonthDesc
+    ( MonthDesc(..)
     , parser
     , toMonth
     )
@@ -19,36 +19,36 @@ import           Formatting.Extended (formatTwoDigitsPadZero)
 import           Servant.API (FromHttpApiData(..), ToHttpApiData(..))
 import           Servant.API.Extended (runAtto)
 
-import           App.CustomDay (today)
+import           App.DayDesc (today)
 import           Db.Month (Month(..))
 
-data CustomMonth = MkCustomMonth Month  | -- ^ Fully defined month
-                   MkCustomMonthInt Int | -- ^ Month in current year
-                   CurrentMonth           -- ^ The current month
+data MonthDesc = MkMonthDesc Month  | -- ^ Fully defined month
+                 MkMonthDescNum Int | -- ^ Month in current year
+                 CurrentMonth           -- ^ The current month
 
     deriving (Eq, Show)
 
-instance FromHttpApiData CustomMonth where
+instance FromHttpApiData MonthDesc where
     parseQueryParam = runAtto parser
 
-instance ToHttpApiData CustomMonth where
-    toQueryParam (MkCustomMonth (MkMonth year month)) =
+instance ToHttpApiData MonthDesc where
+    toQueryParam (MkMonthDesc (MkMonth year month)) =
         Text.intercalate "-" (fmap formatTwoDigitsPadZero [yearInt, month])
         where yearInt = fromIntegral year
-    toQueryParam (MkCustomMonthInt month) = formatTwoDigitsPadZero month
+    toQueryParam (MkMonthDescNum month) = formatTwoDigitsPadZero month
     toQueryParam CurrentMonth = "current"
 
 
 
-parser :: Parser CustomMonth
+parser :: Parser MonthDesc
 parser =   asciiCI "current" $> CurrentMonth
        <|> mkMonth <$> decimal <*> (char '-' *> decimal)
-       <|> MkCustomMonthInt <$> decimal
-    where mkMonth year month = MkCustomMonth (MkMonth year month)
+       <|> MkMonthDescNum <$> decimal
+    where mkMonth year month = MkMonthDesc (MkMonth year month)
 
-toMonth :: (MonadIO m) => CustomMonth -> m Month
-toMonth (MkCustomMonth month) = pure month
-toMonth (MkCustomMonthInt m) = mkMonth . Time.toGregorian <$> today
+toMonth :: (MonadIO m) => MonthDesc -> m Month
+toMonth (MkMonthDesc month) = pure month
+toMonth (MkMonthDescNum m) = mkMonth . Time.toGregorian <$> today
   where mkMonth (y, _, _) = MkMonth y m
 toMonth CurrentMonth = mkMonth . Time.toGregorian <$> today
   where mkMonth (y, m, _) = MkMonth y m

@@ -2,7 +2,7 @@
 
 [![Build Status][status-png]][status]
 
-This is `hscalendar`, a time tracking software I develop to learn the HASKELL
+This is `hscalendar`, a time tracking software written in the HASKELL
 programming language. It uses the best practices proposed by the FP complete
 team:
 

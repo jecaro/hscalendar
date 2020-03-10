@@ -40,9 +40,9 @@ import           Options.Applicative as Opt
     , (<|>)
     )
 
-import qualified App.CustomDay as CD (CustomDay(..), parser)
-import qualified App.CustomMonth as CM (CustomMonth(..), parser)
-import qualified App.CustomWeek as CW (CustomWeek(..), parser)
+import qualified App.DayDesc as DD (DayDesc(..), parser)
+import qualified App.MonthDesc as MD (MonthDesc(..), parser)
+import qualified App.WeekDesc as WD (WeekDesc(..), parser)
 import           App.WorkOption
     ( WorkOption(..)
     , SetProj(..)
@@ -62,17 +62,17 @@ data Options = Options { optVerbose :: !Bool,
                          optLevel   :: !LogLevel }
 
 -- | Commands handle by command line
-data Cmd = Migrate                                             |
-           DiaryDisplay CD.CustomDay TimeInDay                 |
-           DiaryMonth CM.CustomMonth                           |
-           DiaryWeek CW.CustomWeek                             |
-           DiaryEdit CD.CustomDay TimeInDay                    |
-           DiaryHoliday CD.CustomDay TimeInDay IDT.IdleDayType |
-           DiaryRm CD.CustomDay TimeInDay                      |
-           DiaryWork CD.CustomDay TimeInDay [WorkOption]       |
-           ProjAdd Project.Project                             |
-           ProjList                                            |
-           ProjRename Project.Project Project.Project          |
+data Cmd = Migrate                                           |
+           DiaryDisplay DD.DayDesc TimeInDay                 |
+           DiaryMonth MD.MonthDesc                           |
+           DiaryWeek WD.WeekDesc                             |
+           DiaryEdit DD.DayDesc TimeInDay                    |
+           DiaryHoliday DD.DayDesc TimeInDay IDT.IdleDayType |
+           DiaryRm DD.DayDesc TimeInDay                      |
+           DiaryWork DD.DayDesc TimeInDay [WorkOption]       |
+           ProjAdd Project.Project                           |
+           ProjList                                          |
+           ProjRename Project.Project Project.Project        |
            ProjRm Project.Project
     deriving (Eq, Show)
 
@@ -85,14 +85,14 @@ readOffice = attoReadM Office.parser
 readTimeOfDay :: ReadM Time.TimeOfDay
 readTimeOfDay = attoReadM Time.parser
 
-readCustomDay :: ReadM CD.CustomDay
-readCustomDay = attoReadM CD.parser
+readDayDesc :: ReadM DD.DayDesc
+readDayDesc = attoReadM DD.parser
 
-readCustomMonth :: ReadM CM.CustomMonth
-readCustomMonth = attoReadM CM.parser
+readMonthDesc :: ReadM MD.MonthDesc
+readMonthDesc = attoReadM MD.parser
 
-readCustomWeek :: ReadM CW.CustomWeek
-readCustomWeek = attoReadM CW.parser
+readWeekDesc :: ReadM WD.WeekDesc
+readWeekDesc = attoReadM WD.parser
 
 readLevel :: ReadM LogLevel
 readLevel = attoReadM parser
@@ -128,36 +128,36 @@ projCmd = subparser
 
 diaryDisplay :: Opt.Parser Cmd
 diaryDisplay = DiaryDisplay
-    <$> argument readCustomDay (metavar "DAY")
+    <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
 
 diaryMonth :: Opt.Parser Cmd
 diaryMonth = DiaryMonth
-    <$> argument readCustomMonth (metavar "MONTH")
+    <$> argument readMonthDesc (metavar "MONTH")
 
 diaryWeek :: Opt.Parser Cmd
 diaryWeek = DiaryWeek
-    <$> argument readCustomWeek (metavar "WEEK")
+    <$> argument readWeekDesc (metavar "WEEK")
 
 diaryRm :: Opt.Parser Cmd
 diaryRm = DiaryRm
-    <$> argument readCustomDay (metavar "DAY")
+    <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
 
 diaryEdit :: Opt.Parser Cmd
 diaryEdit = DiaryEdit
-    <$> argument readCustomDay (metavar "DAY")
+    <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
 
 diaryHoliday :: Opt.Parser Cmd
 diaryHoliday = DiaryHoliday
-    <$> argument readCustomDay (metavar "DAY")
+    <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
     <*> argument readHalfDayType (metavar "HALF-DAY TYPE")
 
 diaryWork :: Opt.Parser Cmd
 diaryWork = DiaryWork
-    <$> argument readCustomDay (metavar "DAY")
+    <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
     <*> some workOption
 

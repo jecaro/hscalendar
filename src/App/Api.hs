@@ -22,9 +22,9 @@ import           Servant.API
     , (:>)
     , (:<|>)(..))
 
-import           App.CustomDay (CustomDay(..))
-import           App.CustomMonth (CustomMonth(..))
-import           App.CustomWeek (CustomWeek(..))
+import           App.DayDesc (DayDesc(..))
+import           App.MonthDesc (MonthDesc(..))
+import           App.WeekDesc (WeekDesc(..))
 import           App.WorkOption (WorkOption(..))
 
 import           Db.HalfDay (HalfDay(..))
@@ -63,33 +63,33 @@ type HSCalendarApi =
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Display a half-day"
            :> "diary"
-           :> Capture "day" CustomDay
+           :> Capture "day" DayDesc
            :> Capture "time in day" TimeInDay
            :> Get '[JSON] HalfDay
    :<|> Summary "Display a week"
            :> "week"
-           :> Capture "week" CustomWeek
+           :> Capture "week" WeekDesc
            :> Get '[JSON] WeekWithDays
    :<|> Summary "Display a month"
            :> "month"
-           :> Capture "month" CustomMonth
+           :> Capture "month" MonthDesc
            :> Get '[JSON] MonthWithDays
    :<|> Summary "Set a non-working half-day"
            :> "diary"
            :> "idle"
-           :> Capture "day" CustomDay
+           :> Capture "day" DayDesc
            :> Capture "time in day" TimeInDay
            :> ReqBody '[JSON] IdleDayType
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Set a working half-day"
            :> "diary"
-           :> Capture "day" CustomDay
+           :> Capture "day" DayDesc
            :> Capture "time in day" TimeInDay
            :> ReqBody '[JSON] [WorkOption]
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Delete a half-day"
            :> "diary"
-           :> Capture "day" CustomDay
+           :> Capture "day" DayDesc
            :> Capture "time in day" TimeInDay
            :> DeleteNoContent '[JSON] NoContent
 

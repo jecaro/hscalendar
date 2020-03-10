@@ -50,9 +50,9 @@ import           Servant.Server.StaticFiles (serveDirectoryWebApp)
 
 import           App.App (App, HasConfig, HasConnPool, initAppAndRun, runDB)
 import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
-import           App.CustomDay (CustomDay(..), toDay)
-import           App.CustomMonth (CustomMonth(..), toMonth)
-import           App.CustomWeek (CustomWeek(..), toWeek)
+import           App.DayDesc (DayDesc(..), toDay)
+import           App.MonthDesc (MonthDesc(..), toMonth)
+import           App.WeekDesc (WeekDesc(..), toWeek)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
     , runWorkOptions
@@ -158,7 +158,7 @@ hProjRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> pure NoC
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
-hHdGet :: HasConnPool env => CustomDay -> TimeInDay -> RIO env HalfDay
+hHdGet :: HasConnPool env => DayDesc -> TimeInDay -> RIO env HalfDay
 hHdGet cd tid = do
     -- Get actual day
     day <- toDay cd
@@ -168,14 +168,14 @@ hHdGet cd tid = do
             Left (HdNotFound _ _) -> throwM err404
             Right hd -> pure hd
 
-hWeekGet :: HasConnPool env => CustomWeek -> RIO env WeekWithDays
+hWeekGet :: HasConnPool env => WeekDesc -> RIO env WeekWithDays
 hWeekGet cw = do
     -- Get actual week
     week <- toWeek cw
     -- Get the list of half-day
     runDB $ weekGet week
 
-hMonthGet :: HasConnPool env => CustomMonth -> RIO env MonthWithDays
+hMonthGet :: HasConnPool env => MonthDesc -> RIO env MonthWithDays
 hMonthGet cm = do
     -- Get actual month
     month <- toMonth cm
@@ -184,13 +184,13 @@ hMonthGet cm = do
 
 hHdSetIdleDay
     :: HasConnPool env
-    => CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
+    => DayDesc -> TimeInDay -> IdleDayType -> RIO env NoContent
 hHdSetIdleDay cd tid idt = do
     day <- toDay cd
     runDB $ hdSetHoliday day tid idt
     pure NoContent
 
-hHdRm :: HasConnPool env => CustomDay -> TimeInDay  -> RIO env NoContent
+hHdRm :: HasConnPool env => DayDesc -> TimeInDay  -> RIO env NoContent
 hHdRm cd tid = do
     day <- toDay cd
     catch (runDB (hdRm day tid) >> pure NoContent)
@@ -198,7 +198,7 @@ hHdRm cd tid = do
 
 hHdSetWork
     :: (HasConnPool env, HasConfig env)
-    => CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
+    => DayDesc -> TimeInDay -> [WorkOption] -> RIO env NoContent
 hHdSetWork cd tid wopts = do
     day <- toDay cd
     -- Create the record in DB

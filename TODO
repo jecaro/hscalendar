@@ -6,9 +6,9 @@
 - Add cleanUp command in cli and in web api
 - Add documentation for editor
 - Add documentation about logger
+- Add documentation for elm
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
-- Better naming for Custom*
 - Better type safety in DayF setter: add function
 - server
   - Redirect root to index.html

@@ -45,9 +45,9 @@ import           Servant.Client
 import qualified Servant.Client.Extended as CE (parse)
 
 import           App.Api (HSBasicAuth, HSCalendarApi, RenameArgs(..))
-import           App.CustomDay (CustomDay)
-import           App.CustomMonth (CustomMonth)
-import           App.CustomWeek (CustomWeek)
+import           App.DayDesc (DayDesc)
+import           App.MonthDesc (MonthDesc)
+import           App.WeekDesc (WeekDesc)
 import           App.CommandLine
     ( Cmd(..)
     , Options(..)
@@ -89,12 +89,12 @@ data ProtectedClient env = ProtectedClient
     , projAdd :: Project -> RIO env NoContent
     , projRm :: Project -> RIO env NoContent
     , projRename :: RenameArgs -> RIO env NoContent
-    , hdGet :: CustomDay -> TimeInDay -> RIO env HalfDay
-    , weekGet :: CustomWeek -> RIO env WeekWithDays
-    , monthGet :: CustomMonth -> RIO env MonthWithDays
-    , hdSetIdleDay :: CustomDay -> TimeInDay -> IdleDayType -> RIO env NoContent
-    , hdSetWork :: CustomDay -> TimeInDay -> [WorkOption] -> RIO env NoContent
-    , hdRm :: CustomDay -> TimeInDay -> RIO env NoContent
+    , hdGet :: DayDesc -> TimeInDay -> RIO env HalfDay
+    , weekGet :: WeekDesc -> RIO env WeekWithDays
+    , monthGet :: MonthDesc -> RIO env MonthWithDays
+    , hdSetIdleDay :: DayDesc -> TimeInDay -> IdleDayType -> RIO env NoContent
+    , hdSetWork :: DayDesc -> TimeInDay -> [WorkOption] -> RIO env NoContent
+    , hdRm :: DayDesc -> TimeInDay -> RIO env NoContent
     }
 
 -- | Init the API with the client env and auth data

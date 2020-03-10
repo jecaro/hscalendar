@@ -35,7 +35,7 @@ import           System.Directory (removeFile)
 import           System.Environment (lookupEnv)
 import           System.IO.Temp (emptySystemTempFile)
 
-import           App.CustomDay (CustomDay(..))
+import           App.DayDesc (DayDesc(..))
 import           App.WorkOption
     ( SetArrived(..)
     , SetLeft(..)
@@ -141,8 +141,8 @@ hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNot
 -- current half-day.
 editorToOptions
     :: (HasProcessContext env, HasLogFunc env)
-    => (CustomDay -> TimeInDay -> RIO env HalfDay)
-    -> CustomDay
+    => (DayDesc -> TimeInDay -> RIO env HalfDay)
+    -> DayDesc
     -> TimeInDay
     -> RIO env [App.WorkOption.WorkOption]
 editorToOptions hdGet cd tid = do

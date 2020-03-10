@@ -20,9 +20,9 @@ import           App.App
     , runDB
     )
 import           App.CommandLine (Cmd(..))
-import           App.CustomDay (toDay)
-import           App.CustomMonth (toMonth)
-import           App.CustomWeek (toWeek)
+import           App.DayDesc (toDay)
+import           App.MonthDesc (toMonth)
+import           App.WeekDesc (toWeek)
 import           App.Editor (editorToOptions)
 import           App.WorkOption
     ( ProjCmdIsMandatory(..)
