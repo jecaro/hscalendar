@@ -11,7 +11,6 @@
 - Better naming for Custom*
 - Change return for pure
 - Better type safety in DayF setter: add function
-- Bug name of the week appear twice
 - server
   - Redirect root to index.html
   - favicon

@@ -14,7 +14,6 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (Day)
-import           RIO.Time.Extended (weekDay)
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
@@ -41,7 +40,7 @@ instance Display (Maybe HalfDay) where
 
 instance Display (DayF (Maybe HalfDay)) where
     display dayF
-        =  weekDay (dayF ^. day) <> " " <> display (dayF ^. day) <> "\n"
+        =  display (dayF ^. day) <> "\n"
         <> "\tMorning\n" <> display (dayF ^. morning) <> "\n"
         <> "\tAfternoon\n" <> display (dayF ^. afternoon)
 
