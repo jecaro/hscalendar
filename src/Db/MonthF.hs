@@ -3,7 +3,6 @@ module Db.MonthF (MonthWithDays, add, empty, stats)
 where
 
 import           RIO
-import qualified RIO.HashMap as HM (empty)
 import qualified RIO.Time as Time
 import qualified RIO.Vector.Boxed as VB (Vector, generate, (!?))
 import qualified RIO.Vector.Boxed.Partial as VB ((//))
@@ -15,7 +14,7 @@ import           Lens.Micro.Platform (makeFields, (.~), (?~))
 import qualified Db.DayF as DayF (DayF, afternoon, empty, morning, stats)
 import qualified Db.HalfDay as HalfDay (HalfDay, day, timeInDay)
 import           Db.Month (Month, day, fromDay, nbDays)
-import           Db.Stats (Stats)
+import qualified Db.Stats as Stats (Stats(..), empty)
 import           Db.TimeInDay (TimeInDay(..))
 
 
@@ -64,5 +63,5 @@ add hd m
             newDaysVect = daysVect VB.// [(d, newDay)]
         in Just (m & days .~ newDaysVect)
 
-stats :: MonthWithDays -> Stats
-stats m = foldr DayF.stats HM.empty m
+stats :: MonthWithDays -> Stats.Stats
+stats = foldr DayF.stats Stats.empty

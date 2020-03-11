@@ -19,11 +19,11 @@ import qualified RIO.HashMap as HM (insertWith)
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
-import           Lens.Micro.Platform (makeFields)
+import           Lens.Micro.Platform (makeFields, (.~), (+~), (%~))
 
 import           Db.HalfDay (HalfDay(..))
-import           Db.Stats (Stats)
-import           Db.Worked (project)
+import qualified Db.Stats as Stats (Stats, project, week)
+import qualified Db.Worked as Worked (project)
 
 -- | A 'DayF' contains a 'HalfDay' for the morning and a 'HalfDay' for the
 -- afternoon
@@ -69,11 +69,17 @@ ok (MkDayF d m a) = openDay d && workAllDay || not (openDay d)
 overWork :: DayF (Maybe HalfDay) -> Bool
 overWork (MkDayF d m a) = not (openDay d) && (isJust m || isJust a)
 
-stats :: DayF (Maybe HalfDay) -> Stats -> Stats
-stats d s = foldr statsOnMaybeHalfDay s d
+stats :: DayF (Maybe HalfDay) -> Stats.Stats -> Stats.Stats
+stats d s =
+    let s' = foldr statsOnMaybeHalfDay s d
+        updateWeek = if openDay (d ^. day)
+                         then Stats.week +~ 2
+                         else Stats.week %~ id
+    in s' & updateWeek
 
-statsOnMaybeHalfDay :: Maybe HalfDay -> Stats -> Stats
+statsOnMaybeHalfDay :: Maybe HalfDay -> Stats.Stats -> Stats.Stats
 statsOnMaybeHalfDay Nothing s = s
 statsOnMaybeHalfDay (Just (MkHalfDayIdle _)) s = s
 statsOnMaybeHalfDay (Just (MkHalfDayWorked worked)) s =
-    HM.insertWith (+) (worked ^. project) 1 s
+    let hm = HM.insertWith (+) (worked ^. Worked.project) 1 (s ^. Stats.project)
+     in s & Stats.project .~ hm
