@@ -1,8 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Db.MonthF (MonthWithDays, add, empty)
+module Db.MonthF (MonthWithDays, add, empty, stats)
 where
 
 import           RIO
+import qualified RIO.HashMap as HM (empty)
 import qualified RIO.Time as Time
 import qualified RIO.Vector.Boxed as VB (Vector, generate, (!?))
 import qualified RIO.Vector.Boxed.Partial as VB ((//))
@@ -11,9 +12,10 @@ import           Data.Aeson (FromJSON, ToJSON)
 
 import           Lens.Micro.Platform (makeFields, (.~), (?~))
 
-import qualified Db.DayF as DayF (DayF, afternoon, empty, morning)
+import qualified Db.DayF as DayF (DayF, afternoon, empty, morning, stats)
 import qualified Db.HalfDay as HalfDay (HalfDay, day, timeInDay)
 import           Db.Month (Month, day, fromDay, nbDays)
+import           Db.Stats (Stats)
 import           Db.TimeInDay (TimeInDay(..))
 
 
@@ -61,3 +63,6 @@ add hd m
             newDay = dayInVectOrEmpty & tidLens ?~ hd
             newDaysVect = daysVect VB.// [(d, newDay)]
         in Just (m & days .~ newDaysVect)
+
+stats :: MonthWithDays -> Stats
+stats m = foldr DayF.stats HM.empty m

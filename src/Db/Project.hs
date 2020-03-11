@@ -43,7 +43,9 @@ import           Test.QuickCheck.Instances.Text()
 newtype Project = MkProject
     { unProject :: Text.Text -- ^ Unwrap
     }
-    deriving (Eq, Generic, Show, Ord)
+    deriving (Eq, Generic, Ord, Show)
+
+instance Hashable Project
 
 instance ToJSON Project
 instance FromJSON Project where

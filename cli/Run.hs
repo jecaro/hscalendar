@@ -47,6 +47,7 @@ import           Db.Model
     )
 import           Db.HalfDay as HalfDay (displayHdWithDate)
 import           Db.Project (unProject)
+import           Db.MonthF (stats)
 
 
 -- | Execute the command
@@ -100,6 +101,7 @@ run (DiaryMonth cm) = do
     month <- toMonth cm
     hds <- runDB $ monthGet month
     logInfo $ display hds
+    logInfo $ display $ stats hds
 
 -- Edit an entry
 run (DiaryEdit cd tid) = do

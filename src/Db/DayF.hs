@@ -7,6 +7,7 @@ module Db.DayF
     , day
     , empty
     , morning
+    , stats
     , ok
     , overWork
     )
@@ -14,12 +15,15 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (Day)
+import qualified RIO.HashMap as HM (insertWith)
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Lens.Micro.Platform (makeFields)
 
-import           Db.HalfDay (HalfDay)
+import           Db.HalfDay (HalfDay(..))
+import           Db.Stats (Stats)
+import           Db.Worked (project)
 
 -- | A 'DayF' contains a 'HalfDay' for the morning and a 'HalfDay' for the
 -- afternoon
@@ -65,3 +69,11 @@ ok (MkDayF d m a) = openDay d && workAllDay || not (openDay d)
 overWork :: DayF (Maybe HalfDay) -> Bool
 overWork (MkDayF d m a) = not (openDay d) && (isJust m || isJust a)
 
+stats :: DayF (Maybe HalfDay) -> Stats -> Stats
+stats d s = foldr statsOnMaybeHalfDay s d
+
+statsOnMaybeHalfDay :: Maybe HalfDay -> Stats -> Stats
+statsOnMaybeHalfDay Nothing s = s
+statsOnMaybeHalfDay (Just (MkHalfDayIdle _)) s = s
+statsOnMaybeHalfDay (Just (MkHalfDayWorked worked)) s =
+    HM.insertWith (+) (worked ^. project) 1 s

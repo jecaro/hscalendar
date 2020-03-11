@@ -59,7 +59,7 @@ import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay, displayHdWithDate)
 import           Db.IdleDayType (IdleDayType)
-import           Db.MonthF (MonthWithDays)
+import           Db.MonthF (MonthWithDays, stats)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
 import           Db.WeekF (WeekWithDays)
@@ -191,8 +191,10 @@ run ProtectedClient{..} (ProjRename p1 p2) =
 run ProtectedClient{..} (DiaryDisplay cd tid) =
     hdGet cd tid >>= logInfo . displayHdWithDate
 
-run ProtectedClient{..} (DiaryMonth cm) =
-    monthGet cm >>= logInfo . display
+run ProtectedClient{..} (DiaryMonth cm) = do
+    hds <- monthGet cm
+    logInfo $ display hds
+    logInfo $ display $ stats hds
 
 run ProtectedClient{..} (DiaryWeek cw) =
     weekGet cw >>= logInfo . display

@@ -10,6 +10,7 @@
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs
 - Better type safety in DayF setter: add function
+- Add type alias for DayF (Maybe HalfDay)
 - server
   - Redirect root to index.html
   - favicon
