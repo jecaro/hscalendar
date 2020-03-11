@@ -23,6 +23,7 @@ import           Lens.Micro.Platform (makeFields, (?~))
 
 import qualified Db.DayF as DayF
     ( DayF(..)
+    , DayWithHalfDays
     , afternoon
     , empty
     , morning
@@ -58,7 +59,7 @@ data WeekF a = MkWeekF
 makeFields ''WeekF
 
 -- | Specialization for the type actually used
-type WeekWithDays = WeekF (DayF.DayF (Maybe HalfDay))
+type WeekWithDays = WeekF DayF.DayWithHalfDays
 
 instance FromJSON WeekWithDays
 instance ToJSON WeekWithDays
@@ -90,10 +91,7 @@ empty a week' =
     }
 
 -- | Add a 'HalfDay' into a 'WeekF'
-add
-    :: HalfDay
-    -> WeekF (DayF.DayF (Maybe HalfDay))
-    -> Maybe (WeekF (DayF.DayF (Maybe HalfDay)))
+add :: HalfDay -> WeekWithDays -> Maybe WeekWithDays
 add hd w =
     let day' = view day hd
         (week', dayNb) = Week.fromDay (view day hd)
@@ -115,9 +113,9 @@ add hd w =
           else Nothing
 
 -- | Check if the week is complete: every open day has two entries
-full :: WeekF (DayF.DayF (Maybe HalfDay)) -> Bool
+full :: WeekWithDays -> Bool
 full = all DayF.ok
 
 -- | Check if some work has been done during the week-end
-overWork :: WeekF (DayF.DayF (Maybe HalfDay)) -> Bool
+overWork :: WeekWithDays -> Bool
 overWork = any DayF.overWork

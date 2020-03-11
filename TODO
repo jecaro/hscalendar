@@ -3,6 +3,7 @@
 - Make diary date/TimeInDay optional default today
 - Put defaults values in config file for a week
 - Add unit tests for editor features
+- Add unit tests for stats features
 - Add cleanUp command in cli and in web api
 - Add documentation for editor
 - Add documentation about logger
@@ -10,7 +11,6 @@
 - Rework content of the file in editor command
 - Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
-- Add type alias for DayF (Maybe HalfDay)
 - server
   - Redirect root to index.html
   - favicon

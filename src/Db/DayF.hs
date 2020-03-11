@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Db.DayF
     ( DayF(..)
+    , DayWithHalfDays
     , afternoon
     , day
     , empty
@@ -36,14 +37,16 @@ data DayF a = MkDayF
     deriving (Eq, Foldable, Functor, Generic, Show, Traversable)
 makeFields ''DayF
 
-instance FromJSON (DayF (Maybe HalfDay))
-instance ToJSON (DayF (Maybe HalfDay))
+type DayWithHalfDays = DayF (Maybe HalfDay)
+
+instance FromJSON DayWithHalfDays
+instance ToJSON DayWithHalfDays
 
 instance Display (Maybe HalfDay) where
     display (Just hd) = display hd
     display Nothing = "\t\tNothing"
 
-instance Display (DayF (Maybe HalfDay)) where
+instance Display DayWithHalfDays where
     display dayF
         =  display (dayF ^. day) <> "\n"
         <> "\tMorning\n" <> display (dayF ^. morning) <> "\n"
@@ -61,16 +64,16 @@ weekDay d = weekNb >= 1 && weekNb <= 5
 -- | Check if a day is ok. A day is ok if
 -- - It's an open day and it's got an entry for the morning and the afternoon
 -- - It's saturday or sunday
-ok :: DayF (Maybe HalfDay) -> Bool
+ok :: DayWithHalfDays -> Bool
 ok (MkDayF d m a) = weekDay d && workAllDay || not (weekDay d)
     where workAllDay = isJust m && isJust a
 
 
 -- | Check if a day is over worked, ie work during the week end
-overWork :: DayF (Maybe HalfDay) -> Bool
+overWork :: DayWithHalfDays -> Bool
 overWork (MkDayF d m a) = not (weekDay d) && (isJust m || isJust a)
 
-stats :: DayF (Maybe HalfDay) -> Stats.Stats -> Stats.Stats
+stats :: DayWithHalfDays -> Stats.Stats -> Stats.Stats
 stats d s =
     let s' = foldr statsOnMaybeHalfDay s d
         updateWeek = if weekDay (d ^. day)
