@@ -28,6 +28,8 @@ instance Arbitrary IdleDayType where
 instance ToJSON IdleDayType
 instance FromJSON IdleDayType
 
+instance Hashable IdleDayType
+
 instance Display IdleDayType where
     display PaidLeave = "Paid leave"
     display FamilyEvent = "Family event"

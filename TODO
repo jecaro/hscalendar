@@ -8,7 +8,7 @@
 - Add documentation about logger
 - Add documentation for elm
 - Rework content of the file in editor command
-- Rework naming in CommandLine.hs
+- Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
 - Add type alias for DayF (Maybe HalfDay)
 - server
