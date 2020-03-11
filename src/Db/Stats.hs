@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Db.Stats (Stats(..), empty, project, week)
+module Db.Stats (Stats(..), empty, worked, week)
 where
 
 import           RIO
@@ -11,7 +11,7 @@ import           Lens.Micro.Platform (makeFields)
 import           Db.Project (Project)
 
 data Stats = MkStats
-    { _statsProject :: !(HM.HashMap Project Int)
+    { _statsWorked :: !(HM.HashMap Project Int)
     , _statsWeek :: !Int
     }
 makeFields ''Stats
@@ -20,7 +20,7 @@ instance Display Stats where
     display s =  "Stats for the month:\n"
               <> "Week days: " <> displayHdNb (s ^. week) <> "\n"
               <> "Projects:\n"
-              <> HM.foldrWithKey foldFct "" (s ^. project)
+              <> HM.foldrWithKey foldFct "" (s ^. worked)
         where foldFct p nbHds builder
                   =  builder <> "\t" <> display p <> ": "
                   <> displayHdNb nbHds <> "\n"

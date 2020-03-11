@@ -19,10 +19,10 @@ import qualified RIO.HashMap as HM (insertWith)
 
 import           Data.Aeson (FromJSON, ToJSON)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
-import           Lens.Micro.Platform (makeFields, (.~), (+~), (%~))
+import           Lens.Micro.Platform (makeFields, (+~), (%~))
 
 import           Db.HalfDay (HalfDay(..))
-import qualified Db.Stats as Stats (Stats, project, week)
+import qualified Db.Stats as Stats (Stats, week, worked)
 import qualified Db.Worked as Worked (project)
 
 -- | A 'DayF' contains a 'HalfDay' for the morning and a 'HalfDay' for the
@@ -53,26 +53,26 @@ empty :: a -> Time.Day -> DayF a
 empty a day' = MkDayF day' a a
 
 -- | Indicate if a day is an open day or a weekend day
-openDay :: Time.Day -> Bool
-openDay d = weekNb >= 1 && weekNb <= 5
+weekDay :: Time.Day -> Bool
+weekDay d = weekNb >= 1 && weekNb <= 5
     where (_, _, weekNb) = toWeekDate d
 
 -- | Check if a day is ok. A day is ok if
 -- - It's an open day and it's got an entry for the morning and the afternoon
 -- - It's saturday or sunday
 ok :: DayF (Maybe HalfDay) -> Bool
-ok (MkDayF d m a) = openDay d && workAllDay || not (openDay d)
+ok (MkDayF d m a) = weekDay d && workAllDay || not (weekDay d)
     where workAllDay = isJust m && isJust a
 
 
 -- | Check if a day is over worked, ie work during the week end
 overWork :: DayF (Maybe HalfDay) -> Bool
-overWork (MkDayF d m a) = not (openDay d) && (isJust m || isJust a)
+overWork (MkDayF d m a) = not (weekDay d) && (isJust m || isJust a)
 
 stats :: DayF (Maybe HalfDay) -> Stats.Stats -> Stats.Stats
 stats d s =
     let s' = foldr statsOnMaybeHalfDay s d
-        updateWeek = if openDay (d ^. day)
+        updateWeek = if weekDay (d ^. day)
                          then Stats.week +~ 2
                          else Stats.week %~ id
     in s' & updateWeek
@@ -81,5 +81,5 @@ statsOnMaybeHalfDay :: Maybe HalfDay -> Stats.Stats -> Stats.Stats
 statsOnMaybeHalfDay Nothing s = s
 statsOnMaybeHalfDay (Just (MkHalfDayIdle _)) s = s
 statsOnMaybeHalfDay (Just (MkHalfDayWorked worked)) s =
-    let hm = HM.insertWith (+) (worked ^. Worked.project) 1 (s ^. Stats.project)
-     in s & Stats.project .~ hm
+    s & Stats.worked %~ addOneFor (worked ^. Worked.project)
+  where addOneFor project = HM.insertWith (+) project 1

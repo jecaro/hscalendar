@@ -11,7 +11,6 @@
 - Rework naming in CommandLine.hs
 - Better type safety in DayF setter: add function
 - Add type alias for DayF (Maybe HalfDay)
-- Rename openDay to weekDay
 - server
   - Redirect root to index.html
   - favicon
