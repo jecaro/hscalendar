@@ -1,15 +1,14 @@
 module Main exposing (main)
 
-import Browser exposing (element)
+import Browser exposing (Document, document)
 import Browser.Events exposing (onMouseDown)
 import Date exposing 
     ( Date
     , Unit(..)
     , add
-    , format
     , today
-    , toIsoString
     )
+import Date.Extended exposing (toStringWithWeekday)
 import Html exposing 
     ( Html
     , button
@@ -72,7 +71,7 @@ type Msg
 
 main : Program () Model Msg
 main =
-    element
+    document
         { init = init
         , subscriptions = subscriptions
         , update = update
@@ -133,7 +132,6 @@ viewNav date =
     let
         previous = DateChanged (add Days -1 date)
         next = DateChanged (add Days 1 date)
-        weekdayString = format "EEEE" date
     in
         nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
             [ div [ class "navbar-brand" ] 
@@ -152,13 +150,13 @@ viewNav date =
                         ]
                     ]
                 , div [ class "navbar-item" ] 
-                    [ text <| toIsoString date ++ " " ++ weekdayString]
+                    [ text <| toStringWithWeekday date ]
                 ]
             ]
 
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
     let
         viewMorning =
@@ -166,14 +164,17 @@ view model =
         viewAfternoon =
             viewMaybe (HDW.view model.afternoon) (RemoteData.toMaybe model.projects)
 
-    in
-        div [] 
-            [ viewNav model.morning.date
-            , section [ class "section" ] 
-                [ Html.map MorningMsg viewMorning
-                , Html.map AfternoonMsg viewAfternoon 
+        viewBody = 
+            div [ ] 
+                [ viewNav model.morning.date
+                , section [ class "section" ] 
+                    [ div [ class "column" ] [ Html.map MorningMsg viewMorning ]
+                    , div [ class "column" ] [ Html.map AfternoonMsg viewAfternoon ]
+                    ]
                 ]
-            ]
+    in
+        { title = toStringWithWeekday model.morning.date
+        , body = [ viewBody ] }
 
 
 -- Subscriptions
