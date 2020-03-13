@@ -9,7 +9,7 @@ import qualified RIO.Vector.Boxed.Partial as VB ((//))
 
 import           Data.Aeson (FromJSON, ToJSON)
 
-import           Lens.Micro.Platform (makeFields, (.~), (?~))
+import           Lens.Micro.Platform (makeFields, _3, (.~), (?~))
 
 import qualified Db.DayF as DayF (DayF, afternoon, empty, morning, stats)
 import qualified Db.HalfDay as HalfDay (HalfDay, day, timeInDay)
@@ -46,7 +46,8 @@ add hd m
     | otherwise =
             -- Get the index of the day in the month
         let hdDay = hd ^. HalfDay.day
-            (_, _, d) = Time.toGregorian hdDay
+            -- Dont forget to remove 1 for the day to use it as an index
+            d = Time.toGregorian hdDay ^. _3 - 1
             -- Get the right lens to update the DayF in the vector
             tidLens =
                 case hd ^. HalfDay.timeInDay of
