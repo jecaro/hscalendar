@@ -11,7 +11,7 @@ import Date exposing
 import Date.Extended exposing (toStringWithWeekday)
 import Html exposing 
     ( Html
-    , button
+    , a
     , div
     , nav
     , section
@@ -136,17 +136,11 @@ viewNav date =
         nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
             [ div [ class "navbar-brand" ] 
                 [ div [ class "navbar-item" ] 
-                    [ div [ class "field", class "has-addons" ]
-                        [ div [ class "control" ]
-                            [ button
-                                [ class "button" , onClick previous ]
-                                [ text "Prev" ]
-                            ]
-                        , div [ class "control" ]
-                            [ button
-                                [ class "button" , onClick next ]
-                                [ text "Next" ]
-                            ]
+                    [ div [ class "buttons", class "has-addons" ]
+                        [ a [ class "button", onClick previous ]
+                            [ text "Prev" ]
+                        , a [ class "button", onClick next ]
+                            [ text "Next" ]
                         ]
                     ]
                 , div [ class "navbar-item" ] 
