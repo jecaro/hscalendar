@@ -1,17 +1,13 @@
 module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest(..), application)
-import Browser.Events exposing (onMouseDown)
 import Browser.Navigation exposing (Key, load, pushUrl)
 import Date exposing (Unit(..))
 import Html
 import Html.Extra exposing (nothing)
-import Json.Decode as Decode
-import List exposing (member)
 import Platform.Cmd exposing (batch)
 import Platform.Sub exposing (none)
 import RemoteData exposing (RemoteData(..), WebData)
-import String exposing (concat)
 import Time exposing (Month(..))
 import Url exposing (Url)
 import Url.Parser exposing (map, oneOf, parse, s)
@@ -29,8 +25,7 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-import Page.Day as PD exposing (Model, Msg(..), init, view)
-import HalfDayWidget as HDW exposing (Mode(..), Msg(..))
+import Page.Day as PD exposing (Model, Msg(..), init, subscriptions, view)
 import Request exposing (getProjects)
 
 -- Types
@@ -138,56 +133,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model = 
     case model.page of
-        PageDay dayModel ->
-            case (dayModel.morning.mode, dayModel.afternoon.mode) of
-                (EditNotes _, _) -> 
-                        onMouseDown 
-                            ( outsideTarget 
-                                (DayMsg <| PD.MorningMsg EditWasCanceled) 
-                                [ "submit", "edit" ]
-                            )
-                (_, EditNotes _) -> 
-                        onMouseDown 
-                            ( outsideTarget 
-                                (DayMsg <| PD.AfternoonMsg EditWasCanceled) 
-                                [ "submit", "edit" ]
-                            )
-                _ -> Sub.none
+        PageDay dayModel -> Sub.map DayMsg (PD.subscriptions dayModel)
         _ -> none
-
-
-{-This code has been found here
-https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
--}
-outsideTarget : msg -> List String -> Decode.Decoder msg
-outsideTarget toMsg domEltIds =
-    Decode.field "target" (isOutsideDomEltId domEltIds)
-        |> Decode.andThen
-            (\isOutside ->
-                if isOutside then
-                    Decode.succeed toMsg
-                else
-                    Decode.fail <| "inside " ++ concat domEltIds
-            )
-
-
-isOutsideDomEltId : List String -> Decode.Decoder Bool
-isOutsideDomEltId domEltIds =
-    Decode.oneOf
-        [ Decode.field "id" Decode.string
-            |> Decode.andThen
-                (\id ->
-                    if member id domEltIds then
-                        -- found match by id
-                        Decode.succeed False
-                    else
-                        -- try next decoder
-                        Decode.fail "check parent node"
-                )
-        , Decode.lazy (\_ -> isOutsideDomEltId domEltIds |> Decode.field "parentNode")
-        -- fallback if all previous decoders failed
-        , Decode.succeed True
-        ]
 
 stepUrl : Url -> Model -> (Model, Cmd Msg)
 stepUrl url model =

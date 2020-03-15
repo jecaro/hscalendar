@@ -1,6 +1,7 @@
-module Page.Day exposing (Model, Msg(..), init, update, view)
+module Page.Day exposing (Model, Msg(..), init, subscriptions, update, view)
 
 import Browser exposing (Document, UrlRequest(..))
+import Browser.Events exposing (onMouseDown)
 import Date exposing 
     ( Date
     , Unit(..)
@@ -18,8 +19,11 @@ import Html exposing
     )
 import Html.Attributes exposing (class, href)
 import Html.Events exposing (onClick)
+import Json.Decode as Decode
+import List exposing (member)
 import Platform.Cmd exposing (batch)
 import RemoteData exposing (RemoteData(..))
+import String exposing (concat)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
@@ -138,3 +142,55 @@ view model projects =
         { title = toStringWithWeekday model.morning.date
         , body = [ viewBody ] }
 
+-- Subscriptions
+
+subscriptions : Model -> Sub Msg
+subscriptions model = 
+    case (model.morning.mode, model.afternoon.mode) of
+        (EditNotes _, _) ->
+                onMouseDown 
+                    ( outsideTarget 
+                        (MorningMsg EditWasCanceled) 
+                        [ "submit", "edit" ]
+                    )
+        (_, EditNotes _) ->
+                onMouseDown 
+                    ( outsideTarget 
+                        (AfternoonMsg EditWasCanceled) 
+                        [ "submit", "edit" ]
+                    )
+        _ -> Sub.none
+
+
+{-This code has been found here
+https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
+-}
+outsideTarget : msg -> List String -> Decode.Decoder msg
+outsideTarget toMsg domEltIds =
+    Decode.field "target" (isOutsideDomEltId domEltIds)
+        |> Decode.andThen
+            (\isOutside ->
+                if isOutside then
+                    Decode.succeed toMsg
+                else
+                    Decode.fail <| "inside " ++ concat domEltIds
+            )
+
+
+isOutsideDomEltId : List String -> Decode.Decoder Bool
+isOutsideDomEltId domEltIds =
+    Decode.oneOf
+        [ Decode.field "id" Decode.string
+            |> Decode.andThen
+                (\id ->
+                    if member id domEltIds then
+                        -- found match by id
+                        Decode.succeed False
+                    else
+                        -- try next decoder
+                        Decode.fail "check parent node"
+                )
+        , Decode.lazy (\_ -> isOutsideDomEltId domEltIds |> Decode.field "parentNode")
+        -- fallback if all previous decoders failed
+        , Decode.succeed True
+        ]
