@@ -141,11 +141,17 @@ subscriptions model =
         PageDay dayModel ->
             case (dayModel.morning.mode, dayModel.afternoon.mode) of
                 (EditNotes _, _) -> 
-                    Sub.map (DayMsg << PD.MorningMsg) 
-                        (onMouseDown (outsideTarget [ "submit", "edit" ]))
+                        onMouseDown 
+                            ( outsideTarget 
+                                (DayMsg <| PD.MorningMsg EditWasCanceled) 
+                                [ "submit", "edit" ]
+                            )
                 (_, EditNotes _) -> 
-                    Sub.map (DayMsg << PD.AfternoonMsg) 
-                        (onMouseDown (outsideTarget [ "submit", "edit" ]))
+                        onMouseDown 
+                            ( outsideTarget 
+                                (DayMsg <| PD.AfternoonMsg EditWasCanceled) 
+                                [ "submit", "edit" ]
+                            )
                 _ -> Sub.none
         _ -> none
 
@@ -153,13 +159,13 @@ subscriptions model =
 {-This code has been found here
 https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
 -}
-outsideTarget : List String -> Decode.Decoder HDW.Msg
-outsideTarget domEltIds =
+outsideTarget : msg -> List String -> Decode.Decoder msg
+outsideTarget toMsg domEltIds =
     Decode.field "target" (isOutsideDomEltId domEltIds)
         |> Decode.andThen
             (\isOutside ->
                 if isOutside then
-                    Decode.succeed EditWasCanceled
+                    Decode.succeed toMsg
                 else
                     Decode.fail <| "inside " ++ concat domEltIds
             )
