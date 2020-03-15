@@ -9,15 +9,8 @@ import Date exposing
     , today
     )
 import Date.Extended exposing (toStringWithWeekday)
-import Html exposing 
-    ( Html
-    , a
-    , div
-    , nav
-    , section
-    , text
-    )
-import Html.Attributes exposing (class, href)
+import Html exposing (Html, div, section, text)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import List exposing (member)
@@ -48,6 +41,7 @@ import HalfDayWidget as HDW exposing
     , update
     , view
     )
+import NavBar as NB exposing (view)
 
 -- Types
 
@@ -107,22 +101,20 @@ viewNav date =
     let
         previous = DateChanged (add Days -1 date)
         next = DateChanged (add Days 1 date)
-    in
-        nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
-            [ div [ class "navbar-brand" ] 
-                [ div [ class "navbar-item" ] 
-                    [ div [ class "buttons", class "has-addons" ]
-                        [ div [ class "button", onClick previous ]
-                            [ text "Prev" ]
-                        , div [ class "button", onClick next ]
-                            [ text "Next" ]
-                        ]
+        items =
+            [ div [ class "navbar-item" ] 
+                [ div [ class "buttons", class "has-addons" ]
+                    [ div [ class "button", onClick previous ]
+                        [ text "Prev" ]
+                    , div [ class "button", onClick next ]
+                        [ text "Next" ]
                     ]
-                , div [ class "navbar-item" ] 
-                    [ text <| toStringWithWeekday date ]
-                , a [ class "navbar-item", href "/projects" ] [ text "Project" ]
                 ]
+            , div [ class "navbar-item" ] 
+                [ text <| toStringWithWeekday date ]
             ]
+    in
+    NB.view items 
 
 
 view : Model -> List Project -> Document Msg

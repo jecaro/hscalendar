@@ -26,6 +26,7 @@ import Api exposing
     , WorkOption(..)
     )
 import Page.Day as PD exposing (Model, Msg(..), init, subscriptions, view)
+import Page.Projects as PP exposing (view)
 import Request exposing (getProjects)
 
 -- Types
@@ -124,6 +125,7 @@ view model =
                         { title = document.title
                         , body = List.map (Html.map DayMsg) document.body
                         }
+                PageProject -> PP.view projects
                 _ -> { title = "No found", body = [ nothing ] }
         _ -> { title = "Loading projects", body = [ nothing ] }
 
@@ -141,7 +143,7 @@ stepUrl url model =
     let
         ( dayModel, dayCmd ) = PD.init
         parser = oneOf 
-            [ map ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) (s "editday")
+            [ map ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) (s "today")
             , map ( { model | page = PageProject }, Cmd.none ) (s "projects")
             ]
     in
