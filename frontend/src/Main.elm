@@ -1,32 +1,20 @@
 module Main exposing (main)
 
-import Browser exposing (Document, document)
+import Browser exposing (Document, UrlRequest(..), application)
 import Browser.Events exposing (onMouseDown)
-import Date exposing 
-    ( Date
-    , Unit(..)
-    , add
-    , today
-    )
-import Date.Extended exposing (toStringWithWeekday)
-import Html exposing 
-    ( Html
-    , a
-    , div
-    , nav
-    , section
-    , text
-    )
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
-import Html.Extra exposing (viewMaybe)
+import Browser.Navigation exposing (Key, load, pushUrl)
+import Date exposing (Unit(..))
+import Html
+import Html.Extra exposing (nothing)
 import Json.Decode as Decode
 import List exposing (member)
 import Platform.Cmd exposing (batch)
+import Platform.Sub exposing (none)
 import RemoteData exposing (RemoteData(..), WebData)
 import String exposing (concat)
-import Task exposing (perform)
 import Time exposing (Month(..))
+import Url exposing (Url)
+import Url.Parser exposing (map, oneOf, parse, s)
 
 import Api exposing 
     ( HalfDay(..)
@@ -41,38 +29,39 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-
-import HalfDayWidget as HDW exposing 
-    ( Mode(..)
-    , Msg(..)
-    , setDate
-    , update
-    , view
-    )
+import Page.Day as PD exposing (Model, Msg(..), init, view)
+import HalfDayWidget as HDW exposing (Mode(..), Msg(..))
 import Request exposing (getProjects)
 
 -- Types
 
+type Page 
+    = NotFound
+    | PageDay PD.Model
+    | PageProject
 
 type alias Model =
-    { morning : HDW.State
-    , afternoon : HDW.State
-    , projects : WebData (List Project)
+    { projects : WebData (List Project)
+    , page : Page
+    , key : Key
     }
 
 type Msg 
     = GotProjectsResponse (WebData (List Project))
-    | DateChanged Date
-    | MorningMsg HDW.Msg 
-    | AfternoonMsg HDW.Msg
+    | DayMsg PD.Msg
+    | LinkClicked UrlRequest
+    | UrlChanged Url
+
 
 
 -- Main
 
 main : Program () Model Msg
 main =
-    document
+    application
         { init = init
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , subscriptions = subscriptions
         , update = update
         , view = view
@@ -80,16 +69,16 @@ main =
 
 -- Init
 
-init : flags -> ( Model, Cmd Msg )
-init _ =
-    ( { morning = HDW.init Morning
-      , afternoon = HDW.init Afternoon
-      , projects = Loading
+init : flags -> Url -> Key -> ( Model, Cmd Msg )
+init _ _ key =
+    let
+        (dayModel, dayCmd) = PD.init 
+    in
+    ( { projects = Loading
+      , page = PageDay dayModel
+      , key = key
       }
-    , batch 
-        [ perform (\d -> DateChanged d) today
-        , getProjects GotProjectsResponse
-        ]
+    , batch [ getProjects GotProjectsResponse, Cmd.map DayMsg dayCmd ]
     )
 
 -- Update
@@ -97,90 +86,68 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model = 
     case msg of
-        DateChanged date ->
-            let 
-                (morning, cmdMorning) = setDate model.morning date
-                (afternoon, cmdAfternoon) = setDate model.afternoon date
-                
-                cmdGetMorning = Cmd.map MorningMsg cmdMorning
-                cmdGetAfternoon = Cmd.map AfternoonMsg cmdAfternoon
-                
-                model_ = { model | morning = morning, afternoon = afternoon }
-            in 
-                ( model_, batch [ cmdGetMorning, cmdGetAfternoon ] )
 
         GotProjectsResponse response -> 
             ( { model | projects = response }, Cmd.none )
         
-        MorningMsg morningMsg -> 
-            let
-                (morning, cmd) = HDW.update morningMsg model.morning
-            in
-                ( { model | morning = morning }, Cmd.map MorningMsg cmd )
+        DayMsg dayMsg -> 
+            case model.page of
+                PageDay dayModel -> 
+                    let
+                        (dayModel_, cmd) = PD.update dayMsg dayModel
+                    in
+                        ( { model | page = PageDay dayModel_ }, Cmd.map DayMsg cmd )
+                _ -> ( model, Cmd.none )
 
-        AfternoonMsg afternoonMsg -> 
-            let
-                (afternoon, cmd) = HDW.update afternoonMsg model.afternoon
-            in
-                ( { model | afternoon = afternoon }, Cmd.map AfternoonMsg cmd )
+        -- Code found here
+        -- https://github.com/elm/package.elm-lang.org/blob/master/src/frontend/Main.elm
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Internal url -> 
+                    ( model
+                    , pushUrl model.key (Url.toString url)
+                    )
+                External href ->
+                    ( model
+                    , load href
+                    )      
+
+        UrlChanged url -> stepUrl url model
 
 
 -- View
 
-viewNav : Date -> Html Msg
-viewNav date =
-    let
-        previous = DateChanged (add Days -1 date)
-        next = DateChanged (add Days 1 date)
-    in
-        nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
-            [ div [ class "navbar-brand" ] 
-                [ div [ class "navbar-item" ] 
-                    [ div [ class "buttons", class "has-addons" ]
-                        [ a [ class "button", onClick previous ]
-                            [ text "Prev" ]
-                        , a [ class "button", onClick next ]
-                            [ text "Next" ]
-                        ]
-                    ]
-                , div [ class "navbar-item" ] 
-                    [ text <| toStringWithWeekday date ]
-                ]
-            ]
-
-
-
 view : Model -> Document Msg
 view model =
-    let
-        viewMorning =
-            viewMaybe (HDW.view model.morning) (RemoteData.toMaybe model.projects)
-        viewAfternoon =
-            viewMaybe (HDW.view model.afternoon) (RemoteData.toMaybe model.projects)
-
-        viewBody = 
-            div [ ] 
-                [ viewNav model.morning.date
-                , section [ class "section" ] 
-                    [ div [ class "column" ] [ Html.map MorningMsg viewMorning ]
-                    , div [ class "column" ] [ Html.map AfternoonMsg viewAfternoon ]
-                    ]
-                ]
-    in
-        { title = toStringWithWeekday model.morning.date
-        , body = [ viewBody ] }
+    case model.projects of
+        Success projects ->
+            case model.page of
+                PageDay dayModel -> 
+                    let 
+                        document = PD.view dayModel projects
+                    in 
+                        { title = document.title
+                        , body = List.map (Html.map DayMsg) document.body
+                        }
+                _ -> { title = "No found", body = [ nothing ] }
+        _ -> { title = "Loading projects", body = [ nothing ] }
 
 
 -- Subscriptions
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    case (model.morning.mode, model.afternoon.mode) of
-        (EditNotes _, _) -> 
-            Sub.map MorningMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
-        (_, EditNotes _) -> 
-            Sub.map AfternoonMsg (onMouseDown (outsideTarget [ "submit", "edit" ]))
-        _ -> Sub.none
+subscriptions model = 
+    case model.page of
+        PageDay dayModel ->
+            case (dayModel.morning.mode, dayModel.afternoon.mode) of
+                (EditNotes _, _) -> 
+                    Sub.map (DayMsg << PD.MorningMsg) 
+                        (onMouseDown (outsideTarget [ "submit", "edit" ]))
+                (_, EditNotes _) -> 
+                    Sub.map (DayMsg << PD.AfternoonMsg) 
+                        (onMouseDown (outsideTarget [ "submit", "edit" ]))
+                _ -> Sub.none
+        _ -> none
 
 
 {-This code has been found here
@@ -216,3 +183,20 @@ isOutsideDomEltId domEltIds =
         , Decode.succeed True
         ]
 
+stepUrl : Url -> Model -> (Model, Cmd Msg)
+stepUrl url model =
+    let
+        ( dayModel, dayCmd ) = PD.init
+        parser = oneOf 
+            [ map ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) (s "editday")
+            , map ( { model | page = PageProject }, Cmd.none ) (s "projects")
+            ]
+    in
+        case parse parser url of
+            Just answer ->
+                answer
+
+            Nothing ->
+                ( { model | page = NotFound }
+                , Cmd.none
+                )

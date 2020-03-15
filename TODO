@@ -12,6 +12,7 @@
 - Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
 - Indent notes in display
+- Expose hash level in user cli
 - server
   - Redirect root to index.html
   - favicon
