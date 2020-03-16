@@ -197,6 +197,9 @@ password1 = mkPasswordLit $$(refineTH "We@kP@ssw0rd")
 password2 :: Password
 password2 = mkPasswordLit $$(refineTH "@n0therWe@kP@ssw0rd")
 
+defaultCost :: Int
+defaultCost = 4
+
 defaultWorked :: Time.Day -> TimeInDay -> Project -> HalfDay
 defaultWorked day tid project = MkHalfDayWorked (MkWorked
     day tid (arrived1 tid) (left1 tid) office1 defaultNotes project)
@@ -481,7 +484,7 @@ prop_hdSetProject runDB day tid project project' = Q.monadic (ioProperty . runDB
 prop_userAddUserExists :: RunDB -> Login -> Password -> Property
 prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ do
     (exists, checks, noExists) <- Q.run $ do
-        userAdd login password
+        userAdd login password defaultCost
         exists <- userExists login
         checks <- userCheck login password
         userRm login
@@ -495,8 +498,9 @@ prop_userAddUserExists runDB login password = Q.monadic (ioProperty . runDB) $ d
 prop_userAddUserAdd :: RunDB -> Login -> Password -> Property
 prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
     exceptionRaised <- Q.run $ do
-        userAdd login password
-        res <- catch (userAdd login password >> pure False) (\(UserExists _) -> pure True)
+        userAdd login password defaultCost
+        res <- catch (userAdd login password defaultCost >> pure False)
+            (\(UserExists _) -> pure True)
         cleanDB
         pure res
 
@@ -506,7 +510,7 @@ prop_userAddUserAdd runDB login password =  Q.monadic (ioProperty . runDB) $ do
 prop_userList :: RunDB -> UserUniqueList -> Property
 prop_userList runDB (UserUniqueList users) = Q.monadic (ioProperty . runDB) $ do
     dbUsers <- Q.run $ do
-        mapM_ (uncurry userAdd) users
+        mapM_ (\(u, p) -> userAdd u p defaultCost) users
         res <- userList
         cleanDB
         pure res
@@ -710,7 +714,9 @@ testUserApi runDB =
     describe "Test the user API" $ do
         context "When the DB is empty" $ do
             it "tests the uniqueness of the login" $
-                runDB (userAdd user1 password1 >> userAdd user1 password1)
+                runDB (  userAdd user1 password1 defaultCost
+                      >> userAdd user1 password1 defaultCost
+                      )
                     `shouldThrow` userExistsException
             it "tests if a user does not exists" $
                 runDB (userExists user1) `shouldReturn` False
@@ -723,12 +729,12 @@ testUserApi runDB =
                 runDB (userCheck user1 password1)
                     `shouldThrow` userNotFoundException
             it "tests if we can change the password of a user not present in the db" $
-                runDB (userChangePassword user1 password1)
+                runDB (userChangePassword user1 password1 defaultCost)
                     `shouldThrow` userNotFoundException
             it "tests the list of users" $
                 runDB userList `shouldReturn` []
         context "One user in the DB" $
-            before_ (runDB (userAdd user1 password1)) $
+            before_ (runDB (userAdd user1 password1 defaultCost)) $
             after_ (runDB cleanDB) $ do
             it "tests if the user exists" $
                 runDB (userExists user1) `shouldReturn` True
@@ -748,7 +754,7 @@ testUserApi runDB =
             it "check a wrong password" $
                 runDB (userCheck user1 password2) `shouldReturn` False
             it "tests password change" $ do
-                runDB (userChangePassword user1 password2)
+                runDB (userChangePassword user1 password2 defaultCost)
                 runDB (userCheck user1 password2) `shouldReturn` True
             it "tests the list of users" $
                 runDB userList `shouldReturn` [ user1 ]

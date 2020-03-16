@@ -7,6 +7,7 @@ import           Options.Applicative
     , ParserInfo
     , ReadM
     , argument
+    , auto
     , command
     , execParser
     , helper
@@ -15,6 +16,7 @@ import           Options.Applicative
     , idm
     , progDesc
     , subparser
+    , value
     , (<**>)
     )
 
@@ -38,10 +40,14 @@ import qualified Db.Password as Password (Password, parser)
 data UserCmd
     = UserList
     | UserRm Login.Login
-    | UserAdd Login.Login Password.Password
+    | UserAdd Login.Login Password.Password Int
     | UserRename Login.Login Login.Login
-    | UserChangePassword Login.Login Password.Password
+    | UserChangePassword Login.Login Password.Password Int
     | UserCheck Login.Login Password.Password
+
+
+defaultCost :: Int
+defaultCost = 12
 
 readLogin :: ReadM Login.Login
 readLogin = attoReadM Login.parser
@@ -56,6 +62,7 @@ userAddCmd :: Parser UserCmd
 userAddCmd = UserAdd
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readPassword (metavar "PASSWORD...")
+    <*> argument auto (metavar "COST..." <> value defaultCost)
 
 userRenameCmd :: Parser UserCmd
 userRenameCmd = UserRename
@@ -66,6 +73,7 @@ userChangePasswordCmd :: Parser UserCmd
 userChangePasswordCmd = UserChangePassword
     <$> argument readLogin (metavar "LOGIN...")
     <*> argument readPassword (metavar "PASSWORD...")
+    <*> argument auto (metavar "COST..." <> value defaultCost)
 
 userCheckCmd :: Parser UserCmd
 userCheckCmd = UserCheck
@@ -98,8 +106,9 @@ run (UserRm login) = catch (runDB $ userRm login)
     (\e@(UserNotFound _) -> logException e)
 
 -- | Add a new user
-run (UserAdd login password) = catch (void $ runDB $ userAdd login password)
-    (\e@(UserExists _) -> logException e)
+run (UserAdd login password cost) =
+    catch (void $ runDB $ userAdd login password cost)
+        (\e@(UserExists _) -> logException e)
 
 -- | Change the login of a user
 run (UserRename login1 login2) = catches (runDB $ userRename login1 login2)
@@ -108,8 +117,8 @@ run (UserRename login1 login2) = catches (runDB $ userRename login1 login2)
     ]
 
 -- | Change the password of a user
-run (UserChangePassword login password) =
-    catch (runDB $ userChangePassword login password)
+run (UserChangePassword login password cost) =
+    catch (runDB $ userChangePassword login password cost)
         (\e@(UserExists _) -> logException e)
 
 -- | Validate a password for a user

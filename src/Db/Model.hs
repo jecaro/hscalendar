@@ -207,10 +207,10 @@ userCheck login password = do
 -- | Add a new user
 userAdd
     :: (MonadIO m)
-    => Login -> Password -> SqlPersistT m ()
-userAdd login password = do
+    => Login -> Password -> Int -> SqlPersistT m ()
+userAdd login password cost = do
     guardUserNotExistsInt login
-    hash <- liftIO $ hashTxt password
+    hash <- liftIO $ hashTxt password cost
     void $ insert (DBUser (unLogin login) hash)
 
 -- | Check if a user exists in the DB
@@ -234,10 +234,10 @@ userRename login1 login2 = do
 -- | Change the password for a user
 userChangePassword
     :: (MonadIO m)
-    => Login -> Password -> SqlPersistT m ()
-userChangePassword login password = do
+    => Login -> Password -> Int -> SqlPersistT m ()
+userChangePassword login password cost = do
     (Entity uId _) <- userGetInt login
-    hash <- liftIO $ hashTxt password
+    hash <- liftIO $ hashTxt password cost
     update uId [DBUserHash =. hash]
 
 -- Private user functions
@@ -256,9 +256,9 @@ guardUserNotExistsInt login = do
     when exists (throwIO $ UserExists login)
 
 -- | Hash function operating on 'Text'
-hashTxt :: MonadRandom m => Password -> m Text
-hashTxt password = do
-    hash <- hashPassword 12 (encodeUtf8 $ unPassword password)
+hashTxt :: MonadRandom m => Password -> Int -> m Text
+hashTxt password cost = do
+    hash <- hashPassword cost (encodeUtf8 $ unPassword password)
     pure $ decodeUtf8With lenientDecode hash
 
 -- Exported project functions
