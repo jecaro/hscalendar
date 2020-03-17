@@ -2,28 +2,37 @@ module Page.Projects exposing (Model, Msg, init, projectsModified, update, view)
 
 import Browser exposing (Document)
 import Html exposing (Html, button, div, header, i, input, span, text)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
-import Html.Attributes exposing (class, placeholder, readonly, value)
+import Html.Attributes exposing (class, classList, placeholder, readonly, value)
 import List exposing (map)
 import RemoteData exposing (RemoteData(..), WebData)
 
 import Api exposing (Project)
 
 import NavBar as NB exposing (view)
-import Request exposing (addProject, deleteProject)
+import Request exposing (addProject, deleteProject, renameProject)
 
 
 type Msg
-    = ProjectDeleted Project
-    | ProjectAdded
+    = ProjectAdded
+    | ProjectDeleted Project
+    | ProjectEdited Project
+    | ProjectRenamed Project Project
     | ProjectToAddEdited String
     | GotResponse (WebData ())
+    | NoOp
 
 
 type alias Model = 
     { response : WebData ()
     , projectToAdd : String
+    , editedProject : Maybe EditedProject
+    }
+
+type alias EditedProject =
+    { project : Project
+    , currentName : String
     }
 
 projectsModified : Msg -> Bool
@@ -33,17 +42,38 @@ projectsModified msg =
         _ -> False
 
 init : Model
-init = { response = NotAsked, projectToAdd = "" }
+init = { response = NotAsked, projectToAdd = "", editedProject = Nothing }
 
-viewProject : Project -> Html Msg
-viewProject project = 
+viewProject : Maybe EditedProject -> Project -> Html Msg
+viewProject maybeEditedProject project =
+    let
+        (edited, current, renamed) = 
+            let
+                noOp = (False, project.unProject, always NoOp)
+            in
+            
+            case maybeEditedProject of
+                Nothing -> noOp
+                Just editedProject -> 
+                    if project == editedProject.project
+                        then 
+                            ( True
+                            , editedProject.currentName
+                            , ProjectRenamed project << Project 
+                            )
+                        else noOp
+    in
     div [ class "field", class "is-grouped" ]
         [ div [ class "control", class "is-expanded" ]
             [ input 
-                [ class "input"
-                , class "is-static"
-                , value project.unProject
-                , readonly True 
+                [ classList 
+                    [ ("input", True)
+                    , ("is-static", not edited) 
+                    ]
+                , value current
+                , readonly (not edited)
+                , onDoubleClick (ProjectEdited project)
+                , onEnter renamed
                 ] []
             ]
         , div [ class "control" ]
@@ -75,7 +105,7 @@ viewNewProject =
                 [ class "button"
                 , class "is-success"
                 , class "is-outlined" 
-                , onClick <| ProjectAdded
+                , onClick ProjectAdded
                 ]
                 [ span [ class "icon" ] 
                     [ i [ class "fas fa-plus" ] [] ]
@@ -91,16 +121,29 @@ update msg model =
         -- Error
         GotResponse response -> 
             ( { model | response = response }, Cmd.none )
+
         ProjectAdded ->
             ( { model | projectToAdd = "" }
               , addProject GotResponse (Project model.projectToAdd)
             )
+
+        ProjectEdited project ->
+            let
+                editedProject = Just { project = project, currentName = project.unProject}
+            in
+            ( { model | editedProject = editedProject }, Cmd.none )
+
         ProjectToAddEdited projectToAdd ->
             ( { model | projectToAdd = projectToAdd }, Cmd.none )
 
+        ProjectRenamed from to -> 
+            ( model, renameProject GotResponse from to )
 
-view : List Project -> Document Msg
-view projects = 
+        NoOp -> ( model, Cmd.none )
+
+
+view : Model -> List Project -> Document Msg
+view model projects = 
     let 
         body = 
             [ NB.view []
@@ -115,7 +158,7 @@ view projects =
                             ]
                         , div [ class "card-content" ]
                             [ div [ class "content" ] 
-                                <| map viewProject projects 
+                                <| map (viewProject model.editedProject) projects 
                                 ++ [ viewNewProject ]
                             ]
                         ]

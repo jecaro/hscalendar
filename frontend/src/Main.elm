@@ -141,9 +141,9 @@ view model =
                     { title = document.title
                     , body = List.map (Html.map DayMsg) document.body
                     }
-                PageProject _ -> 
+                PageProject projectModel -> 
                     let 
-                        document = PP.view projects
+                        document = PP.view projectModel projects
                     in 
                     { title = document.title
                     , body = List.map (Html.map ProjectMsg) document.body

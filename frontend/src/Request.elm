@@ -4,6 +4,7 @@ module Request exposing
     , deleteProject
     , getHalfDay
     , getProjects
+    , renameProject
     , setArrived
     , setIdleDayType
     , setLeft
@@ -45,6 +46,7 @@ import Api exposing
 import Api.HalfDay as HalfDay exposing (decoder)
 import Api.IdleDayType as IdleDayType exposing (encoder)
 import Api.Project as Project exposing (decoder)
+import Api.RenameArgs as RenameArgs exposing (decoder)
 import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 import Api.TimeOfDay exposing (TimeOfDay)
 import Api.WorkOption as WorkOption exposing (encoder)
@@ -72,6 +74,19 @@ deleteProject toMsg project =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+renameProject : (WebData () -> m) -> Project -> Project -> Cmd m
+renameProject toMsg from to =
+    request
+        { method = "PUT"
+        , headers = []
+        , url = projectUrl
+        , body = jsonBody <| RenameArgs.encoder { from = from, to = to}
+        , expect = expectWhatever <| toMsg << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
 
 addProject : (WebData () -> m) -> Project -> Cmd m
 addProject toMsg project =
