@@ -26,7 +26,7 @@ import Api exposing
     , WorkOption(..)
     )
 import Page.Day as PD exposing (Model, Msg(..), init, subscriptions, view)
-import Page.Projects as PP exposing (view)
+import Page.Projects as PP exposing (Model, projectsModified, view)
 import Request exposing (getProjects)
 
 -- Types
@@ -34,7 +34,7 @@ import Request exposing (getProjects)
 type Page 
     = NotFound
     | PageDay PD.Model
-    | PageProject
+    | PageProject PP.Model
 
 type alias Model =
     { projects : WebData (List Project)
@@ -45,6 +45,7 @@ type alias Model =
 type Msg 
     = GotProjectsResponse (WebData (List Project))
     | DayMsg PD.Msg
+    | ProjectMsg PP.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
 
@@ -95,6 +96,21 @@ update msg model =
                         ( { model | page = PageDay dayModel_ }, Cmd.map DayMsg cmd )
                 _ -> ( model, Cmd.none )
 
+        ProjectMsg projectMsg ->
+            case model.page of
+                PageProject projectModel -> 
+                    let
+                        (projectModel_, cmd) = PP.update projectMsg projectModel
+                        getProjectsIfNeeded = 
+                            if projectsModified projectMsg
+                            then getProjects GotProjectsResponse
+                            else Cmd.none
+                    in
+                    ( { model | page = PageProject projectModel_ }
+                    , batch [ Cmd.map ProjectMsg cmd, getProjectsIfNeeded ]
+                    )
+                _ -> ( model, Cmd.none )
+
         -- Code found here
         -- https://github.com/elm/package.elm-lang.org/blob/master/src/frontend/Main.elm
         LinkClicked urlRequest ->
@@ -122,10 +138,16 @@ view model =
                     let 
                         document = PD.view dayModel projects
                     in 
-                        { title = document.title
-                        , body = List.map (Html.map DayMsg) document.body
-                        }
-                PageProject -> PP.view projects
+                    { title = document.title
+                    , body = List.map (Html.map DayMsg) document.body
+                    }
+                PageProject _ -> 
+                    let 
+                        document = PP.view projects
+                    in 
+                    { title = document.title
+                    , body = List.map (Html.map ProjectMsg) document.body
+                    }
                 _ -> { title = "No found", body = [ nothing ] }
         _ -> { title = "Loading projects", body = [ nothing ] }
 
@@ -142,9 +164,14 @@ stepUrl : Url -> Model -> (Model, Cmd Msg)
 stepUrl url model =
     let
         ( dayModel, dayCmd ) = PD.init
+        projectModel = PP.init
         parser = oneOf 
-            [ map ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) (s "today")
-            , map ( { model | page = PageProject }, Cmd.none ) (s "projects")
+            [ map 
+                ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) 
+                (s "today")
+            , map 
+                ( { model | page = PageProject projectModel }, Cmd.none ) 
+                (s "projects")
             ]
     in
         case parse parser url of
