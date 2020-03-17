@@ -1,5 +1,8 @@
 module Request exposing 
-    ( getHalfDay
+    ( addProject
+    , delete
+    , deleteProject
+    , getHalfDay
     , getProjects
     , setArrived
     , setIdleDayType
@@ -7,7 +10,6 @@ module Request exposing
     , setNotes
     , setOffice
     , setProject
-    , delete
     )
 
 
@@ -19,6 +21,7 @@ import Http exposing
     , expectWhatever
     , get
     , jsonBody
+    , post
     , request
     )
 import Json.Decode as Decode exposing (list)
@@ -46,14 +49,40 @@ import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 import Api.TimeOfDay exposing (TimeOfDay)
 import Api.WorkOption as WorkOption exposing (encoder)
 
+projectUrl : String
+projectUrl = "/project"
+
 getProjects : (WebData (List Project) -> m) -> Cmd m
 getProjects toMsg =
     get
-        { url = "/project/"
+        { url = projectUrl
         , expect = expectJson 
             (fromResult >> toMsg) 
             (Decode.list Project.decoder)
         }
+
+deleteProject : (WebData () -> m) -> Project -> Cmd m
+deleteProject toMsg project =
+    request
+        { method = "DELETE"
+        , headers = []
+        , url = projectUrl
+        , body = jsonBody <| Project.encoder project
+        , expect = expectWhatever <| toMsg << RemoteData.fromResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+addProject : (WebData () -> m) -> Project -> Cmd m
+addProject toMsg project =
+    post
+        { url = projectUrl
+        , body = jsonBody <| Project.encoder project
+        , expect = expectWhatever <| toMsg << RemoteData.fromResult
+        }
+
+
+
 
 toInvertIsoString : Date -> String
 toInvertIsoString = format "dd-MM-yyyy"
