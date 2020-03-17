@@ -18,6 +18,7 @@ import           Language.Haskell.To.Elm
     , deriveElmTypeDefinition
     )
 
+import           App.Api (RenameArgs)
 import           App.WorkOption
     ( WorkOption
     , SetArrived
@@ -272,6 +273,23 @@ instance HasElmDecoder A.Value SetProj where
 instance HasElmEncoder A.Value SetProj where
     elmEncoderDefinition =
         Just $ deriveElmJSONEncoder @SetProj defaultOptions A.defaultOptions "Api.SetProj.encoder"
+
+--
+
+instance SOP.Generic RenameArgs
+instance SOP.HasDatatypeInfo RenameArgs
+
+instance HasElmType RenameArgs where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @RenameArgs defaultOptions "Api.RenameArgs"
+
+instance HasElmDecoder A.Value RenameArgs where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @RenameArgs defaultOptions A.defaultOptions "Api.RenameArgs.decoder"
+
+instance HasElmEncoder A.Value RenameArgs where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @RenameArgs defaultOptions A.defaultOptions "Api.RenameArgs.encoder"
 
 --
 

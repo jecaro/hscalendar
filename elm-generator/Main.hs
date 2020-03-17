@@ -35,6 +35,7 @@ import           Path
     )
 import           Path.IO (createDirIfMissing, getCurrentDir)
 
+import           App.Api (RenameArgs)
 import           App.CommandLine (Options(..), options)
 import           App.WorkOption
     ( SetArrived
@@ -116,6 +117,7 @@ main = do
           , jsonDefinitions @Notes
           , jsonDefinitions @Office
           , jsonDefinitions @Project
+          , jsonDefinitions @RenameArgs
           , jsonDefinitions @SetArrived
           , jsonDefinitions @SetLeft
           , jsonDefinitions @SetNotes
