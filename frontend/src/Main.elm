@@ -157,7 +157,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model = 
     case model.page of
-        PageDay dayModel -> Sub.map DayMsg (PD.subscriptions dayModel)
+        PageDay dayModel -> Sub.map DayMsg <| PD.subscriptions dayModel
+        PageProject _ -> Sub.map ProjectMsg PP.subscriptions
         _ -> none
 
 stepUrl : Url -> Model -> (Model, Cmd Msg)

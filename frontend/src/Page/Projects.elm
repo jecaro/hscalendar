@@ -1,25 +1,26 @@
-module Page.Projects exposing (Model, Msg, init, projectsModified, update, view)
+module Page.Projects exposing (Model, Msg, init, projectsModified, subscriptions, update, view)
 
 import Browser exposing (Document)
+import Browser.Events exposing (onMouseDown)
 import Html exposing (Html, button, div, header, i, input, span, text)
-import Html.Events exposing (onClick, onDoubleClick, onInput)
+import Html.Attributes exposing (class, classList, id, placeholder, readonly, value)
+import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
-import Html.Attributes exposing (class, classList, placeholder, readonly, value)
 import List exposing (map)
 import RemoteData exposing (RemoteData(..), WebData)
 
 import Api exposing (Project)
-
-import NavBar as NB exposing (view)
+import Common exposing (viewNavBar, outsideTarget)
 import Request exposing (addProject, deleteProject, renameProject)
 
 
 type Msg
     = ProjectAdded
     | ProjectDeleted Project
-    | ProjectEdited Project
     | ProjectRenamed Project Project
+    | ProjectEdited Project
     | ProjectToAddEdited String
+    | EditWasCanceled
     | GotResponse (WebData ())
     | NoOp
 
@@ -72,6 +73,7 @@ viewProject maybeEditedProject project =
                     ]
                 , value current
                 , readonly (not edited)
+                , onBlur EditWasCanceled
                 , onDoubleClick (ProjectEdited project)
                 , onEnter renamed
                 ] []
@@ -89,8 +91,8 @@ viewProject maybeEditedProject project =
             ]
         ]
 
-viewNewProject : Html Msg
-viewNewProject = 
+viewNewProject : String -> Html Msg
+viewNewProject projectToAdd = 
     div [ class "field", class "is-grouped" ]
         [ div [ class "control", class "is-expanded" ]
             [ input 
@@ -98,6 +100,8 @@ viewNewProject =
                 , onInput ProjectToAddEdited
                 , onEnter (always ProjectAdded)
                 , placeholder "Add new project"
+                , value projectToAdd
+                , id "edit"
                 ] []
             ]
         , div [ class "control" ]
@@ -106,6 +110,7 @@ viewNewProject =
                 , class "is-success"
                 , class "is-outlined" 
                 , onClick ProjectAdded
+                , id "submit"
                 ]
                 [ span [ class "icon" ] 
                     [ i [ class "fas fa-plus" ] [] ]
@@ -139,6 +144,9 @@ update msg model =
         ProjectRenamed from to -> 
             ( model, renameProject GotResponse from to )
 
+        EditWasCanceled -> 
+            ( { model | editedProject = Nothing, projectToAdd = "" }, Cmd.none )
+
         NoOp -> ( model, Cmd.none )
 
 
@@ -146,7 +154,7 @@ view : Model -> List Project -> Document Msg
 view model projects = 
     let 
         body = 
-            [ NB.view []
+            [ viewNavBar []
             , div [ class "section" ]
                 [ div [ class "column" ] 
                     [ div [ class "card" ] 
@@ -159,7 +167,7 @@ view model projects =
                         , div [ class "card-content" ]
                             [ div [ class "content" ] 
                                 <| map (viewProject model.editedProject) projects 
-                                ++ [ viewNewProject ]
+                                ++ [ viewNewProject model.projectToAdd ]
                             ]
                         ]
                     ]
@@ -167,3 +175,9 @@ view model projects =
             ]
     in
     { title = "Projects", body = body }
+
+subscriptions : Sub Msg
+subscriptions = 
+    onMouseDown <| outsideTarget EditWasCanceled [ "submit", "edit" ]
+
+

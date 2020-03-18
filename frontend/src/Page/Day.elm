@@ -12,11 +12,8 @@ import Date.Extended exposing (toStringWithWeekday)
 import Html exposing (Html, div, section, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Json.Decode as Decode
-import List exposing (member)
 import Platform.Cmd exposing (batch)
 import RemoteData exposing (RemoteData(..))
-import String exposing (concat)
 import Task exposing (perform)
 import Time exposing (Month(..))
 
@@ -33,7 +30,7 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-
+import Common exposing (outsideTarget, viewNavBar)
 import HalfDayWidget as HDW exposing 
     ( Mode(..)
     , Msg(..)
@@ -41,7 +38,6 @@ import HalfDayWidget as HDW exposing
     , update
     , view
     )
-import NavBar as NB exposing (view)
 
 -- Types
 
@@ -114,7 +110,7 @@ viewNav date =
                 [ text <| toStringWithWeekday date ]
             ]
     in
-    NB.view items 
+    viewNavBar items 
 
 
 view : Model -> List Project -> Document Msg
@@ -154,35 +150,3 @@ subscriptions model =
         _ -> Sub.none
 
 
-{-This code has been found here
-https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
--}
-outsideTarget : msg -> List String -> Decode.Decoder msg
-outsideTarget toMsg domEltIds =
-    Decode.field "target" (isOutsideDomEltId domEltIds)
-        |> Decode.andThen
-            (\isOutside ->
-                if isOutside then
-                    Decode.succeed toMsg
-                else
-                    Decode.fail <| "inside " ++ concat domEltIds
-            )
-
-
-isOutsideDomEltId : List String -> Decode.Decoder Bool
-isOutsideDomEltId domEltIds =
-    Decode.oneOf
-        [ Decode.field "id" Decode.string
-            |> Decode.andThen
-                (\id ->
-                    if member id domEltIds then
-                        -- found match by id
-                        Decode.succeed False
-                    else
-                        -- try next decoder
-                        Decode.fail "check parent node"
-                )
-        , Decode.lazy (\_ -> isOutsideDomEltId domEltIds |> Decode.field "parentNode")
-        -- fallback if all previous decoders failed
-        , Decode.succeed True
-        ]

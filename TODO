@@ -17,6 +17,7 @@
   - Redirect root to index.html
   - favicon
 - frontend
+  - put assets in a separate directory
   - escape key should cancel
   - better toString and fromString fct for TimeOfDay
   - widget for editing time
@@ -27,3 +28,7 @@
   - bug setting half day work when the other half day has weird left or arrived
   time
   - create a not found page
+  - sort out url
+  - error handling (project page)
+  - make button loose focus after click (project page)
+  - make the requests happen on top level
