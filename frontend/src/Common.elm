@@ -20,7 +20,8 @@ viewNavBar : List (Html msg) -> Html msg
 viewNavBar items =
     nav [ class "navbar", class "is-fixed-top", class "is-primary" ]
         [ div [ class "navbar-brand" ] <|
-            [ a [ class "navbar-item", href "/today" ] [ text "Today" ]
+            [ a [ class "navbar-item", href "/diary" ] [ text "Diary" ]
+            , a [ class "navbar-item", href "/month" ] [ text "Month" ]
             , a [ class "navbar-item", href "/projects" ] [ text "Projects" ]
             ] ++ items
         ]

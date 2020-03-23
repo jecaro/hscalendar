@@ -26,6 +26,7 @@ import Api exposing
     , WorkOption(..)
     )
 import Page.Day as PD exposing (Model, Msg(..), init, subscriptions, view)
+import Page.Month as PM exposing (Model, Msg, init, view)
 import Page.Projects as PP exposing (Model, projectsModified, view)
 import Request exposing (getProjects)
 
@@ -34,6 +35,7 @@ import Request exposing (getProjects)
 type Page 
     = NotFound
     | PageDay PD.Model
+    | PageMonth PM.Model
     | PageProject PP.Model
 
 type alias Model =
@@ -45,6 +47,7 @@ type alias Model =
 type Msg 
     = GotProjectsResponse (WebData (List Project))
     | DayMsg PD.Msg
+    | MonthMsg PM.Msg
     | ProjectMsg PP.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
@@ -93,7 +96,18 @@ update msg model =
                     let
                         (dayModel_, cmd) = PD.update dayMsg dayModel
                     in
-                        ( { model | page = PageDay dayModel_ }, Cmd.map DayMsg cmd )
+                        ( { model | page = PageDay dayModel_ }
+                        , Cmd.map DayMsg cmd )
+                _ -> ( model, Cmd.none )
+
+        MonthMsg monthMsg -> 
+            case model.page of
+                PageMonth monthModel -> 
+                    let
+                        (monthModel_, cmd) = PM.update monthMsg monthModel
+                    in
+                        ( { model | page = PageMonth monthModel_ }
+                        , Cmd.map MonthMsg cmd )
                 _ -> ( model, Cmd.none )
 
         ProjectMsg projectMsg ->
@@ -141,6 +155,13 @@ view model =
                     { title = document.title
                     , body = List.map (Html.map DayMsg) document.body
                     }
+                PageMonth monthModel -> 
+                    let 
+                        document = PM.view monthModel
+                    in 
+                    { title = document.title
+                    , body = List.map (Html.map MonthMsg) document.body
+                    }
                 PageProject projectModel -> 
                     let 
                         document = PP.view projectModel projects
@@ -148,7 +169,7 @@ view model =
                     { title = document.title
                     , body = List.map (Html.map ProjectMsg) document.body
                     }
-                _ -> { title = "No found", body = [ nothing ] }
+                _ -> { title = "Not found", body = [ nothing ] }
         _ -> { title = "Loading projects", body = [ nothing ] }
 
 
@@ -166,10 +187,14 @@ stepUrl url model =
     let
         ( dayModel, dayCmd ) = PD.init
         projectModel = PP.init
+        monthModel = PM.init
         parser = oneOf 
             [ map 
                 ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) 
-                (s "today")
+                (s "diary")
+            , map 
+                ( { model | page = PageMonth monthModel }, Cmd.none ) 
+                (s "month")
             , map 
                 ( { model | page = PageProject projectModel }, Cmd.none ) 
                 (s "projects")
