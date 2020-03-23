@@ -12,7 +12,6 @@
 - Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
 - Indent notes in display
-- Expose hash level in user cli
 - server
   - Redirect root to index.html
   - favicon
@@ -22,13 +21,12 @@
   - better toString and fromString fct for TimeOfDay
   - widget for editing time
   - date picker
-  - project page
   - week page
   - month page
   - bug setting half day work when the other half day has weird left or arrived
   time
   - create a not found page
   - sort out url
-  - error handling (project page)
   - make button loose focus after click (project page)
   - make the requests happen on top level
+  - loading icon on project page

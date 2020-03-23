@@ -2,7 +2,7 @@
 SRC = src/Main.elm
 
 # The fronted files to install
-FRONTEND= elm.js index.html bulma.min.css fontawesome-free-5.12.1-web
+FRONTEND= elm.js index.html assets
 
 # Toggle debug mode with "make debug=1"
 ifdef debug
