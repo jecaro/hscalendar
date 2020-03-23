@@ -29,4 +29,4 @@
   - sort out url
   - make button loose focus after click (project page)
   - make the requests happen on top level
-  - loading icon on project page
+  - on project page, loading icon when reloading the projects

@@ -6,8 +6,9 @@ import Html exposing (Html, button, div, header, i, input, span, text)
 import Html.Attributes exposing (class, classList, id, placeholder, readonly, value)
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
+import Html.Extra exposing (nothing)
 import List exposing (map)
-import RemoteData exposing (RemoteData(..), WebData)
+import RemoteData exposing (RemoteData(..), WebData, isLoading)
 
 import Api exposing (Project)
 import Common exposing (outsideTarget, viewErrorFromWebData, viewNavBar)
@@ -121,16 +122,20 @@ viewNewProject projectToAdd =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = 
     case msg of
-        ProjectDeleted project -> 
-            (model, deleteProject GotResponse project)
-        -- Error
-        GotResponse response -> 
-            ( { model | response = response }, Cmd.none )
 
         ProjectAdded ->
-            ( { model | projectToAdd = "" }
+            ( { model | projectToAdd = "", response = Loading }
               , addProject GotResponse (Project model.projectToAdd)
             )
+
+        ProjectDeleted project -> 
+            ( { model | response = Loading }, deleteProject GotResponse project)
+
+        ProjectRenamed from to -> 
+            ( { model | response = Loading }, renameProject GotResponse from to )
+
+        GotResponse response -> 
+            ( { model | response = response }, Cmd.none )
 
         ProjectEdited project ->
             let
@@ -141,9 +146,6 @@ update msg model =
         ProjectToAddEdited projectToAdd ->
             ( { model | projectToAdd = projectToAdd }, Cmd.none )
 
-        ProjectRenamed from to -> 
-            ( model, renameProject GotResponse from to )
-
         EditWasCanceled -> 
             ( { model | editedProject = Nothing, projectToAdd = "" }, Cmd.none )
 
@@ -153,6 +155,15 @@ update msg model =
 view : Model -> List Project -> Document Msg
 view model projects = 
     let 
+        loadingIcon = 
+            if isLoading model.response
+                then 
+                    div [ class "card-header-icon" ]
+                        [ span [ class "icon" ] 
+                            [ i [ class "fas fa-spinner fa-spin" ] [ ] ] 
+                        ]
+                else
+                    nothing 
         body = 
             [ viewNavBar []
             , div [ class "section" ]
@@ -163,6 +174,7 @@ view model projects =
                                 [ div [ class "title", class "is-4" ]
                                     [ text "Projects" ] 
                                 ]
+                                , loadingIcon
                             ]
                         , div [ class "card-content" ]
                             [ div [ class "content" ] 
