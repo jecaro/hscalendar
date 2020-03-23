@@ -10,7 +10,7 @@ import List exposing (map)
 import RemoteData exposing (RemoteData(..), WebData)
 
 import Api exposing (Project)
-import Common exposing (viewNavBar, outsideTarget)
+import Common exposing (outsideTarget, viewErrorFromWebData, viewNavBar)
 import Request exposing (addProject, deleteProject, renameProject)
 
 
@@ -167,7 +167,10 @@ view model projects =
                         , div [ class "card-content" ]
                             [ div [ class "content" ] 
                                 <| map (viewProject model.editedProject) projects 
-                                ++ [ viewNewProject model.projectToAdd ]
+                                ++ 
+                                [ viewNewProject model.projectToAdd 
+                                , viewErrorFromWebData model.response "The command returned an error"
+                                ]
                             ]
                         ]
                     ]

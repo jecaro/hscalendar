@@ -13,7 +13,6 @@ import Date exposing (Date, Unit(..), fromCalendarDate)
 import Html exposing 
     ( Attribute
     , Html
-    , article
     , br
     , button
     , div
@@ -22,7 +21,6 @@ import Html exposing
     , input
     , label
     , option
-    , p
     , select
     , span
     , textarea
@@ -68,6 +66,7 @@ import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
 import Api.Office.Extended as Office exposing (offices, toString)
 import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
+import Common exposing (viewErrorFromError, viewErrorFromWebData)
 
 import Request exposing 
     ( getHalfDay
@@ -279,39 +278,23 @@ view state projects =
                     (  halfDayHtml 
                     ++ changeHalDayHtml 
                     ++ [ viewErrorHalfDay state.halfDay
-                       , viewErrorEdit state.edit
+                       , viewErrorEdit state.edit 
                        ]
                     )
                 ]
             ] 
-    
-viewError : String -> Html msg
-viewError message =
-    article [ class "message", class "is-danger" ] 
-        [ div [ class "message-header" ]
-            [ p [] [ text "Error" ] ]
-        , div [ class "message-body" ] 
-            [ p [] 
-                [ text message
-                , br [] [] 
-                , text "Try reloading the page"
-                ] 
-            ]
-        ]
 
-viewErrorEdit : WebData a -> Html msg
-viewErrorEdit edit =
-    case edit of
-       Failure _ -> viewError "Error sending edit command"
-       _ -> nothing
 
 viewErrorHalfDay : WebData a -> Html msg
 viewErrorHalfDay halfDay =
     case halfDay of
         -- 404 is not an error, there is no entry
        Failure (BadStatus 404) -> nothing
-       Failure _ -> viewError "Error getting data from the server"
+       Failure error -> viewErrorFromError error "Error getting data from the server"
        _ -> nothing
+
+viewErrorEdit : WebData a -> Html msg
+viewErrorEdit edit = viewErrorFromWebData edit "Edit command returned an error"
 
 officeSelect : Date -> TimeInDay -> Office -> Html Msg
 officeSelect date timeInDay current =

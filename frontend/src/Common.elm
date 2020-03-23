@@ -1,9 +1,19 @@
-module Common exposing (outsideTarget, viewNavBar)
+module Common exposing 
+    ( outsideTarget
+    , viewError
+    , viewErrorFromError
+    , viewErrorFromWebData
+    , viewNavBar
+    )
 
-import Html exposing (Html, a, div, nav, text)
+import Html exposing (Html, a, article, br, div, nav, p, text)
 import Html.Attributes exposing (class, href)
+import Html.Extra exposing (nothing)
+import Http exposing (Error)
+import Http.Extended exposing (errorToString)
 import Json.Decode as Decode
-import List exposing (member)
+import List exposing (concatMap, member)
+import RemoteData exposing (RemoteData(..), WebData)
 import String exposing (concat)
 
 viewNavBar : List (Html msg) -> Html msg
@@ -14,6 +24,27 @@ viewNavBar items =
             , a [ class "navbar-item", href "/projects" ] [ text "Projects" ]
             ] ++ items
         ]
+
+viewError : List String -> Html msg
+viewError messages =
+    article [ class "message", class "is-danger" ] 
+        [ div [ class "message-header" ]
+            [ p [] [ text "Error" ] ]
+        , div [ class "message-body" ] 
+            [ p [] <|
+                concatMap (\t -> [ text t, br [] [] ]) messages 
+            ]
+        ]
+
+viewErrorFromError : Error -> String -> Html msg
+viewErrorFromError error msg = viewError [ msg, errorToString error ]
+
+viewErrorFromWebData : WebData a -> String -> Html msg
+viewErrorFromWebData data msg =
+    case data of
+       Failure error -> viewError [ msg, errorToString error ]
+       _ -> nothing
+
 
 {-This code has been found here
 https://dev.to/margaretkrutikova/elm-dom-node-decoder-to-detect-click-outside-3ioh 
