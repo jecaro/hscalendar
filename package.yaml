@@ -172,6 +172,7 @@ default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
   - RankNTypes
+  - ScopedTypeVariables
   - StandaloneDeriving
   - TypeApplications
   - TypeOperators

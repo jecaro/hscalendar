@@ -45,9 +45,12 @@ import           App.WorkOption
     , SetProj
     , WorkOption
     )
+import           Db.DayF (DayWithHalfDays)
 import           Db.HalfDay (HalfDay)
 import           Db.Idle (Idle)
 import           Db.IdleDayType (IdleDayType)
+import           Db.Month (Month)
+import           Db.MonthF (MonthWithDays)
 import           Db.Notes (Notes)
 import           Db.Office (Office)
 import           Db.Project (Project)
@@ -111,9 +114,12 @@ main = do
   where
     modules = HM.toList $ P.modules $ fmap S.simplifyDefinition $
         mconcat
-          [ jsonDefinitions @HalfDay
+          [ jsonDefinitions @DayWithHalfDays
+          , jsonDefinitions @HalfDay
           , jsonDefinitions @Idle
           , jsonDefinitions @IdleDayType
+          , jsonDefinitions @Month
+          , jsonDefinitions @MonthWithDays
           , jsonDefinitions @Notes
           , jsonDefinitions @Office
           , jsonDefinitions @Project

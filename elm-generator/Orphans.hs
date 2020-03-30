@@ -4,9 +4,12 @@ where
 
 import           RIO
 import qualified RIO.Time as Time (Day(..), TimeOfDay(..))
+import qualified RIO.Vector.Boxed as VB (Vector)
 
 import qualified Data.Aeson as A
 import qualified Generics.SOP as SOP
+import qualified Language.Elm.Type as T (apps)
+import qualified Language.Elm.Expression as E (apps)
 import           Language.Haskell.To.Elm
     ( HasElmEncoder(..)
     , HasElmDecoder(..)
@@ -27,9 +30,12 @@ import           App.WorkOption
     , SetOffice
     , SetProj
     )
+import           Db.DayF (DayWithHalfDays)
 import           Db.HalfDay (HalfDay)
 import           Db.Idle (Idle)
 import           Db.IdleDayType (IdleDayType)
+import           Db.Month (Month)
+import           Db.MonthF (MonthWithDays)
 import           Db.Notes (Notes)
 import           Db.Office (Office)
 import           Db.Project (Project)
@@ -290,6 +296,91 @@ instance HasElmDecoder A.Value RenameArgs where
 instance HasElmEncoder A.Value RenameArgs where
     elmEncoderDefinition =
         Just $ deriveElmJSONEncoder @RenameArgs defaultOptions A.defaultOptions "Api.RenameArgs.encoder"
+
+--
+
+instance HasElmType VB.Vector where
+    elmType = "Array.Array"
+
+instance HasElmEncoder A.Value VB.Vector where
+  elmEncoder = "Json.Encode.array"
+
+instance HasElmDecoder A.Value VB.Vector where
+  elmDecoder = "Json.Decode.array"
+
+instance (HasElmType a) => HasElmType (VB.Vector a) where
+  elmType =
+    T.apps (elmType @Vector) [elmType @a]
+
+instance (HasElmDecoder A.Value a) => HasElmDecoder A.Value (VB.Vector a) where
+  elmDecoder =
+    E.apps (elmDecoder @A.Value @VB.Vector) [elmDecoder @A.Value @a]
+
+instance (HasElmEncoder A.Value a) => HasElmEncoder A.Value (VB.Vector a) where
+  elmEncoder =
+    E.apps (elmEncoder @A.Value @VB.Vector) [elmEncoder @A.Value @a]
+
+--
+
+instance SOP.Generic MonthWithDays
+instance SOP.HasDatatypeInfo MonthWithDays
+
+instance HasElmType MonthWithDays where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @MonthWithDays removeUnderscoreOptions "Api.MonthWithDays"
+
+instance HasElmDecoder A.Value MonthWithDays where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @MonthWithDays removeUnderscoreOptions A.defaultOptions "Api.MonthWithDays.decoder"
+
+instance HasElmEncoder A.Value MonthWithDays where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @MonthWithDays removeUnderscoreOptions A.defaultOptions "Api.MonthWithDays.encoder"
+
+--
+
+instance SOP.Generic DayWithHalfDays
+instance SOP.HasDatatypeInfo DayWithHalfDays
+
+instance HasElmType DayWithHalfDays where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @DayWithHalfDays removeUnderscoreOptions "Api.DayWithHalfDays"
+
+instance HasElmDecoder A.Value DayWithHalfDays where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @DayWithHalfDays removeUnderscoreOptions A.defaultOptions "Api.DayWithHalfDays.decoder"
+
+instance HasElmEncoder A.Value DayWithHalfDays where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @DayWithHalfDays removeUnderscoreOptions A.defaultOptions "Api.DayWithHalfDays.encoder"
+
+--
+
+instance SOP.Generic Month
+instance SOP.HasDatatypeInfo Month
+
+instance HasElmType Month where
+    elmDefinition =
+        Just $ deriveElmTypeDefinition @Month removeUnderscoreOptions "Api.Month"
+
+instance HasElmDecoder A.Value Month where
+    elmDecoderDefinition =
+        Just $ deriveElmJSONDecoder @Month removeUnderscoreOptions A.defaultOptions "Api.Month.decoder"
+
+instance HasElmEncoder A.Value Month where
+    elmEncoderDefinition =
+        Just $ deriveElmJSONEncoder @Month removeUnderscoreOptions A.defaultOptions "Api.Month.encoder"
+
+--
+
+instance HasElmType Integer where
+  elmType = "Basics.Int"
+
+instance HasElmEncoder A.Value Integer where
+  elmEncoder = "Json.Encode.int"
+
+instance HasElmDecoder A.Value Integer where
+  elmDecoder = "Json.Decode.int"
 
 --
 
