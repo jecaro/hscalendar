@@ -187,13 +187,13 @@ stepUrl url model =
     let
         ( dayModel, dayCmd ) = PD.init
         projectModel = PP.init
-        monthModel = PM.init
+        ( monthModel, monthCmd ) = PM.init
         parser = oneOf 
             [ map 
                 ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) 
                 (s "diary")
             , map 
-                ( { model | page = PageMonth monthModel }, Cmd.none ) 
+                ( { model | page = PageMonth monthModel }, Cmd.map MonthMsg monthCmd ) 
                 (s "month")
             , map 
                 ( { model | page = PageProject projectModel }, Cmd.none ) 

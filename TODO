@@ -16,7 +16,6 @@
   - Redirect root to index.html
   - favicon
 - frontend
-  - put assets in a separate directory
   - escape key should cancel
   - better toString and fromString fct for TimeOfDay
   - widget for editing time

@@ -3,6 +3,7 @@ module Request exposing
     , delete
     , deleteProject
     , getHalfDay
+    , getMonth
     , getProjects
     , renameProject
     , setArrived
@@ -32,6 +33,8 @@ import RemoteData exposing (RemoteData(..), WebData, fromResult)
 import Api exposing 
     ( HalfDay
     , IdleDayType
+    , Month
+    , MonthWithDays
     , Notes
     , Office
     , Project
@@ -45,11 +48,22 @@ import Api exposing
     )
 import Api.HalfDay as HalfDay exposing (decoder)
 import Api.IdleDayType as IdleDayType exposing (encoder)
+import Api.Month.Extended as Month exposing (toString)
+import Api.MonthWithDays as MonthWithDays exposing (decoder)
 import Api.Project as Project exposing (decoder)
 import Api.RenameArgs as RenameArgs exposing (decoder)
 import Api.TimeInDay.Extended as TimeInDay exposing (toString)
 import Api.TimeOfDay exposing (TimeOfDay)
 import Api.WorkOption as WorkOption exposing (encoder)
+
+getMonth : ((WebData MonthWithDays) -> m) -> Month -> Cmd m
+getMonth toMsg month =
+    get
+        { url = "/month/" ++ Month.toString month
+        , expect = Http.expectJson (fromResult >> toMsg) MonthWithDays.decoder
+        }
+
+
 
 projectUrl : String
 projectUrl = "/project"
