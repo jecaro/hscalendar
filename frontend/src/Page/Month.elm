@@ -7,12 +7,13 @@ import Date.Extended exposing (toStringWithWeekday)
 import Html exposing (Html, div, header, i, span, text, ul, li)
 import Html.Extra exposing (nothing)
 import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import RemoteData exposing (RemoteData(..), WebData, isLoading)
 import Task exposing (perform)
 
 import Api exposing (DayWithHalfDays, HalfDay(..), Month, MonthWithDays)
 import Api.IdleDayType.Extended as IdleDayType exposing (toString)
-import Api.Month.Extended as Month exposing (fromDate, toString)
+import Api.Month.Extended as Month exposing (fromDate, next, previous, toString)
 import Common exposing (viewNavBar)
 import Request exposing (getMonth)
 
@@ -55,6 +56,29 @@ viewMonth : Array DayWithHalfDays -> Html msg
 viewMonth days = 
     ul [] <| toList <| map viewDay days
         
+viewNav : Month -> Html Msg
+viewNav month =
+    let
+        items =
+            [ div [ class "navbar-item" ] 
+                [ div [ class "buttons", class "has-addons" ]
+                    [ div 
+                        [ class "button"
+                        , onClick <| MonthChanged <| previous month
+                        ]
+                        [ text "Prev" ]
+                    , div 
+                        [ class "button"
+                        , onClick <| MonthChanged <| next month
+                        ]
+                        [ text "Next" ]
+                    ]
+                ]
+            , div [ class "navbar-item" ] 
+                [ text <| Month.toString month ]
+            ]
+    in
+    viewNavBar items 
 
 view : Model -> Document Msg
 view model = 
@@ -76,8 +100,12 @@ view model =
             case model of
                Success month -> viewMonth month.monthFDays
                _ -> text "Error"
+        navBarHtml = 
+            case model of
+                Success month -> viewNav month.monthFMonth
+                _ -> viewNavBar []
         body = 
-            [ viewNavBar []
+            [ navBarHtml
             , div [ class "section" ]
                 [ div [ class "column" ] 
                     [ div [ class "card" ] 
