@@ -37,7 +37,8 @@ instance Display MonthWithDays where
 
 empty :: a -> Month -> MonthF (DayF.DayF a)
 empty a month' = MkMonthF month' $
-    VB.generate (nbDays month') (DayF.empty a . day month')
+    -- We need to add one to the index to have the day number in the month
+    VB.generate (nbDays month') (DayF.empty a . day month' . (+) 1)
 
 add :: HalfDay.HalfDay -> MonthWithDays -> Maybe MonthWithDays
 add hd m
