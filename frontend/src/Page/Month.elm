@@ -2,7 +2,7 @@ module Page.Month exposing (Model, Msg, init, update, view)
 
 import Array exposing (Array, append, empty, initialize, get, map, toList)
 import Browser exposing (Document)
-import Date exposing (Date, Unit(..), add, day, today, weekdayNumber)
+import Date exposing (Date, Unit(..), add, day, monthNumber, today, weekdayNumber)
 import Html exposing (Html, br, div, header, i, span, table, td, th, tr, text)
 import Html.Extra exposing (nothing)
 import Html.Attributes exposing (class)
@@ -43,23 +43,32 @@ viewHalfDay maybeHalfDay =
         Just (MkHalfDayWorked worked) -> text worked.workedProject.unProject
         Just (MkHalfDayIdle idle) -> text <| IdleDayType.toString idle.idleDayType
 
-viewDay : DayWithHalfDays -> List (Html msg)
-viewDay { dayFDay, dayFMorning, dayFAfternoon } =
-    [ text <| fromInt <| day dayFDay
-    , br [] []
-    , viewHalfDay dayFMorning
-    , br [] []
-    , viewHalfDay dayFAfternoon
-    ]
+viewDay : Month -> DayWithHalfDays -> List (Html msg)
+viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
+    let
+        header = text <| fromInt <| day dayFDay
+    in
+        if monthNumber dayFDay == month.month
+            then
+                [ header
+                , br [] []
+                , viewHalfDay dayFMorning
+                , br [] []
+                , viewHalfDay dayFAfternoon
+                ]
+            else
+                [ header ]
 
-trForDays : List DayWithHalfDays -> List (Html msg)
-trForDays days =
+trForDays : Month -> List DayWithHalfDays -> List (Html msg)
+trForDays month days =
     case days of
         x1::x2::x3::x4::x5::x6::x7::xs ->
             let
                 sevenDays = [x1, x2, x3, x4, x5, x6, x7]
             in
-            tr [] (List.map (\d -> td [] ( viewDay d ) ) sevenDays) :: trForDays xs
+            tr []
+                (List.map (\d -> td [] ( viewDay month d ) ) sevenDays)
+                :: trForDays month xs
 
         [] -> []
         _ -> [] -- This should never happens
@@ -95,8 +104,8 @@ normalizeMonth days =
     in append (append before days) after
 
 
-viewMonth : Array DayWithHalfDays -> Html msg
-viewMonth days =
+viewMonth : MonthWithDays -> Html msg
+viewMonth { monthFMonth, monthFDays } =
     let
         daysOfWeek =
             [ "Monday"
@@ -111,7 +120,7 @@ viewMonth days =
         rowLabel = tr [] <| List.map (\d -> th [] [ text d ]) daysOfWeek
     in
     table [] <|
-        rowLabel :: (trForDays <| toList <| normalizeMonth days)
+        rowLabel :: (trForDays monthFMonth <| toList <| normalizeMonth monthFDays)
 
 viewNav : Month -> Html Msg
 viewNav month =
@@ -155,7 +164,7 @@ view model =
                _ -> "Month"
         monthHtml =
             case model of
-               Success month -> viewMonth month.monthFDays
+               Success month -> viewMonth month
                _ -> text "Error"
         navBarHtml =
             case model of
