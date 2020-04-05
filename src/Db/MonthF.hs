@@ -5,11 +5,10 @@ where
 import           RIO
 import qualified RIO.Time as Time
 import qualified RIO.Vector.Boxed as VB (Vector, generate, (!?))
-import qualified RIO.Vector.Boxed.Partial as VB ((//))
 
 import           Data.Aeson (FromJSON, ToJSON)
 
-import           Lens.Micro.Platform (makeFields, _3, (.~), (?~))
+import           Lens.Micro.Platform (ix, makeFields, _3, (.~), (?~))
 
 import qualified Db.DayF as DayF (DayF, afternoon, empty, morning, stats)
 import qualified Db.HalfDay as HalfDay (HalfDay, day, timeInDay)
@@ -62,7 +61,7 @@ add hd m
             dayInVectOrEmpty = fromMaybe emptyDay (daysVect VB.!? d)
             -- Update the day then the vector
             newDay = dayInVectOrEmpty & tidLens ?~ hd
-            newDaysVect = daysVect VB.// [(d, newDay)]
+            newDaysVect = daysVect & ix d .~ newDay
         in Just (m & days .~ newDaysVect)
 
 stats :: MonthWithDays -> Stats.Stats
