@@ -97,7 +97,7 @@ normalizeMonth days =
                 Just day ->
                     let arrayOfDates = fct day.dayFDay
                     in map dateToDayWithHalfDays arrayOfDates
-                Nothing -> Debug.log "Nothing :-(" empty
+                Nothing -> empty
 
         before = getPadding 0 beforeMonth
         after = getPadding (Array.length days - 1) afterMonth
