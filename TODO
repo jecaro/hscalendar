@@ -12,6 +12,7 @@
 - Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
 - Indent notes in display
+- Use lens to update vector
 - server
   - Redirect root to index.html
   - favicon
