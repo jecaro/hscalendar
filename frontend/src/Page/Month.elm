@@ -39,7 +39,7 @@ update msg model =
 viewHalfDay : Maybe HalfDay -> Html msg
 viewHalfDay maybeHalfDay =
     case maybeHalfDay of
-        Nothing -> text "Nothing"
+        Nothing -> nothing
         Just (MkHalfDayWorked worked) -> text worked.workedProject.unProject
         Just (MkHalfDayIdle idle) -> text <| IdleDayType.toString idle.idleDayType
 
