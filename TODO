@@ -29,3 +29,4 @@
   - make button loose focus after click (project page)
   - make the requests happen on top level
   - on project page, loading icon when reloading the projects
+  - on month page, loading icon for next/prev

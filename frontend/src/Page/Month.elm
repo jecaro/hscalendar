@@ -8,7 +8,7 @@ import Html.Extra exposing (nothing)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import List exposing (length)
-import RemoteData exposing (RemoteData(..), WebData, isLoading)
+import RemoteData exposing (RemoteData(..), WebData, isLoading, withDefault)
 import String exposing (fromInt)
 import Task exposing (perform)
 
@@ -158,27 +158,24 @@ view model =
                         ]
                 else
                     nothing
-        monthTitleString =
-            case model of
-               Success month -> Month.toString month.monthFMonth
-               _ -> "Month"
+        viewNavWithDefault =
+            withDefault nothing <| RemoteData.map (viewNav << .monthFMonth) model
+        monthTitleWithDefault =
+            withDefault "" <| RemoteData.map (Month.toString << .monthFMonth) model
         monthHtml =
             case model of
                Success month -> viewMonth month
-               _ -> text "Error"
-        navBarHtml =
-            case model of
-                Success month -> viewNav month.monthFMonth
-                _ -> viewNavBar []
+               Failure _ -> text "Error"
+               _ -> nothing
         body =
-            [ navBarHtml
+            [ viewNavWithDefault
             , div [ class "section" ]
                 [ div [ class "column" ]
                     [ div [ class "card" ]
                         [ header [ class "card-header" ]
                             [ div [ class "card-header-title" ]
                                 [ div [ class "title", class "is-4" ]
-                                    [ text monthTitleString ]
+                                    [ text monthTitleWithDefault ]
                                 ]
                             , loadingIcon
                             ]
