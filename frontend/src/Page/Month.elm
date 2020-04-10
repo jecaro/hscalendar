@@ -1,15 +1,16 @@
 module Page.Month exposing (Model, Msg, init, update, view)
 
-import Array exposing (Array, append, empty, initialize, get, map, toList)
+import Array exposing (Array, append, empty, foldr, initialize, get, map, toList)
 import Browser exposing (Document)
 import Date exposing (Date, Unit(..), add, day, monthNumber, today, weekdayNumber)
-import Html exposing (Html, br, div, header, i, span, table, td, th, tr, text)
+import Dict exposing (Dict)
+import Html exposing (Html, br, div, header, i, li, span, table, td, th, tr, text, ul)
 import Html.Extra exposing (nothing)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import List exposing (length)
 import RemoteData exposing (RemoteData(..), WebData, isLoading, withDefault)
-import String exposing (fromInt)
+import String exposing (fromInt, fromFloat)
 import Task exposing (perform)
 
 import Api exposing (DayWithHalfDays, HalfDay(..), Month, MonthWithDays)
@@ -104,7 +105,41 @@ normalizeMonth days =
     in append (append before days) after
 
 
-viewMonth : MonthWithDays -> Html msg
+getId : HalfDay -> String
+getId hd = 
+    case hd of
+        MkHalfDayWorked {workedProject} -> workedProject.unProject 
+        MkHalfDayIdle {idleDayType} -> IdleDayType.toString idleDayType
+
+
+incOrSetToOne : Maybe Float -> Float
+incOrSetToOne maybeNumber =
+    case maybeNumber of
+        Just n -> n + 0.5
+        Nothing -> 0.5
+
+
+updateDictWithId : Maybe String -> Dict String Float -> Dict String Float
+updateDictWithId maybeId dict =
+    case maybeId of
+        Nothing -> dict
+        Just id -> Dict.update id (Just << incOrSetToOne) dict
+
+
+stats : Array DayWithHalfDays -> Dict String Float
+stats days =
+    let
+        foldHalfDayWithDict { dayFMorning, dayFAfternoon } d =
+            let
+                maybeIdMorning = Maybe.map getId dayFMorning
+                maybeIdAfternoon = Maybe.map getId dayFAfternoon
+            in
+            updateDictWithId maybeIdMorning d |> updateDictWithId maybeIdAfternoon 
+    in
+    foldr foldHalfDayWithDict Dict.empty days
+
+
+viewMonth : MonthWithDays -> List (Html msg)
 viewMonth { monthFMonth, monthFDays } =
     let
         daysOfWeek =
@@ -118,9 +153,19 @@ viewMonth { monthFMonth, monthFDays } =
             ]
 
         rowLabel = tr [] <| List.map (\d -> th [] [ text d ]) daysOfWeek
+
+        monthTable = 
+            table [] <|
+                rowLabel :: (trForDays monthFMonth <| toList <| normalizeMonth monthFDays)
+
+        monthStats =
+            let 
+                monthList = Dict.toList <| stats monthFDays
+            in
+            ul [] <| List.map (\(k, v) -> li [] [ text <| k ++ ": " ++ fromFloat v ]) monthList
     in
-    table [] <|
-        rowLabel :: (trForDays monthFMonth <| toList <| normalizeMonth monthFDays)
+    [ monthTable, br [] [], monthStats ] 
+
 
 viewNav : Month -> Html Msg
 viewNav month =
@@ -158,15 +203,19 @@ view model =
                         ]
                 else
                     nothing
+
         viewNavWithDefault =
             withDefault nothing <| RemoteData.map (viewNav << .monthFMonth) model
+
         monthTitleWithDefault =
             withDefault "" <| RemoteData.map (Month.toString << .monthFMonth) model
+
         monthHtml =
             case model of
                Success month -> viewMonth month
-               Failure _ -> text "Error"
-               _ -> nothing
+               Failure _ -> [ text "Error" ]
+               _ -> []
+
         body =
             [ viewNavWithDefault
             , div [ class "section" ]
@@ -180,8 +229,7 @@ view model =
                             , loadingIcon
                             ]
                         , div [ class "card-content" ]
-                            [ div [ class "content" ]
-                                [ monthHtml ]
+                            [ div [ class "content" ] monthHtml
                             ]
                         ]
                     ]
