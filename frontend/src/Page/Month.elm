@@ -2,11 +2,20 @@ module Page.Month exposing (Model, Msg, init, update, view)
 
 import Array exposing (Array, append, empty, foldr, initialize, get, map, toList)
 import Browser exposing (Document)
-import Date exposing (Date, Unit(..), add, day, monthNumber, today, weekdayNumber)
+import Date exposing 
+    ( Date
+    , Unit(..)
+    , add
+    , day
+    , monthNumber
+    , today
+    , toIsoString
+    , weekdayNumber
+    )
 import Dict exposing (Dict)
-import Html exposing (Html, br, div, header, i, li, span, table, td, th, tr, text, ul)
+import Html exposing (Html, a, br, div, header, i, li, span, table, td, th, tr, text, ul)
 import Html.Extra exposing (nothing)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, href)
 import Html.Events exposing (onClick)
 import List exposing (length)
 import RemoteData exposing (RemoteData(..), WebData, isLoading, withDefault)
@@ -44,10 +53,12 @@ viewHalfDay maybeHalfDay =
         Just (MkHalfDayWorked worked) -> text worked.workedProject.unProject
         Just (MkHalfDayIdle idle) -> text <| IdleDayType.toString idle.idleDayType
 
+
 viewDay : Month -> DayWithHalfDays -> List (Html msg)
 viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
     let
-        header = text <| fromInt <| day dayFDay
+        header = a [ href <| "/" ++ toIsoString dayFDay ] 
+            [ text <| fromInt <| day dayFDay ]
     in
         if monthNumber dayFDay == month.month
             then
@@ -59,6 +70,7 @@ viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
                 ]
             else
                 [ header ]
+
 
 trForDays : Month -> List DayWithHalfDays -> List (Html msg)
 trForDays month days =
