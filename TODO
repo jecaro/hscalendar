@@ -12,6 +12,7 @@
 - Rework naming in CommandLine.hs (DayOff instead of Holiday)
 - Better type safety in DayF setter: add function
 - Indent notes in display
+- Add version ID in all the tools
 - server
   - Redirect root to index.html
   - favicon
@@ -30,3 +31,4 @@
   - make the requests happen on top level
   - on project page, loading icon when reloading the projects
   - on month page, loading icon for next/prev
+  - better imports

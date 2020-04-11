@@ -2,15 +2,16 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest(..), application)
 import Browser.Navigation exposing (Key, load, pushUrl)
-import Date exposing (Unit(..))
+import Date exposing (Date, Unit(..), fromIsoString)
 import Html
 import Html.Extra exposing (nothing)
 import Platform.Cmd exposing (batch)
 import Platform.Sub exposing (none)
 import RemoteData exposing (RemoteData(..), WebData)
+import Result exposing (toMaybe)
 import Time exposing (Month(..))
 import Url exposing (Url)
-import Url.Parser exposing (map, oneOf, parse, s)
+import Url.Parser exposing (custom, map, oneOf, parse, s)
 
 import Api exposing 
     ( HalfDay(..)
@@ -25,7 +26,7 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-import Page.Day as PD exposing (Model, Msg(..), init, subscriptions, view)
+import Page.Day as PD exposing (Model, Msg(..), initWithToday, subscriptions, view)
 import Page.Month as PM exposing (Model, Msg, init, view)
 import Page.Projects as PP exposing (Model, projectsModified, view)
 import Request exposing (getProjects)
@@ -72,7 +73,7 @@ main =
 init : flags -> Url -> Key -> ( Model, Cmd Msg )
 init _ _ key =
     let
-        (dayModel, dayCmd) = PD.init 
+        (dayModel, dayCmd) = PD.initWithToday 
     in
     ( { projects = Loading
       , page = PageDay dayModel
@@ -182,22 +183,47 @@ subscriptions model =
         PageProject _ -> Sub.map ProjectMsg PP.subscriptions
         _ -> none
 
+
+
+stepDayWithToday : Model -> (Model, Cmd Msg)
+stepDayWithToday model = 
+    let
+        ( dayModel, dayCmd ) = PD.initWithToday
+    in
+    ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) 
+        
+
+stepDayWithDate : Model -> Date -> (Model, Cmd Msg)
+stepDayWithDate model date = 
+    let 
+        ( dayModelWithDate, dayCmdWithDate ) = PD.initWithDate date
+    in
+    ( { model | page = PageDay dayModelWithDate }, Cmd.map DayMsg dayCmdWithDate)
+
+
+stepMonth : Model -> (Model, Cmd Msg)
+stepMonth model = 
+    let
+        ( monthModel, monthCmd ) = PM.init
+    in
+    ( { model | page = PageMonth monthModel }, Cmd.map MonthMsg monthCmd )
+
+
+stepProject : Model -> (Model, Cmd Msg)
+stepProject model =
+    let
+        projectModel = PP.init
+    in
+    ( { model | page = PageProject projectModel }, Cmd.none )
+
 stepUrl : Url -> Model -> (Model, Cmd Msg)
 stepUrl url model =
     let
-        ( dayModel, dayCmd ) = PD.init
-        projectModel = PP.init
-        ( monthModel, monthCmd ) = PM.init
         parser = oneOf 
-            [ map 
-                ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd) 
-                (s "diary")
-            , map 
-                ( { model | page = PageMonth monthModel }, Cmd.map MonthMsg monthCmd ) 
-                (s "month")
-            , map 
-                ( { model | page = PageProject projectModel }, Cmd.none ) 
-                (s "projects")
+            [ map (stepDayWithToday model) (s "diary")
+            , map (stepDayWithDate model) (custom "DATE" (toMaybe << fromIsoString))
+            , map (stepMonth model) (s "month")
+            , map (stepProject model) (s "projects")
             ]
     in
         case parse parser url of

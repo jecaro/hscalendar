@@ -1,20 +1,22 @@
-module Page.Day exposing (Model, Msg(..), init, subscriptions, update, view)
+module Page.Day exposing 
+    ( Model
+    , Msg(..)
+    , initWithToday
+    , initWithDate
+    , subscriptions
+    , update
+    , view
+    )
 
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Events exposing (onMouseDown)
-import Date exposing 
-    ( Date
-    , Unit(..)
-    , add
-    , today
-    )
+import Date exposing (Date, Unit(..), add, today, toIsoString)
 import Date.Extended exposing (toStringWithWeekday)
-import Html exposing (Html, div, section, text)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
+import Html exposing (Html, a, div, section, text)
+import Html.Attributes exposing (class, href)
 import Platform.Cmd exposing (batch)
 import RemoteData exposing (RemoteData(..))
-import Task exposing (perform)
+import Task exposing (perform, succeed)
 import Time exposing (Month(..))
 
 import Api exposing 
@@ -53,13 +55,22 @@ type Msg
 
 -- Init
 
-init : ( Model, Cmd Msg )
-init  =
+initWithToday : ( Model, Cmd Msg )
+initWithToday  =
     ( { morning = HDW.init Morning
       , afternoon = HDW.init Afternoon
       }
     , perform (\d -> DateChanged d) today
     )
+
+initWithDate : Date -> ( Model, Cmd Msg )
+initWithDate date =
+    ( { morning = HDW.init Morning
+      , afternoon = HDW.init Afternoon
+      }
+    , perform identity <| succeed <| DateChanged date
+    )
+
     
 -- Update
 
@@ -95,15 +106,14 @@ update msg model =
 viewNav : Date -> Html Msg
 viewNav date =
     let
-        previous = DateChanged (add Days -1 date)
-        next = DateChanged (add Days 1 date)
+        dateToUrl d = "/" ++ toIsoString d
+        previous = dateToUrl (add Days -1 date)
+        next =  dateToUrl (add Days 1 date)
         items =
             [ div [ class "navbar-item" ] 
                 [ div [ class "buttons", class "has-addons" ]
-                    [ div [ class "button", onClick previous ]
-                        [ text "Prev" ]
-                    , div [ class "button", onClick next ]
-                        [ text "Next" ]
+                    [ a [ class "button", href previous ] [ text "Prev" ]
+                    , a [ class "button", href next ] [ text "Next" ]
                     ]
                 ]
             , div [ class "navbar-item" ] 
