@@ -9,7 +9,6 @@ import Date exposing
     , day
     , monthNumber
     , today
-    , toIsoString
     , weekdayNumber
     )
 import Dict exposing (Dict)
@@ -25,7 +24,7 @@ import Task exposing (perform)
 import Api exposing (DayWithHalfDays, HalfDay(..), Month, MonthWithDays)
 import Api.IdleDayType.Extended as IdleDayType exposing (toString)
 import Api.Month.Extended as Month exposing (fromDate, next, previous, toString)
-import Common exposing (viewNavBar)
+import Common exposing (dateUrl, viewNavBar)
 import Request exposing (getMonth)
 
 type Msg
@@ -57,7 +56,7 @@ viewHalfDay maybeHalfDay =
 viewDay : Month -> DayWithHalfDays -> List (Html msg)
 viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
     let
-        header = a [ href <| "/" ++ toIsoString dayFDay ] 
+        header = a [ href <| dateUrl dayFDay ] 
             [ text <| fromInt <| day dayFDay ]
     in
         if monthNumber dayFDay == month.month

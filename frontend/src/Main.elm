@@ -11,7 +11,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Result exposing (toMaybe)
 import Time exposing (Month(..))
 import Url exposing (Url)
-import Url.Parser exposing (custom, map, oneOf, parse, s)
+import Url.Parser exposing (Parser, custom, map, oneOf, parse, s)
 
 import Api exposing 
     ( HalfDay(..)
@@ -216,14 +216,26 @@ stepProject model =
     in
     ( { model | page = PageProject projectModel }, Cmd.none )
 
+diaryTodayParser : Parser a a
+diaryTodayParser = s "diary"
+
+diaryDateParser : Parser (Date -> a) a
+diaryDateParser = custom "DATE" (toMaybe << fromIsoString)
+
+monthParser : Parser a a
+monthParser = s "month"
+
+projectsParser : Parser a a
+projectsParser = s "projects"
+
 stepUrl : Url -> Model -> (Model, Cmd Msg)
 stepUrl url model =
     let
         parser = oneOf 
-            [ map (stepDayWithToday model) (s "diary")
-            , map (stepDayWithDate model) (custom "DATE" (toMaybe << fromIsoString))
-            , map (stepMonth model) (s "month")
-            , map (stepProject model) (s "projects")
+            [ map (stepDayWithToday model) diaryTodayParser
+            , map (stepDayWithDate model) diaryDateParser
+            , map (stepMonth model) monthParser
+            , map (stepProject model) projectsParser
             ]
     in
         case parse parser url of

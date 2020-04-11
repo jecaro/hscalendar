@@ -10,7 +10,7 @@ module Page.Day exposing
 
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Events exposing (onMouseDown)
-import Date exposing (Date, Unit(..), add, today, toIsoString)
+import Date exposing (Date, Unit(..), add, today)
 import Date.Extended exposing (toStringWithWeekday)
 import Html exposing (Html, a, div, section, text)
 import Html.Attributes exposing (class, href)
@@ -32,7 +32,7 @@ import Api exposing
     , TimeInDay(..)
     , WorkOption(..)
     )
-import Common exposing (outsideTarget, viewNavBar)
+import Common exposing (dateUrl, outsideTarget, viewNavBar)
 import HalfDayWidget as HDW exposing 
     ( Mode(..)
     , Msg(..)
@@ -106,9 +106,8 @@ update msg model =
 viewNav : Date -> Html Msg
 viewNav date =
     let
-        dateToUrl d = "/" ++ toIsoString d
-        previous = dateToUrl (add Days -1 date)
-        next =  dateToUrl (add Days 1 date)
+        previous = dateUrl (add Days -1 date)
+        next =  dateUrl (add Days 1 date)
         items =
             [ div [ class "navbar-item" ] 
                 [ div [ class "buttons", class "has-addons" ]

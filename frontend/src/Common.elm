@@ -1,11 +1,13 @@
 module Common exposing 
-    ( outsideTarget
+    ( dateUrl
+    , outsideTarget
     , viewError
     , viewErrorFromError
     , viewErrorFromWebData
     , viewNavBar
     )
 
+import Date exposing (Date, toIsoString)
 import Html exposing (Html, a, article, br, div, nav, p, text)
 import Html.Attributes exposing (class, href)
 import Html.Extra exposing (nothing)
@@ -15,6 +17,11 @@ import Json.Decode as Decode
 import List exposing (concatMap, member)
 import RemoteData exposing (RemoteData(..), WebData)
 import String exposing (concat)
+
+
+dateUrl : Date -> String
+dateUrl date = "/" ++ toIsoString date
+
 
 viewNavBar : List (Html msg) -> Html msg
 viewNavBar items =
