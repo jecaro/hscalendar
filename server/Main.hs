@@ -1,9 +1,11 @@
 import           RIO
 
 import           Control.Monad.Except (ExceptT(..))
-import           Data.ByteString.Lazy.Char8 as DBLC (pack)
+import           Data.ByteString.Lazy.Char8 as Char8 (pack)
+import           Data.ByteString.Lazy as Lazy
 import           Data.Default (def)
 import           Database.Persist.Sql (runMigration)
+import           Network.HTTP.Media ((//), (/:))
 import           Network.Wai.Handler.Warp (run)
 import           Network.Wai.Middleware.RequestLogger
     ( IPAddrSource (..)
@@ -30,7 +32,16 @@ import           Options.Applicative
     , (<**>)
     )
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
-import           Servant.API (NoContent(..), Raw, (:<|>)(..), (:>))
+import           Servant.API 
+    ( Accept(..)
+    , Get
+    , MimeRender(..)
+    , NoContent(..)
+    , Raw
+    , Summary
+    , (:<|>)(..)
+    , (:>)
+    )
 import           Servant.Server
     ( Application
     , BasicAuthCheck (BasicAuthCheck)
@@ -86,13 +97,34 @@ import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay(..))
 import           Db.WeekF (WeekWithDays)
 
-type ProtectedApi = HSBasicAuth :> (HSCalendarApi :<|> Raw)
+data HTML
+
+newtype RawHtml = RawHtml { unRaw :: Lazy.ByteString }
+
+instance Accept HTML where
+    contentType _ = "text" // "html" /: ("charset", "utf-8")
+
+instance MimeRender HTML RawHtml where
+    mimeRender _ = unRaw
+
+type ProtectedApi 
+    = HSBasicAuth 
+    :> ( HSCalendarApi 
+        :<|> Summary "Root" :> Get '[HTML] RawHtml 
+        :<|> Summary "Directory" :> Raw
+       )
 
 protectedApi :: Proxy ProtectedApi
 protectedApi = Proxy
 
 protectedRioServer :: ServerT ProtectedApi (RIO App)
-protectedRioServer _ = rioServer :<|> serveDirectoryWebApp "frontend"
+protectedRioServer _
+    = rioServer 
+    :<|> serveRoot
+    :<|> serveDirectoryWebApp "frontend"
+
+serveRoot :: RIO App RawHtml
+serveRoot = fmap RawHtml (liftIO $ Lazy.readFile "frontend/index.html")
 
 rioServer :: ServerT HSCalendarApi (RIO App)
 rioServer =  hMigrateAll
@@ -144,17 +176,17 @@ hProjList = runDB projList
 
 hProjRm :: HasConnPool env => Project -> RIO env NoContent
 hProjRm project = catches (runDB (projRm project) >> pure NoContent)
-        [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = DBLC.pack $ show e } )
+        [ Handler (\e@(ProjHasHd _)  -> throwM err409 { errBody = Char8.pack $ show e } )
         , Handler (\(ProjNotFound _) -> throwM err404)
         ]
 
 hProjAdd :: HasConnPool env => Project -> RIO env NoContent
 hProjAdd project = catch (runDB (projAdd project) >> pure NoContent)
-        (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
+        (\e@(ProjExists _) -> throwM err409 { errBody = Char8.pack $ show e } )
 
 hProjRename :: HasConnPool env => RenameArgs -> RIO env NoContent
 hProjRename (MkRenameArgs p1 p2) = catches (runDB $ projRename p1 p2 >> pure NoContent)
-    [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = DBLC.pack $ show e } )
+    [ Handler (\e@(ProjExists _) -> throwM err409 { errBody = Char8.pack $ show e } )
     , Handler (\(ProjNotFound _) -> throwM err404)
     ]
 
@@ -203,8 +235,8 @@ hHdSetWork cd tid wopts = do
     day <- toDay cd
     -- Create the record in DB
     catches (runWorkOptions day tid wopts >> pure NoContent)
-        [ Handler (\e@TimesAreWrong      -> throwM err409 { errBody = DBLC.pack $ show e } )
-        , Handler (\e@ProjCmdIsMandatory -> throwM err409 { errBody = DBLC.pack $ show e } )
+        [ Handler (\e@TimesAreWrong      -> throwM err409 { errBody = Char8.pack $ show e } )
+        , Handler (\e@ProjCmdIsMandatory -> throwM err409 { errBody = Char8.pack $ show e } )
         , Handler (\(ProjNotFound _)     -> throwM err404)
         ]
 

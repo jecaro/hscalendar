@@ -20,6 +20,7 @@ dependencies:
 - hspec
 - http-client
 - http-client-tls
+- http-media
 - http-types
 - microlens-platform
 - monad-logger # Only needed for runNoLoggingT from Spec.hs
