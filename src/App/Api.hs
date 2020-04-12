@@ -28,7 +28,7 @@ import           App.WeekDesc (WeekDesc(..))
 import           App.WorkOption (WorkOption(..))
 
 import           Db.HalfDay (HalfDay(..))
-import           Db.IdleDayType (IdleDayType(..))
+import           Db.OffDayType (OffDayType(..))
 import           Db.Login (Login)
 import           Db.MonthF (MonthWithDays)
 import           Db.Project (Project)
@@ -76,10 +76,10 @@ type HSCalendarApi =
            :> Get '[JSON] MonthWithDays
    :<|> Summary "Set a non-working half-day"
            :> "diary"
-           :> "idle"
+           :> "off"
            :> Capture "day" DayDesc
            :> Capture "time in day" TimeInDay
-           :> ReqBody '[JSON] IdleDayType
+           :> ReqBody '[JSON] OffDayType
            :> PutNoContent '[JSON] NoContent
    :<|> Summary "Set a working half-day"
            :> "diary"

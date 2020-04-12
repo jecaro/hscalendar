@@ -72,7 +72,7 @@ import           App.WorkOption
     , WorkOption(..)
     )
 import           Db.HalfDay (HalfDay(..))
-import           Db.IdleDayType (IdleDayType(..))
+import           Db.OffDayType (OffDayType(..))
 import           Db.Login (Login, mkLogin)
 import           Db.Model
     ( HdNotFound(..)
@@ -83,7 +83,7 @@ import           Db.Model
     , UserNotFound(..)
     , hdGet
     , hdRm
-    , hdSetHoliday
+    , hdSetOff
     , migrateAll
     , monthGet
     , projAdd
@@ -145,7 +145,7 @@ rioServer =  hMigrateAll
                    :<|> hHdGet
                    :<|> hWeekGet
                    :<|> hMonthGet
-                   :<|> hHdSetIdleDay
+                   :<|> hHdSetOff
                    :<|> hHdSetWork
                    :<|> hHdRm
 
@@ -224,12 +224,12 @@ hMonthGet cm = do
     -- Get the list of half-day
     runDB $ monthGet month
 
-hHdSetIdleDay
+hHdSetOff
     :: HasConnPool env
-    => DayDesc -> TimeInDay -> IdleDayType -> RIO env NoContent
-hHdSetIdleDay cd tid idt = do
+    => DayDesc -> TimeInDay -> OffDayType -> RIO env NoContent
+hHdSetOff cd tid idt = do
     day <- toDay cd
-    runDB $ hdSetHoliday day tid idt
+    runDB $ hdSetOff day tid idt
     pure NoContent
 
 hHdRm :: HasConnPool env => DayDesc -> TimeInDay  -> RIO env NoContent

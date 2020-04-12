@@ -1,5 +1,5 @@
 -- | A type for a non-working day
-module Db.IdleDayType
+module Db.OffDayType
 where
 
 import RIO
@@ -12,7 +12,7 @@ import           Data.Attoparsec.Text
 import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
 -- | All the different kinds of non-working half-day
-data IdleDayType = PaidLeave
+data OffDayType = PaidLeave
                  | FamilyEvent
                  | RTTE
                  | RTTS
@@ -22,15 +22,15 @@ data IdleDayType = PaidLeave
     deriving (Bounded, Enum, Eq, Generic, Show)
 
 -- | Arbitrary instance for QuickCheck
-instance Arbitrary IdleDayType where
+instance Arbitrary OffDayType where
     arbitrary = arbitraryBoundedEnum
 
-instance ToJSON IdleDayType
-instance FromJSON IdleDayType
+instance ToJSON OffDayType
+instance FromJSON OffDayType
 
-instance Hashable IdleDayType
+instance Hashable OffDayType
 
-instance Display IdleDayType where
+instance Display OffDayType where
     display PaidLeave = "Paid leave"
     display FamilyEvent = "Family event"
     display RTTE = "RTTE"
@@ -40,7 +40,7 @@ instance Display IdleDayType where
     display PartTime = "Part time"
 
 -- | Parser for this type
-parser :: Parser IdleDayType
+parser :: Parser OffDayType
 parser =   asciiCI "pl"   $> PaidLeave
        <|> asciiCI "fe"   $> FamilyEvent
        <|> asciiCI "rtte" $> RTTE

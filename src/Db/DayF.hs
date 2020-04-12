@@ -23,9 +23,9 @@ import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           Lens.Micro.Platform (makeFields, (+~), (%~))
 
 import           Db.HalfDay (HalfDay(..))
-import qualified Db.Stats as Stats (Stats, idle, week, worked)
+import qualified Db.Stats as Stats (Stats, off, week, worked)
 import qualified Db.Worked as Worked (project)
-import           Db.Idle (dayType)
+import           Db.Off (dayType)
 
 -- | A 'DayF' contains a 'HalfDay' for the morning and a 'HalfDay' for the
 -- afternoon
@@ -86,7 +86,7 @@ addOneFor k = HM.insertWith (+) k 1
 
 statsOnMaybeHalfDay :: Maybe HalfDay -> Stats.Stats -> Stats.Stats
 statsOnMaybeHalfDay Nothing s = s
-statsOnMaybeHalfDay (Just (MkHalfDayIdle idle)) s =
-    s & Stats.idle %~ addOneFor (idle ^. dayType)
+statsOnMaybeHalfDay (Just (MkHalfDayOff off)) s =
+    s & Stats.off %~ addOneFor (off ^. dayType)
 statsOnMaybeHalfDay (Just (MkHalfDayWorked worked)) s =
     s & Stats.worked %~ addOneFor (worked ^. Worked.project)

@@ -171,7 +171,7 @@ runWorkOptions day tid wopts = do
     otherOpts <- case (eiHd, findProjCmd wopts) of
         -- Everything is there
         (Right (MkHalfDayWorked _), _) -> pure wopts
-        -- Nothing or holiday but a project
+        -- Nothing or off but a project
         (_, (Just (SetProj proj), otherOpts)) -> do
             config <- view configL
             -- Get the default times from the config file
@@ -189,7 +189,7 @@ runWorkOptions day tid wopts = do
             runDB $ hdSetWork day tid proj (config ^. defaultOffice) arrived left
             pure otherOpts''
         -- Holiday but no project
-        (Right (MkHalfDayIdle _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
+        (Right (MkHalfDayOff _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
         -- No hd, but no project either
         (Left (HdNotFound _ _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
 

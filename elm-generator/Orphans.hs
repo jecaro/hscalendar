@@ -32,8 +32,8 @@ import           App.WorkOption
     )
 import           Db.DayF (DayWithHalfDays)
 import           Db.HalfDay (HalfDay)
-import           Db.Idle (Idle)
-import           Db.IdleDayType (IdleDayType)
+import           Db.Off (Off)
+import           Db.OffDayType (OffDayType)
 import           Db.Month (Month)
 import           Db.MonthF (MonthWithDays)
 import           Db.Notes (Notes)
@@ -61,37 +61,37 @@ instance HasElmEncoder A.Value TimeInDay where
 
 --
 
-instance SOP.Generic IdleDayType
-instance SOP.HasDatatypeInfo IdleDayType
+instance SOP.Generic OffDayType
+instance SOP.HasDatatypeInfo OffDayType
 
-instance HasElmType IdleDayType where
+instance HasElmType OffDayType where
     elmDefinition =
-        Just $ deriveElmTypeDefinition @IdleDayType defaultOptions "Api.IdleDayType"
+        Just $ deriveElmTypeDefinition @OffDayType defaultOptions "Api.OffDayType"
 
-instance HasElmDecoder A.Value IdleDayType where
+instance HasElmDecoder A.Value OffDayType where
     elmDecoderDefinition =
-        Just $ deriveElmJSONDecoder @IdleDayType defaultOptions A.defaultOptions "Api.IdleDayType.decoder"
+        Just $ deriveElmJSONDecoder @OffDayType defaultOptions A.defaultOptions "Api.OffDayType.decoder"
 
-instance HasElmEncoder A.Value IdleDayType where
+instance HasElmEncoder A.Value OffDayType where
     elmEncoderDefinition =
-        Just $ deriveElmJSONEncoder @IdleDayType defaultOptions A.defaultOptions "Api.IdleDayType.encoder"
+        Just $ deriveElmJSONEncoder @OffDayType defaultOptions A.defaultOptions "Api.OffDayType.encoder"
 
 --
 
-instance SOP.Generic Idle
-instance SOP.HasDatatypeInfo Idle
+instance SOP.Generic Off
+instance SOP.HasDatatypeInfo Off
 
-instance HasElmType Idle where
+instance HasElmType Off where
     elmDefinition =
-        Just $ deriveElmTypeDefinition @Idle removeUnderscoreOptions "Api.Idle"
+        Just $ deriveElmTypeDefinition @Off removeUnderscoreOptions "Api.Off"
 
-instance HasElmDecoder A.Value Idle where
+instance HasElmDecoder A.Value Off where
     elmDecoderDefinition =
-        Just $ deriveElmJSONDecoder @Idle removeUnderscoreOptions A.defaultOptions "Api.Idle.decoder"
+        Just $ deriveElmJSONDecoder @Off removeUnderscoreOptions A.defaultOptions "Api.Off.decoder"
 
-instance HasElmEncoder A.Value Idle where
+instance HasElmEncoder A.Value Off where
     elmEncoderDefinition =
-        Just $ deriveElmJSONEncoder @Idle removeUnderscoreOptions A.defaultOptions "Api.Idle.encoder"
+        Just $ deriveElmJSONEncoder @Off removeUnderscoreOptions A.defaultOptions "Api.Off.encoder"
 
 --
 

@@ -36,7 +36,7 @@ import           Db.Model
     , TimesAreWrong(..)
     , hdGet
     , hdRm
-    , hdSetHoliday
+    , hdSetOff
     , migrateAll
     , monthGet
     , projAdd
@@ -124,10 +124,10 @@ run (DiaryWork cd tid wopts) = do
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
 
--- Set a holiday entry
-run (DiaryHoliday cd tid hdt) = do
+-- Set a day off
+run (DiaryOff cd tid hdt) = do
     day <- toDay cd
-    runDB $ hdSetHoliday day tid hdt
+    runDB $ hdSetOff day tid hdt
     -- Display new Half-Day
     run $ DiaryDisplay cd tid
 

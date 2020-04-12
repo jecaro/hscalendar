@@ -12,7 +12,7 @@ module Db.Model
     -- * Half-day functions
     , hdGet
     , hdRm
-    , hdSetHoliday
+    , hdSetOff
     , hdSetWork
     , hdSetArrived
     , hdSetArrivedAndLeft
@@ -95,7 +95,7 @@ import           Database.Persist.Sql (SqlPersistT, toSqlKey)
 import           Data.Maybe (isJust)
 
 import           Db.HalfDay (HalfDay(..))
-import           Db.IdleDayType (IdleDayType(..))
+import           Db.OffDayType (OffDayType(..))
 import           Db.Login (Login, mkLogin, unLogin)
 import           Db.Month (Month(..), firstDay, lastDay)
 import qualified Db.MonthF as MonthF (MonthWithDays, add, empty)
@@ -110,10 +110,10 @@ import qualified Db.WeekF as WeekF (WeekWithDays, add, empty)
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
 import           Db.Internal.DBModel
 import           Db.Internal.Convert
-    ( dbToIdle
+    ( dbToOff
     , dbToProject
     , dbToWorked
-    , idleDayTypeToDb
+    , offDayTypeToDb
     , projectToDb
     )
 
@@ -413,14 +413,14 @@ hdSetArrivedAndLeft day tid tArrived tLeft = do
     guardNewTimesAreOk day tid hdw'
     replace hdwId hdw'
 
--- | Set a half-day as holiday
-hdSetHoliday
+-- | Set a half-day as off
+hdSetOff
     :: (MonadIO m, MonadUnliftIO m)
     => Time.Day
     -> TimeInDay
-    -> IdleDayType
+    -> OffDayType
     -> SqlPersistT m ()
-hdSetHoliday day tid hdt = try (hdGetInt day tid) >>=
+hdSetOff day tid hdt = try (hdGetInt day tid) >>=
     \case
         -- Create a new entry
         Left (HdNotFound _ _) -> void $ insert $ DBHalfDay day tid dbHdt
@@ -430,7 +430,7 @@ hdSetHoliday day tid hdt = try (hdGetInt day tid) >>=
             deleteWhere [DBHalfDayWorkedHalfDayId P.==. hdId]
             -- Update entry
             update hdId [DBHalfDayType =. dbHdt]
-  where dbHdt = idleDayTypeToDb hdt
+  where dbHdt = offDayTypeToDb hdt
 
 -- | Set a half-day as working on a project.
 hdSetWork
@@ -503,9 +503,9 @@ dbToHalfDayInt
     (Entity DBHalfDay, Maybe (Entity DBHalfDayWorked), Maybe (Entity DBProject))
     -> m HalfDay
 dbToHalfDayInt (Entity _ hd, Nothing, Nothing) =
-    case dbToIdle hd of
+    case dbToOff hd of
         Nothing -> throwIO DbInconsistency
-        Just idle -> pure $ MkHalfDayIdle idle
+        Just off -> pure $ MkHalfDayOff off
 dbToHalfDayInt (Entity _ hd, Just (Entity _ hdw), Just (Entity _ proj)) =
     case dbToWorked hd hdw proj of
         Nothing -> throwIO DbInconsistency
@@ -517,14 +517,14 @@ dbToHalfDayInt _ = throwIO DbInconsistency
 -- | Get a list of 'HalfDay' between a range of two 'Day'
 rangeGet :: (MonadIO m, MonadUnliftIO m) => Time.Day -> Time.Day -> SqlPersistT m [HalfDay]
 rangeGet day1 day2 = do
-    tupleList <- (select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+    tupleList <- select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_ (   hd ^. DBHalfDayDay >=. val (day1)
                &&. hd ^. DBHalfDayDay <=. val (day2)
                )
         on (mbProj ?. DBProjectId    ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
         orderBy [asc (hd ^. DBHalfDayDay), desc (hd ^. DBHalfDayTimeInDay)]
-        pure (hd, mbHdw, mbProj))
+        pure (hd, mbHdw, mbProj)
     mapM dbToHalfDayInt tupleList
 
 -- | Check that the constraints on the times are valid between the two half-days

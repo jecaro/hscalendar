@@ -136,7 +136,7 @@ Set a half-day as non-working:
 - `ph`: Public holiday
 - `pt`: Part-time
 ```
-hscalendar-cli diary holiday DATE -m|-a pl|fe|rtte|rtts|ul|ph|pt
+hscalendar-cli diary off DATE -m|-a pl|fe|rtte|rtts|ul|ph|pt
 ```
 
 Remove a half-day:
@@ -216,7 +216,7 @@ example:
 - ~~deployement on [heroku][heroku]~~
 - ~~dockerize the app~~
 - ~~deploy on [digital ocean][digitalocean]~~
-- web frontend with [Elm][elm]: in progress
+- ~~web frontend with [Elm][elm]~~
 
 
 [digitalocean]: https://www.digitalocean.com/

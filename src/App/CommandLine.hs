@@ -51,7 +51,7 @@ import           App.WorkOption
     , SetLeft(..)
     , SetOffice(..)
     )
-import qualified Db.IdleDayType as IDT (IdleDayType(..), parser)
+import qualified Db.OffDayType as ODT (OffDayType(..), parser)
 import qualified Db.Notes as Notes (Notes, parser)
 import qualified Db.Office as Office (Office(..), parser)
 import qualified Db.Project as Project (Project, parser)
@@ -67,7 +67,7 @@ data Cmd = Migrate                                           |
            DiaryMonth MD.MonthDesc                           |
            DiaryWeek WD.WeekDesc                             |
            DiaryEdit DD.DayDesc TimeInDay                    |
-           DiaryHoliday DD.DayDesc TimeInDay IDT.IdleDayType |
+           DiaryOff DD.DayDesc TimeInDay ODT.OffDayType |
            DiaryRm DD.DayDesc TimeInDay                      |
            DiaryWork DD.DayDesc TimeInDay [WorkOption]       |
            ProjAdd Project.Project                           |
@@ -101,8 +101,8 @@ readLevel = attoReadM parser
                <|> string "warn"  $> LevelWarn
                <|> string "error" $> LevelError
 
-readHalfDayType :: ReadM IDT.IdleDayType
-readHalfDayType = attoReadM IDT.parser
+readHalfDayType :: ReadM ODT.OffDayType
+readHalfDayType = attoReadM ODT.parser
 
 readProject :: ReadM Project.Project
 readProject = attoReadM Project.parser
@@ -149,8 +149,8 @@ diaryEdit = DiaryEdit
     <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
 
-diaryHoliday :: Opt.Parser Cmd
-diaryHoliday = DiaryHoliday
+diaryOff :: Opt.Parser Cmd
+diaryOff = DiaryOff
     <$> argument readDayDesc (metavar "DAY")
     <*> tidOption
     <*> argument readHalfDayType (metavar "HALF-DAY TYPE")
@@ -173,8 +173,8 @@ diaryCmd = hsubparser
     (  command "display" (info diaryDisplay (progDesc "Display entry"))
     <> command "month"   (info diaryMonth   (progDesc "Display monthly review"))
     <> command "week"    (info diaryWeek    (progDesc "Display weekly review"))
-    <> command "work"    (info diaryWork    (progDesc "Set work entry"))
-    <> command "holiday" (info diaryHoliday (progDesc "Set holiday entry"))
+    <> command "work"    (info diaryWork    (progDesc "Set working day"))
+    <> command "off"     (info diaryOff     (progDesc "Set day off"))
     <> command "rm"      (info diaryRm      (progDesc "Remove entry"))
     <> command "edit"    (info diaryEdit    (progDesc "Edit entry"))
     )

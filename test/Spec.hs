@@ -45,9 +45,9 @@ import qualified Test.QuickCheck.Monadic as Q (PropertyM,   assert, monadic, run
 import           Test.QuickCheck.Instances.Text()
 import           Test.QuickCheck.Instances.Time()
 
-import qualified Db.IdleDayType as IDT (IdleDayType(..))
+import qualified Db.OffDayType as ODT (OffDayType(..))
 import           Db.HalfDay (HalfDay(..))
-import           Db.Idle (Idle(..))
+import           Db.Off (Off(..))
 import           Db.Model
     ( HdNotFound(..)
     , ProjExists(..)
@@ -59,7 +59,7 @@ import           Db.Model
     , cleanDB
     , hdGet
     , hdRm
-    , hdSetHoliday
+    , hdSetOff
     , hdSetWork
     , hdSetArrived
     , hdSetArrivedAndLeft
@@ -171,11 +171,11 @@ notes1 = mkNotesLit $$(refineTH "some notes")
 office1 :: Office
 office1 = Home
 
-hdt1 :: IDT.IdleDayType
-hdt1 = IDT.PaidLeave
+hdt1 :: ODT.OffDayType
+hdt1 = ODT.PaidLeave
 
-hdt1' :: IDT.IdleDayType
-hdt1' = IDT.PaidLeave
+hdt1' :: ODT.OffDayType
+hdt1' = ODT.PaidLeave
 
 arrived1 :: TimeInDay -> Time.TimeOfDay
 arrived1 Morning   = Time.TimeOfDay 8 30 0
@@ -256,18 +256,18 @@ prop_projList runDB (ProjectUniqueList projects) = Q.monadic (ioProperty . runDB
 
     Q.assert $ dbProjects == L.sort projects
 
--- | Test the presence of a holiday entry
-prop_hdSetHoliday :: RunDB -> Time.Day -> TimeInDay -> IDT.IdleDayType -> Property
-prop_hdSetHoliday runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
+-- | Test the presence of a day off
+prop_hdSetOff :: RunDB -> Time.Day -> TimeInDay -> ODT.OffDayType -> Property
+prop_hdSetOff runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
 
-    Q.run $ hdSetHoliday day tid hdt
+    Q.run $ hdSetOff day tid hdt
 
     -- Check if the value in the database is right
     hd <- Q.run $ hdGet day tid
 
     case hd of
         MkHalfDayWorked _               -> Q.assert False
-        MkHalfDayIdle (MkIdle _ _ hdt') -> Q.assert $ hdt == hdt'
+        MkHalfDayIdle (MkOff _ _ hdt') -> Q.assert $ hdt == hdt'
 
     Q.run cleanDB
 
@@ -585,8 +585,8 @@ testHdApi runDB =
     describe "Test hd API" $
         after_ (runDB cleanDB) $ do
         context "When the DB is empty" $ do
-            it "tests adding a holiday entry" $
-                runDB (hdSetHoliday day1 tid1 hdt1)
+            it "tests adding a day off" $
+                runDB (hdSetOff day1 tid1 hdt1)
             it "tests adding a work entry" $
                 runDB $  projAdd project1
                       >> hdSetWorkDefault day1 tid1 project1
@@ -602,22 +602,22 @@ testHdApi runDB =
                 runDB (hdRm day1 tid1) `shouldThrow` hdNotFoundException
             -- No hd in the DB
             itemsNoWorkedEntry runDB
-        context "When there is one holiday entry" $
-            before_ (runDB $ hdSetHoliday day1 tid1 hdt1) $ do
+        context "When there is a day off" $
+            before_ (runDB $ hdSetOff day1 tid1 hdt1) $ do
             it "tests getting the entry" $ do
                 res <- runDB (hdGet day1 tid1)
-                res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1')
+                res `shouldBe` MkHalfDayIdle (MkOff day1 tid1 hdt1')
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
                 let weekWithOneDayMaybe =
-                        WeekF.add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyWeek1
+                        WeekF.add (MkHalfDayIdle (MkOff day1 tid1 hdt1')) emptyWeek1
                 case weekWithOneDayMaybe of
                     Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
                     Just week -> res `shouldBe` week
             it "tests getting the full month" $ do
                 res <- runDB (monthGet month1)
                 let monthWithOneDayMaybe =
-                        MonthF.add (MkHalfDayIdle (MkIdle day1 tid1 hdt1')) emptyMonth1
+                        MonthF.add (MkHalfDayIdle (MkOff day1 tid1 hdt1')) emptyMonth1
                 case monthWithOneDayMaybe of
                     Nothing -> expectationFailure "monthWithOneDayMaybe should not be Nothing"
                     Just month -> res `shouldBe` month
@@ -655,10 +655,10 @@ testHdApi runDB =
                     hdSetWorkDefault day1 tid1 project2
                 worked <- runDB (hdGet day1 tid1)
                 worked `shouldBe` defaultWorked day1 tid1 project2
-            it "tests overriding with a holiday entry" $ do
-                runDB $ hdSetHoliday day1 tid1 hdt1
+            it "tests overriding with a day off" $ do
+                runDB $ hdSetOff day1 tid1 hdt1
                 res <- runDB (hdGet day1 tid1)
-                res `shouldBe` MkHalfDayIdle (MkIdle day1 tid1 hdt1)
+                res `shouldBe` MkHalfDayIdle (MkOff day1 tid1 hdt1)
             it "tests setting arrived time" $ do
                 runDB (hdSetArrived day1 tid1 (arrived1 tid1))
                 mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
@@ -686,8 +686,8 @@ testHdApi runDB =
                 mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)
                 mbWorked `projShouldBe` project2
         context "Test properties" $ do
-            it "prop_hdSetHoliday" $
-                property (prop_hdSetHoliday runDB)
+            it "prop_hdSetOff" $
+                property (prop_hdSetOff runDB)
             it "prop_hdSetWorkNoProj" $
                 property (prop_hdSetWorkNoProj runDB)
             it "prop_hdSetWork" $

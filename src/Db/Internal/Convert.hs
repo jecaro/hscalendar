@@ -1,10 +1,10 @@
 -- | The functions to convert the data between the DBModel and the business model
 module Db.Internal.Convert
-    ( dbToIdleDayType
-    , dbToIdle
+    ( dbToOffDayType
+    , dbToOff
     , dbToProject
     , dbToWorked
-    , idleDayTypeToDb
+    , offDayTypeToDb
     , projectToDb
     )
 where
@@ -13,8 +13,8 @@ import           RIO
 
 import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
 import           Db.Internal.DBModel
-import           Db.IdleDayType (IdleDayType(..))
-import           Db.Idle (Idle(..))
+import           Db.OffDayType (OffDayType(..))
+import           Db.Off (Off(..))
 import           Db.Notes (mkNotes)
 import           Db.Project (Project, mkProject, unProject)
 import           Db.Worked (Worked(..))
@@ -30,34 +30,34 @@ dbToProject :: DBProject -> Maybe Project
 dbToProject project = mkProject $ dBProjectName project
 
 -- | Convert from db to business. May fail.
-dbToIdle :: DBHalfDay -> Maybe Idle
-dbToIdle (DBHalfDay day timeInDay halfDayType) =
-    mkIdle <$> dbToIdleDayType halfDayType
-  where mkIdle halfDayType' = MkIdle
-          { _idleDay       = day
-          , _idleTimeInDay = timeInDay
-          , _idleDayType   = halfDayType' }
+dbToOff :: DBHalfDay -> Maybe Off
+dbToOff (DBHalfDay day timeInDay halfDayType) =
+    mkOff <$> dbToOffDayType halfDayType
+  where mkOff halfDayType' = MkOff
+          { _offDay       = day
+          , _offTimeInDay = timeInDay
+          , _offDayType   = halfDayType' }
 
--- | Convert an 'IdleDayType' to a 'DBHalfDayType'
-idleDayTypeToDb :: IdleDayType -> DBHalfDayType
-idleDayTypeToDb PaidLeave     = DBPaidLeave
-idleDayTypeToDb FamilyEvent   = DBFamilyEvent
-idleDayTypeToDb RTTE          = DBRTTE
-idleDayTypeToDb RTTS          = DBRTTS
-idleDayTypeToDb UnpaidLeave   = DBUnpaidLeave
-idleDayTypeToDb PublicHoliday = DBPublicHoliday
-idleDayTypeToDb PartTime      = DBPartTime
+-- | Convert an 'OffDayType' to a 'DBHalfDayType'
+offDayTypeToDb :: OffDayType -> DBHalfDayType
+offDayTypeToDb PaidLeave     = DBPaidLeave
+offDayTypeToDb FamilyEvent   = DBFamilyEvent
+offDayTypeToDb RTTE          = DBRTTE
+offDayTypeToDb RTTS          = DBRTTS
+offDayTypeToDb UnpaidLeave   = DBUnpaidLeave
+offDayTypeToDb PublicHoliday = DBPublicHoliday
+offDayTypeToDb PartTime      = DBPartTime
 
--- | Convert a 'DBHalfDayType' to an 'IdleDayType'. May fail.
-dbToIdleDayType :: DBHalfDayType -> Maybe IdleDayType
-dbToIdleDayType DBPaidLeave     = Just PaidLeave
-dbToIdleDayType DBFamilyEvent   = Just FamilyEvent
-dbToIdleDayType DBRTTE          = Just RTTE
-dbToIdleDayType DBRTTS          = Just RTTS
-dbToIdleDayType DBUnpaidLeave   = Just UnpaidLeave
-dbToIdleDayType DBPublicHoliday = Just PublicHoliday
-dbToIdleDayType DBPartTime      = Just PartTime
-dbToIdleDayType DBWorked        = Nothing
+-- | Convert a 'DBHalfDayType' to an 'OffDayType'. May fail.
+dbToOffDayType :: DBHalfDayType -> Maybe OffDayType
+dbToOffDayType DBPaidLeave     = Just PaidLeave
+dbToOffDayType DBFamilyEvent   = Just FamilyEvent
+dbToOffDayType DBRTTE          = Just RTTE
+dbToOffDayType DBRTTS          = Just RTTS
+dbToOffDayType DBUnpaidLeave   = Just UnpaidLeave
+dbToOffDayType DBPublicHoliday = Just PublicHoliday
+dbToOffDayType DBPartTime      = Just PartTime
+dbToOffDayType DBWorked        = Nothing
 
 -- | Create a 'Worked' with the information in the db. May fail.
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked

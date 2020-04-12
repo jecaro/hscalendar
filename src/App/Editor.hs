@@ -46,7 +46,7 @@ import           App.WorkOption
     )
 
 import           Db.HalfDay (HalfDay(..))
-import           Db.Idle (Idle(..))
+import           Db.Off (Off(..))
 import           Db.Model (HdNotFound(..))
 import qualified Db.Notes as Notes (Notes, parser, unNotes)
 import qualified Db.Office as Office (Office(..), parser)
@@ -129,7 +129,7 @@ packShow = Text.pack . show
 
 hdAsText :: Either HdNotFound HalfDay -> Text
 hdAsText (Left (HdNotFound day tid)) = header day tid <> " Nothing\n"
-hdAsText (Right (MkHalfDayIdle (MkIdle day tid hdt))) = header day tid <> " " <> packShow hdt <> "\n"
+hdAsText (Right (MkHalfDayOff (MkOff day tid hdt))) = header day tid <> " " <> packShow hdt <> "\n"
 hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNotes wProject))) =
     header wDay wTid <> "\n"
                    <> Project.unProject wProject <> "\n"

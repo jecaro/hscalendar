@@ -58,7 +58,7 @@ import           App.CommandLine
 import           App.Editor (editorToOptions)
 import           App.WorkOption (WorkOption)
 import           Db.HalfDay (HalfDay, displayHdWithDate)
-import           Db.IdleDayType (IdleDayType)
+import           Db.OffDayType (OffDayType)
 import           Db.MonthF (MonthWithDays, stats)
 import           Db.Project (Project)
 import           Db.TimeInDay (TimeInDay)
@@ -92,7 +92,7 @@ data ProtectedClient env = ProtectedClient
     , hdGet :: DayDesc -> TimeInDay -> RIO env HalfDay
     , weekGet :: WeekDesc -> RIO env WeekWithDays
     , monthGet :: MonthDesc -> RIO env MonthWithDays
-    , hdSetIdleDay :: DayDesc -> TimeInDay -> IdleDayType -> RIO env NoContent
+    , hdSetOff :: DayDesc -> TimeInDay -> OffDayType -> RIO env NoContent
     , hdSetWork :: DayDesc -> TimeInDay -> [WorkOption] -> RIO env NoContent
     , hdRm :: DayDesc -> TimeInDay -> RIO env NoContent
     }
@@ -108,7 +108,7 @@ mkProtectedApi env ad =
         :<|> hdGet
         :<|> weekGet
         :<|> monthGet
-        :<|> hdSetIdleDay
+        :<|> hdSetOff
         :<|> hdSetWork
         :<|> hdRm
         = hoistClient protectedHSCalendarApi (nt env) (client protectedHSCalendarApi) ad
@@ -202,8 +202,8 @@ run ProtectedClient{..} (DiaryWeek cw) =
 run ProtectedClient{..} (DiaryWork cd tid wopts) =
     void $ hdSetWork cd tid wopts
 
-run ProtectedClient{..} (DiaryHoliday cd tid hdt) =
-    void $ hdSetIdleDay cd tid hdt
+run ProtectedClient{..} (DiaryOff cd tid hdt) =
+    void $ hdSetOff cd tid hdt
 
 run ProtectedClient{..} (DiaryRm cd tid) = void $ hdRm cd tid
 

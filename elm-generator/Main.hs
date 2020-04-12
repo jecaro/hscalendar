@@ -47,8 +47,8 @@ import           App.WorkOption
     )
 import           Db.DayF (DayWithHalfDays)
 import           Db.HalfDay (HalfDay)
-import           Db.Idle (Idle)
-import           Db.IdleDayType (IdleDayType)
+import           Db.Off (Off)
+import           Db.OffDayType (OffDayType)
 import           Db.Month (Month)
 import           Db.MonthF (MonthWithDays)
 import           Db.Notes (Notes)
@@ -116,11 +116,11 @@ main = do
         mconcat
           [ jsonDefinitions @DayWithHalfDays
           , jsonDefinitions @HalfDay
-          , jsonDefinitions @Idle
-          , jsonDefinitions @IdleDayType
           , jsonDefinitions @Month
           , jsonDefinitions @MonthWithDays
           , jsonDefinitions @Notes
+          , jsonDefinitions @Off
+          , jsonDefinitions @OffDayType
           , jsonDefinitions @Office
           , jsonDefinitions @Project
           , jsonDefinitions @RenameArgs
