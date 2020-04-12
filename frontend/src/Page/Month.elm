@@ -1,7 +1,7 @@
 module Page.Month exposing (Model, Msg, init, update, view)
 
 import Api 
-import Api.IdleDayType.Extended as IdleDayType 
+import Api.OffDayType.Extended as OffDayType 
 import Api.Month.Extended as Month 
 import Array
 import Browser exposing (Document)
@@ -35,7 +35,7 @@ init =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg _ =
     case msg of
         MonthChanged month ->
             ( RemoteData.Loading, Request.getMonth GotResponse month )
@@ -53,8 +53,8 @@ viewHalfDay maybeHalfDay =
         Just (Api.MkHalfDayWorked worked) ->
             text worked.workedProject.unProject
 
-        Just (Api.MkHalfDayIdle idle) ->
-            text <| IdleDayType.toString idle.idleDayType
+        Just (Api.MkHalfDayOff off) ->
+            text <| OffDayType.toString off.offDayType
 
 
 viewDay : Api.Month -> Api.DayWithHalfDays -> List (Html msg)
@@ -150,8 +150,8 @@ getId hd =
         Api.MkHalfDayWorked { workedProject } ->
             workedProject.unProject
 
-        Api.MkHalfDayIdle { idleDayType } ->
-            IdleDayType.toString idleDayType
+        Api.MkHalfDayOff { offDayType } ->
+            OffDayType.toString offDayType
 
 
 incOrSetToOne : Maybe Float -> Float

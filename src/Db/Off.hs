@@ -1,4 +1,4 @@
--- | Functions related to the type 'Idle'
+-- | Functions related to the type 'Off'
 {-# LANGUAGE TemplateHaskell #-}
 module Db.Off
 where
@@ -27,5 +27,5 @@ instance ToJSON Off
 instance FromJSON Off
 
 instance Display Off where
-    display idle
-        =  "\t\t" <> display (idle ^. dayType)
+    display off
+        =  "\t\t" <> display (off ^. dayType)

@@ -208,7 +208,7 @@ defaultWorked day tid project = MkHalfDayWorked (MkWorked
 -- Helper functions to simplify the tests
 
 toMbWorked :: HalfDay -> Maybe Worked
-toMbWorked (MkHalfDayIdle _)        = Nothing
+toMbWorked (MkHalfDayOff _)         = Nothing
 toMbWorked (MkHalfDayWorked worked) = Just worked
 
 -- | Unwrap Project and test equality
@@ -266,8 +266,8 @@ prop_hdSetOff runDB day tid hdt = Q.monadic (ioProperty . runDB) $ do
     hd <- Q.run $ hdGet day tid
 
     case hd of
-        MkHalfDayWorked _               -> Q.assert False
-        MkHalfDayIdle (MkOff _ _ hdt') -> Q.assert $ hdt == hdt'
+        MkHalfDayWorked _             -> Q.assert False
+        MkHalfDayOff (MkOff _ _ hdt') -> Q.assert $ hdt == hdt'
 
     Q.run cleanDB
 
@@ -606,18 +606,18 @@ testHdApi runDB =
             before_ (runDB $ hdSetOff day1 tid1 hdt1) $ do
             it "tests getting the entry" $ do
                 res <- runDB (hdGet day1 tid1)
-                res `shouldBe` MkHalfDayIdle (MkOff day1 tid1 hdt1')
+                res `shouldBe` MkHalfDayOff (MkOff day1 tid1 hdt1')
             it "tests getting the full week" $ do
                 res <- runDB (weekGet week1)
                 let weekWithOneDayMaybe =
-                        WeekF.add (MkHalfDayIdle (MkOff day1 tid1 hdt1')) emptyWeek1
+                        WeekF.add (MkHalfDayOff (MkOff day1 tid1 hdt1')) emptyWeek1
                 case weekWithOneDayMaybe of
                     Nothing -> expectationFailure "weekWithOneDayMaybe should not be Nothing"
                     Just week -> res `shouldBe` week
             it "tests getting the full month" $ do
                 res <- runDB (monthGet month1)
                 let monthWithOneDayMaybe =
-                        MonthF.add (MkHalfDayIdle (MkOff day1 tid1 hdt1')) emptyMonth1
+                        MonthF.add (MkHalfDayOff (MkOff day1 tid1 hdt1')) emptyMonth1
                 case monthWithOneDayMaybe of
                     Nothing -> expectationFailure "monthWithOneDayMaybe should not be Nothing"
                     Just month -> res `shouldBe` month
@@ -658,7 +658,7 @@ testHdApi runDB =
             it "tests overriding with a day off" $ do
                 runDB $ hdSetOff day1 tid1 hdt1
                 res <- runDB (hdGet day1 tid1)
-                res `shouldBe` MkHalfDayIdle (MkOff day1 tid1 hdt1)
+                res `shouldBe` MkHalfDayOff (MkOff day1 tid1 hdt1)
             it "tests setting arrived time" $ do
                 runDB (hdSetArrived day1 tid1 (arrived1 tid1))
                 mbWorked <- toMbWorked <$> runDB (hdGet day1 tid1)

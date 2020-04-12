@@ -1,9 +1,9 @@
-module Api.IdleDayType.Extended exposing (fromString, toString)
+module Api.OffDayType.Extended exposing (fromString, toString)
 
 import Api 
 
 
-toString : Api.IdleDayType -> String
+toString : Api.OffDayType -> String
 toString dayType =
     case dayType of
         Api.PaidLeave ->
@@ -28,7 +28,7 @@ toString dayType =
             "Part time"
 
 
-fromString : String -> Result String Api.IdleDayType
+fromString : String -> Result String Api.OffDayType
 fromString str =
     case str of
         "Paid leave" ->

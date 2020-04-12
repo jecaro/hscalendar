@@ -7,7 +7,7 @@ module Request exposing
     , getProjects
     , renameProject
     , setArrived
-    , setIdleDayType
+    , setOffType
     , setLeft
     , setNotes
     , setOffice
@@ -16,7 +16,7 @@ module Request exposing
 
 import Api
 import Api.HalfDay as HalfDay exposing (decoder)
-import Api.IdleDayType as IdleDayType exposing (encoder)
+import Api.OffDayType as OffDayType exposing (encoder)
 import Api.Month.Extended as Month exposing (toString)
 import Api.MonthWithDays as MonthWithDays exposing (decoder)
 import Api.Project as Project exposing (decoder)
@@ -113,9 +113,9 @@ diaryUrl date timeInDay =
         ++ TimeInDay.toString timeInDay
 
 
-idleUrl : Date -> Api.TimeInDay -> String
-idleUrl date timeInDay =
-    "/diary/idle/"
+offUrl : Date -> Api.TimeInDay -> String
+offUrl date timeInDay =
+    "/diary/off/"
         ++ toInvertIsoString date
         ++ "/"
         ++ TimeInDay.toString timeInDay
@@ -187,13 +187,13 @@ setWorkOption toMsg date timeInDay option =
         }
 
 
-setIdleDayType : (WebData () -> m) -> Date -> Api.TimeInDay -> Api.IdleDayType -> Cmd m
-setIdleDayType toMsg date timeInDay idleDayType =
+setOffType : (WebData () -> m) -> Date -> Api.TimeInDay -> Api.OffDayType -> Cmd m
+setOffType toMsg date timeInDay offDayType =
     request
         { method = "PUT"
         , headers = []
-        , url = idleUrl date timeInDay
-        , body = jsonBody <| IdleDayType.encoder idleDayType
+        , url = offUrl date timeInDay
+        , body = jsonBody <| OffDayType.encoder offDayType
         , expect = expectWhatever <| toMsg << RemoteData.fromResult
         , timeout = Nothing
         , tracker = Nothing

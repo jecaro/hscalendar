@@ -9,7 +9,7 @@ module HalfDayWidget exposing
     )
 
 import Api
-import Api.IdleDayType.Extended as IdleDayType 
+import Api.OffDayType.Extended as OffDayType 
 import Api.Office.Extended as Office 
 import Api.TimeInDay.Extended as TimeInDay 
 import Api.TimeOfDay as TimeOfDay 
@@ -65,7 +65,7 @@ type Mode
     | EditOffice
     | EditProject
     | EditNotes String
-    | EditIdleDayType
+    | EditOffDayType
     | EditArrived
     | EditLeft
 
@@ -201,10 +201,10 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Just (Api.MkHalfDayWorked _) ->
                     True
 
-                Just (Api.MkHalfDayIdle _) ->
+                Just (Api.MkHalfDayOff _) ->
                     False
 
-        isIdle =
+        isOff =
             case halfDay of
                 Nothing ->
                     False
@@ -212,7 +212,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Just (Api.MkHalfDayWorked _) ->
                     False
 
-                Just (Api.MkHalfDayIdle _) ->
+                Just (Api.MkHalfDayOff _) ->
                     True
 
         viewDelete =
@@ -227,9 +227,9 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                     ]
                 ]
 
-        viewSetIdle =
-            viewHorizontalForm "Set as holiday"
-                [ idleDayTypeSelect
+        viewSetOff =
+            viewHorizontalForm "Day off"
+                [ offDayTypeSelect
                     date
                     timeInDay
                     Nothing
@@ -237,17 +237,17 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 ]
 
         viewSetWorked =
-            viewHorizontalForm "Set as working"
+            viewHorizontalForm "Worked on"
                 [ projectSelect
                     date
                     timeInDay
                     projects
                     Nothing
-                    (Maybe.isNothing halfDay || isIdle)
+                    (Maybe.isNothing halfDay || isOff)
                 ]
     in
-    [ viewIf (isIdle || Maybe.isNothing halfDay) viewSetWorked
-    , viewIf (isWorked || Maybe.isNothing halfDay) viewSetIdle
+    [ viewIf (isOff || Maybe.isNothing halfDay) viewSetWorked
+    , viewIf (isWorked || Maybe.isNothing halfDay) viewSetOff
     , viewDelete
     ]
 
@@ -263,8 +263,8 @@ view state projects =
                 Just (Api.MkHalfDayWorked worked) ->
                     viewWorked state.mode projects worked
 
-                Just (Api.MkHalfDayIdle idle) ->
-                    viewIdle state.mode idle
+                Just (Api.MkHalfDayOff off) ->
+                    viewOff state.mode off
 
         changeHalDayHtml =
             viewChangeHalfDayType
@@ -399,13 +399,13 @@ projectSelect date timeInDay projects current enabled =
 
 
 
-{- Create select for all the IdleDayType. If Maybe IdleDayType is Nothing, the
+{- Create select for all the OffDayType. If Maybe OffDayType is Nothing, the
    function prepend an empty item before the different types.
 -}
 
 
-idleDayTypeSelect : Date.Date -> Api.TimeInDay -> Maybe Api.IdleDayType -> Bool -> Html Msg
-idleDayTypeSelect date timeInDay current enabled =
+offDayTypeSelect : Date.Date -> Api.TimeInDay -> Maybe Api.OffDayType -> Bool -> Html Msg
+offDayTypeSelect date timeInDay current enabled =
     let
         defaultValue =
             case current of
@@ -413,24 +413,24 @@ idleDayTypeSelect date timeInDay current enabled =
                     ""
 
                 Just current_ ->
-                    IdleDayType.toString current_
+                    OffDayType.toString current_
 
-        toOption idleDayType =
+        toOption offDayType =
             let
-                idleDayTypeStr =
-                    IdleDayType.toString idleDayType
+                offDayTypeStr =
+                    OffDayType.toString offDayType
             in
             option
-                [ value idleDayTypeStr
-                , selected (idleDayTypeStr == defaultValue)
+                [ value offDayTypeStr
+                , selected (offDayTypeStr == defaultValue)
                 ]
-                [ text <| IdleDayType.toString idleDayType ]
+                [ text <| OffDayType.toString offDayType ]
 
         setEditHalfDay =
             EditHalfDaySent
-                << Request.setIdleDayType GotEditResponse date timeInDay
+                << Request.setOffType GotEditResponse date timeInDay
                 << Result.withDefault Api.PaidLeave
-                << IdleDayType.fromString
+                << OffDayType.fromString
     in
     div [ class "control" ]
         [ div [ class "select" ]
@@ -621,16 +621,16 @@ viewWorked mode projects { workedDay, workedTimeInDay, workedArrived, workedLeft
         ++ viewNotes mode workedDay workedTimeInDay workedNotes
 
 
-viewIdle : Mode -> Api.Idle -> List (Html Msg)
-viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
+viewOff : Mode -> Api.Off -> List (Html Msg)
+viewOff mode { offDay, offTimeInDay, offDayType } =
     [ viewHorizontalForm "Day off"
         [ case mode of
-            EditIdleDayType ->
-                idleDayTypeSelect idleDay idleTimeInDay (Just idleDayType) True
+            EditOffDayType ->
+                offDayTypeSelect offDay offTimeInDay (Just offDayType) True
 
             _ ->
-                div [ onDoubleClick <| ModeChanged EditIdleDayType ]
-                    [ text <| IdleDayType.toString idleDayType ]
+                div [ onDoubleClick <| ModeChanged EditOffDayType ]
+                    [ text <| OffDayType.toString offDayType ]
         ]
     ]
 
