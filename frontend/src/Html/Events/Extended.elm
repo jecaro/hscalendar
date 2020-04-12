@@ -1,7 +1,7 @@
 module Html.Events.Extended exposing (onEnter)
 
-import Html exposing (Attribute)
-import Html.Events exposing (keyCode, on, targetValue)
+import Html 
+import Html.Events as Events
 import Json.Decode as Decode exposing (fail, map2, succeed)
 
 
@@ -10,7 +10,7 @@ import Json.Decode as Decode exposing (fail, map2, succeed)
 -- https://stackoverflow.com/questions/40113213/how-to-handle-enter-key-press-in-input-field
 
 
-onEnter : (String -> msg) -> Attribute msg
+onEnter : (String -> msg) -> Html.Attribute msg
 onEnter tagger =
     let
         isEnter code =
@@ -21,6 +21,6 @@ onEnter tagger =
                 Decode.fail "is not enter"
 
         decodeEnter =
-            Decode.andThen isEnter keyCode
+            Decode.andThen isEnter Events.keyCode
     in
-    on "keydown" <| Decode.map2 (always tagger) decodeEnter targetValue
+    Events.on "keydown" <| Decode.map2 (always tagger) decodeEnter Events.targetValue

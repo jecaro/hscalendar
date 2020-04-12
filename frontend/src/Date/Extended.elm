@@ -3,17 +3,17 @@
 
 module Date.Extended exposing (decoder, encode, toStringWithWeekday)
 
-import Date exposing (Date, format, toIsoString)
+import Date 
 import Json.Decode
 import Json.Encode
 
 
-encode : Date -> Json.Encode.Value
+encode : Date.Date -> Json.Encode.Value
 encode =
     Date.toIsoString >> Json.Encode.string
 
 
-decoder : Json.Decode.Decoder Date
+decoder : Json.Decode.Decoder Date.Date
 decoder =
     Json.Decode.string
         |> Json.Decode.andThen
@@ -27,6 +27,6 @@ decoder =
             )
 
 
-toStringWithWeekday : Date -> String
+toStringWithWeekday : Date.Date -> String
 toStringWithWeekday date =
-    toIsoString date ++ " " ++ format "EEEE" date
+    Date.toIsoString date ++ " " ++ Date.format "EEEE" date

@@ -1,21 +1,21 @@
 module Api.Month.Extended exposing (fromDate, next, previous, toString)
 
-import Api exposing (Month)
-import Date exposing (Date, monthNumber, year)
-import String exposing (fromInt, pad)
+import Api 
+import Date 
+import String
 
 
-toString : Month -> String
+toString : Api.Month -> String
 toString { year, month } =
-    fromInt year ++ "-" ++ (pad 2 '0' <| fromInt month)
+    String.fromInt year ++ "-" ++ (String.pad 2 '0' <| String.fromInt month)
 
 
-fromDate : Date -> Month
+fromDate : Date.Date -> Api.Month
 fromDate date =
-    Month (year date) (monthNumber date)
+    Api.Month (Date.year date) (Date.monthNumber date)
 
 
-next : Month -> Month
+next : Api.Month -> Api.Month
 next { year, month } =
     case month + 1 of
         13 ->
@@ -25,7 +25,7 @@ next { year, month } =
             { year = year, month = month + 1 }
 
 
-previous : Month -> Month
+previous : Api.Month -> Api.Month
 previous { year, month } =
     case month - 1 of
         0 ->

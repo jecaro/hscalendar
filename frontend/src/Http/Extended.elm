@@ -4,23 +4,23 @@
 
 module Http.Extended exposing (errorToString)
 
-import Http exposing (Error(..))
+import Http 
 
 
 errorToString : Http.Error -> String
 errorToString err =
     case err of
-        Timeout ->
+        Http.Timeout ->
             "Timeout exceeded"
 
-        NetworkError ->
+        Http.NetworkError ->
             "Network error"
 
-        BadStatus no ->
+        Http.BadStatus no ->
             "Bad status: " ++ String.fromInt no
 
-        BadBody str ->
+        Http.BadBody str ->
             "Unexpected response from api: " ++ str
 
-        BadUrl url ->
+        Http.BadUrl url ->
             "Malformed url: " ++ url

@@ -1,39 +1,39 @@
 module Page.Projects exposing (Model, Msg, init, projectsModified, subscriptions, update, view)
 
-import Api exposing (Project)
-import Browser exposing (Document)
-import Browser.Events exposing (onMouseDown)
-import Common exposing (outsideTarget, viewErrorFromWebData, viewNavBar)
+import Api 
+import Browser 
+import Browser.Events as Events
+import Common 
 import Html exposing (Html, button, div, header, i, input, span, text)
 import Html.Attributes exposing (class, classList, id, placeholder, readonly, value)
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (nothing)
-import List exposing (map)
-import RemoteData exposing (RemoteData(..), WebData, isLoading)
-import Request exposing (addProject, deleteProject, renameProject)
+import List
+import RemoteData 
+import Request 
 
 
 type Msg
     = ProjectAdded
-    | ProjectDeleted Project
-    | ProjectRenamed Project Project
-    | ProjectEdited Project
+    | ProjectDeleted Api.Project
+    | ProjectRenamed Api.Project Api.Project
+    | ProjectEdited Api.Project
     | ProjectToAddEdited String
     | EditWasCanceled
-    | GotResponse (WebData ())
+    | GotResponse (RemoteData.WebData ())
     | NoOp
 
 
 type alias Model =
-    { response : WebData ()
+    { response : RemoteData.WebData ()
     , projectToAdd : String
     , editedProject : Maybe EditedProject
     }
 
 
 type alias EditedProject =
-    { project : Project
+    { project : Api.Project
     , currentName : String
     }
 
@@ -41,7 +41,7 @@ type alias EditedProject =
 projectsModified : Msg -> Bool
 projectsModified msg =
     case msg of
-        GotResponse (Success _) ->
+        GotResponse (RemoteData.Success _) ->
             True
 
         _ ->
@@ -50,10 +50,10 @@ projectsModified msg =
 
 init : Model
 init =
-    { response = NotAsked, projectToAdd = "", editedProject = Nothing }
+    { response = RemoteData.NotAsked, projectToAdd = "", editedProject = Nothing }
 
 
-viewProject : Maybe EditedProject -> Project -> Html Msg
+viewProject : Maybe EditedProject -> Api.Project -> Html Msg
 viewProject maybeEditedProject project =
     let
         ( edited, current, renamed ) =
@@ -69,7 +69,7 @@ viewProject maybeEditedProject project =
                     if project == editedProject.project then
                         ( True
                         , editedProject.currentName
-                        , ProjectRenamed project << Project
+                        , ProjectRenamed project << Api.Project
                         )
 
                     else
@@ -137,15 +137,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ProjectAdded ->
-            ( { model | projectToAdd = "", response = Loading }
-            , addProject GotResponse (Project model.projectToAdd)
+            ( { model | projectToAdd = "", response = RemoteData.Loading }
+            , Request.addProject GotResponse (Api.Project model.projectToAdd)
             )
 
         ProjectDeleted project ->
-            ( { model | response = Loading }, deleteProject GotResponse project )
+            ( { model | response = RemoteData.Loading }
+            , Request.deleteProject GotResponse project )
 
         ProjectRenamed from to ->
-            ( { model | response = Loading }, renameProject GotResponse from to )
+            ( { model | response = RemoteData.Loading }
+            , Request.renameProject GotResponse from to )
 
         GotResponse response ->
             ( { model | response = response }, Cmd.none )
@@ -167,11 +169,11 @@ update msg model =
             ( model, Cmd.none )
 
 
-view : Model -> List Project -> Document Msg
+view : Model -> List Api.Project -> Browser.Document Msg
 view model projects =
     let
         loadingIcon =
-            if isLoading model.response then
+            if RemoteData.isLoading model.response then
                 div [ class "card-header-icon" ]
                     [ span [ class "icon" ]
                         [ i [ class "fas fa-spinner fa-spin" ] [] ]
@@ -181,7 +183,7 @@ view model projects =
                 nothing
 
         body =
-            [ viewNavBar []
+            [ Common.viewNavBar []
             , div [ class "section" ]
                 [ div [ class "column" ]
                     [ div [ class "card" ]
@@ -194,9 +196,10 @@ view model projects =
                             ]
                         , div [ class "card-content" ]
                             [ div [ class "content" ] <|
-                                map (viewProject model.editedProject) projects
+                                List.map (viewProject model.editedProject) projects
                                     ++ [ viewNewProject model.projectToAdd
-                                       , viewErrorFromWebData model.response "The command returned an error"
+                                       , Common.viewErrorFromWebData 
+                                            model.response "The command returned an error"
                                        ]
                             ]
                         ]
@@ -209,4 +212,4 @@ view model projects =
 
 subscriptions : Sub Msg
 subscriptions =
-    onMouseDown <| outsideTarget EditWasCanceled [ "submit", "edit" ]
+    Events.onMouseDown <| Common.outsideTarget EditWasCanceled [ "submit", "edit" ]

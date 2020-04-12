@@ -9,29 +9,13 @@ module HalfDayWidget exposing
     )
 
 import Api
-    exposing
-        ( HalfDay(..)
-        , Idle
-        , IdleDayType(..)
-        , Notes
-        , Office(..)
-        , Project
-        , SetArrived(..)
-        , SetLeft(..)
-        , SetNotes(..)
-        , SetOffice(..)
-        , SetProj(..)
-        , TimeInDay(..)
-        , WorkOption(..)
-        , Worked
-        )
-import Api.IdleDayType.Extended as IdleDayType exposing (fromString, toString)
-import Api.Office.Extended as Office exposing (offices, toString)
-import Api.TimeInDay.Extended as TimeInDay exposing (toString)
-import Api.TimeOfDay as TimeOfDay exposing (TimeOfDay, fromString, toString)
-import Browser.Dom exposing (focus)
-import Common exposing (viewErrorFromError, viewErrorFromWebData)
-import Date exposing (Date, Unit(..), fromCalendarDate)
+import Api.IdleDayType.Extended as IdleDayType 
+import Api.Office.Extended as Office 
+import Api.TimeInDay.Extended as TimeInDay 
+import Api.TimeOfDay as TimeOfDay 
+import Browser.Dom as Dom
+import Common 
+import Date 
 import Html
     exposing
         ( Attribute
@@ -61,25 +45,15 @@ import Html.Attributes
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (nothing, viewIf)
-import Http exposing (Error(..))
-import List exposing (intersperse, map)
-import Maybe.Extra exposing (isJust, isNothing)
-import RemoteData exposing (RemoteData(..), WebData, isLoading, toMaybe)
+import Http 
+import List 
+import Maybe.Extra as Maybe
+import RemoteData 
 import Request
-    exposing
-        ( delete
-        , getHalfDay
-        , setArrived
-        , setIdleDayType
-        , setLeft
-        , setNotes
-        , setOffice
-        , setProject
-        )
-import Result exposing (withDefault)
-import String exposing (length)
-import Task exposing (attempt)
-import Time exposing (Month(..))
+import Result 
+import String 
+import Task 
+import Time 
 
 
 
@@ -97,18 +71,18 @@ type Mode
 
 
 type alias State =
-    { date : Date
-    , timeInDay : TimeInDay
-    , halfDayDisplayed : Maybe HalfDay
-    , halfDay : WebData HalfDay
-    , edit : WebData ()
+    { date : Date.Date
+    , timeInDay : Api.TimeInDay
+    , halfDayDisplayed : Maybe Api.HalfDay
+    , halfDay : RemoteData.WebData Api.HalfDay
+    , edit : RemoteData.WebData ()
     , mode : Mode
     }
 
 
 type Msg
-    = GotHalfDayResponse (WebData HalfDay)
-    | GotEditResponse (WebData ())
+    = GotHalfDayResponse (RemoteData.WebData Api.HalfDay)
+    | GotEditResponse (RemoteData.WebData ())
     | ModeChanged Mode
     | EditHalfDaySent (Cmd Msg)
     | EditWasCanceled
@@ -119,31 +93,31 @@ type Msg
 -- init
 
 
-init : TimeInDay -> State
+init : Api.TimeInDay -> State
 init timeInDay =
-    { date = fromCalendarDate 2020 Jan 1
+    { date = Date.fromCalendarDate 2020 Time.Jan 1
     , timeInDay = timeInDay
     , halfDayDisplayed = Nothing
-    , halfDay = NotAsked
+    , halfDay = RemoteData.NotAsked
     , mode = View
-    , edit = NotAsked
+    , edit = RemoteData.NotAsked
     }
 
 
-setDate : State -> Date -> ( State, Cmd Msg )
+setDate : State -> Date.Date -> ( State, Cmd Msg )
 setDate state date =
     let
         state_ =
             { state
                 | date = date
-                , halfDayDisplayed = toMaybe state.halfDay
-                , halfDay = Loading
-                , edit = NotAsked
+                , halfDayDisplayed = RemoteData.toMaybe state.halfDay
+                , halfDay = RemoteData.Loading
+                , edit = RemoteData.NotAsked
                 , mode = View
             }
 
         cmd =
-            getHalfDay GotHalfDayResponse state_.date state_.timeInDay
+            Request.getHalfDay GotHalfDayResponse state_.date state_.timeInDay
     in
     ( state_, cmd )
 
@@ -160,11 +134,11 @@ update msg model =
                 | halfDayDisplayed =
                     case response of
                         -- Copy the data
-                        Success a ->
+                        RemoteData.Success a ->
                             Just a
 
                         -- 404 is not an error, there is no entry
-                        Failure (BadStatus 404) ->
+                        RemoteData.Failure (Http.BadStatus 404) ->
                             Nothing
 
                         -- Other than that is an error, we keep displaying
@@ -177,9 +151,9 @@ update msg model =
             , Cmd.none
             )
 
-        GotEditResponse ((Success _) as response) ->
-            ( { model | edit = response, halfDay = Loading }
-            , getHalfDay GotHalfDayResponse model.date model.timeInDay
+        GotEditResponse ((RemoteData.Success _) as response) ->
+            ( { model | edit = response, halfDay = RemoteData.Loading }
+            , Request.getHalfDay GotHalfDayResponse model.date model.timeInDay
             )
 
         -- We don't ask for up to date half-day in case of an error
@@ -193,12 +167,12 @@ update msg model =
                         Cmd.none
 
                     else
-                        attempt (\_ -> NoOp) (focus "edit")
+                        Task.attempt (\_ -> NoOp) (Dom.focus "edit")
             in
             ( { model | mode = mode }, cmd )
 
         EditHalfDaySent request ->
-            ( { model | edit = Loading }, request )
+            ( { model | edit = RemoteData.Loading }, request )
 
         EditWasCanceled ->
             ( { model | mode = View }, Cmd.none )
@@ -212,10 +186,10 @@ update msg model =
 
 
 viewChangeHalfDayType :
-    Date
-    -> TimeInDay
-    -> Maybe HalfDay
-    -> List Project
+    Date.Date
+    -> Api.TimeInDay
+    -> Maybe Api.HalfDay
+    -> List Api.Project
     -> List (Html Msg)
 viewChangeHalfDayType date timeInDay halfDay projects =
     let
@@ -224,10 +198,10 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Nothing ->
                     False
 
-                Just (MkHalfDayWorked _) ->
+                Just (Api.MkHalfDayWorked _) ->
                     True
 
-                Just (MkHalfDayIdle _) ->
+                Just (Api.MkHalfDayIdle _) ->
                     False
 
         isIdle =
@@ -235,10 +209,10 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 Nothing ->
                     False
 
-                Just (MkHalfDayWorked _) ->
+                Just (Api.MkHalfDayWorked _) ->
                     False
 
-                Just (MkHalfDayIdle _) ->
+                Just (Api.MkHalfDayIdle _) ->
                     True
 
         viewDelete =
@@ -246,8 +220,8 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                 [ div [ class "control" ]
                     [ button
                         [ class "button"
-                        , onClick <| EditHalfDaySent <| delete GotEditResponse date timeInDay
-                        , disabled <| isNothing halfDay
+                        , onClick <| EditHalfDaySent <| Request.delete GotEditResponse date timeInDay
+                        , disabled <| Maybe.isNothing halfDay
                         ]
                         [ text "Delete" ]
                     ]
@@ -259,7 +233,7 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                     date
                     timeInDay
                     Nothing
-                    (isNothing halfDay || isWorked)
+                    (Maybe.isNothing halfDay || isWorked)
                 ]
 
         viewSetWorked =
@@ -269,16 +243,16 @@ viewChangeHalfDayType date timeInDay halfDay projects =
                     timeInDay
                     projects
                     Nothing
-                    (isNothing halfDay || isIdle)
+                    (Maybe.isNothing halfDay || isIdle)
                 ]
     in
-    [ viewIf (isIdle || isNothing halfDay) viewSetWorked
-    , viewIf (isWorked || isNothing halfDay) viewSetIdle
+    [ viewIf (isIdle || Maybe.isNothing halfDay) viewSetWorked
+    , viewIf (isWorked || Maybe.isNothing halfDay) viewSetIdle
     , viewDelete
     ]
 
 
-view : State -> List Project -> Html Msg
+view : State -> List Api.Project -> Html Msg
 view state projects =
     let
         halfDayHtml =
@@ -286,10 +260,10 @@ view state projects =
                 Nothing ->
                     [ viewNoEntry ]
 
-                Just (MkHalfDayWorked worked) ->
+                Just (Api.MkHalfDayWorked worked) ->
                     viewWorked state.mode projects worked
 
-                Just (MkHalfDayIdle idle) ->
+                Just (Api.MkHalfDayIdle idle) ->
                     viewIdle state.mode idle
 
         changeHalDayHtml =
@@ -300,7 +274,7 @@ view state projects =
                 projects
 
         loadingIcon =
-            if isLoading state.halfDay || isLoading state.edit then
+            if RemoteData.isLoading state.halfDay || RemoteData.isLoading state.edit then
                 div [ class "card-header-icon" ]
                     [ span [ class "icon" ]
                         [ i [ class "fas fa-spinner fa-spin" ] [] ]
@@ -329,26 +303,26 @@ view state projects =
         ]
 
 
-viewErrorHalfDay : WebData a -> Html msg
+viewErrorHalfDay : RemoteData.WebData a -> Html msg
 viewErrorHalfDay halfDay =
     case halfDay of
         -- 404 is not an error, there is no entry
-        Failure (BadStatus 404) ->
+        RemoteData.Failure (Http.BadStatus 404) ->
             nothing
 
-        Failure error ->
-            viewErrorFromError error "Error getting data from the server"
+        RemoteData.Failure error ->
+            Common.viewErrorFromError error "Error getting data from the server"
 
         _ ->
             nothing
 
 
-viewErrorEdit : WebData a -> Html msg
+viewErrorEdit : RemoteData.WebData a -> Html msg
 viewErrorEdit edit =
-    viewErrorFromWebData edit "Edit command returned an error"
+    Common.viewErrorFromWebData edit "Edit command returned an error"
 
 
-officeSelect : Date -> TimeInDay -> Office -> Html Msg
+officeSelect : Date.Date -> Api.TimeInDay -> Api.Office -> Html Msg
 officeSelect date timeInDay current =
     let
         toOption office =
@@ -357,8 +331,8 @@ officeSelect date timeInDay current =
 
         setEditHalfDay =
             EditHalfDaySent
-                << setOffice GotEditResponse date timeInDay
-                << withDefault Rennes
+                << Request.setOffice GotEditResponse date timeInDay
+                << Result.withDefault Api.Rennes
                 << Office.fromString
     in
     div [ class "control" ]
@@ -368,18 +342,18 @@ officeSelect date timeInDay current =
                 , onInput setEditHalfDay
                 , onBlur EditWasCanceled
                 ]
-                (map toOption offices)
+                (List.map toOption Office.offices)
             ]
         ]
 
 
-projectSelect : Date -> TimeInDay -> List Project -> Maybe Project -> Bool -> Html Msg
+projectSelect : Date.Date -> Api.TimeInDay -> List Api.Project -> Maybe Api.Project -> Bool -> Html Msg
 projectSelect date timeInDay projects current enabled =
     let
         defaultValue =
             case current of
                 Nothing ->
-                    Project ""
+                    Api.Project ""
 
                 Just current_ ->
                     current_
@@ -387,7 +361,7 @@ projectSelect date timeInDay projects current enabled =
         projects_ =
             case current of
                 Nothing ->
-                    Project "" :: projects
+                    Api.Project "" :: projects
 
                 Just _ ->
                     projects
@@ -406,13 +380,13 @@ projectSelect date timeInDay projects current enabled =
                 , onBlur EditWasCanceled
                 , onInput <|
                     EditHalfDaySent
-                        << setProject GotEditResponse date timeInDay
+                        << Request.setProject GotEditResponse date timeInDay
                 , value defaultValue.unProject
 
                 -- if there is a default value, it means that it is the
                 -- select used for editing current halfday
                 , id <|
-                    if isJust current then
+                    if Maybe.isJust current then
                         "edit"
 
                     else
@@ -430,7 +404,7 @@ projectSelect date timeInDay projects current enabled =
 -}
 
 
-idleDayTypeSelect : Date -> TimeInDay -> Maybe IdleDayType -> Bool -> Html Msg
+idleDayTypeSelect : Date.Date -> Api.TimeInDay -> Maybe Api.IdleDayType -> Bool -> Html Msg
 idleDayTypeSelect date timeInDay current enabled =
     let
         defaultValue =
@@ -454,8 +428,8 @@ idleDayTypeSelect date timeInDay current enabled =
 
         setEditHalfDay =
             EditHalfDaySent
-                << setIdleDayType GotEditResponse date timeInDay
-                << withDefault PaidLeave
+                << Request.setIdleDayType GotEditResponse date timeInDay
+                << Result.withDefault Api.PaidLeave
                 << IdleDayType.fromString
     in
     div [ class "control" ]
@@ -469,7 +443,7 @@ idleDayTypeSelect date timeInDay current enabled =
                 -- if there is a default value, it means that it is the
                 -- select used for editing current halfday
                 , id <|
-                    if isJust current then
+                    if Maybe.isJust current then
                         "edit"
 
                     else
@@ -477,21 +451,21 @@ idleDayTypeSelect date timeInDay current enabled =
                 ]
               <|
                 -- Prepend empty case if needed
-                [ viewIf (isNothing current) <|
+                [ viewIf (Maybe.isNothing current) <|
                     option [ value "" ] [ text "" ]
-                , toOption PaidLeave
-                , toOption FamilyEvent
-                , toOption RTTE
-                , toOption RTTS
-                , toOption UnpaidLeave
-                , toOption PublicHoliday
-                , toOption PartTime
+                , toOption Api.PaidLeave
+                , toOption Api.FamilyEvent
+                , toOption Api.RTTE
+                , toOption Api.RTTS
+                , toOption Api.UnpaidLeave
+                , toOption Api.PublicHoliday
+                , toOption Api.PartTime
                 ]
             ]
         ]
 
 
-arrivedOrLeftInput : (String -> Msg) -> TimeOfDay -> Html Msg
+arrivedOrLeftInput : (String -> Msg) -> TimeOfDay.TimeOfDay -> Html Msg
 arrivedOrLeftInput callback timeOfDay =
     div [ class "control" ]
         [ input
@@ -506,31 +480,31 @@ arrivedOrLeftInput callback timeOfDay =
         ]
 
 
-arrivedInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+arrivedInput : Date.Date -> Api.TimeInDay -> TimeOfDay.TimeOfDay -> Html Msg
 arrivedInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
             EditHalfDaySent
-                << setArrived GotEditResponse date timeInDay
-                << withDefault timeOfDay
+                << Request.setArrived GotEditResponse date timeInDay
+                << Result.withDefault timeOfDay
                 << TimeOfDay.fromString
     in
     arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
-leftInput : Date -> TimeInDay -> TimeOfDay -> Html Msg
+leftInput : Date.Date -> Api.TimeInDay -> TimeOfDay.TimeOfDay -> Html Msg
 leftInput date timeInDay timeOfDay =
     let
         setEditHalfDay =
             EditHalfDaySent
-                << setLeft GotEditResponse date timeInDay
-                << withDefault timeOfDay
+                << Request.setLeft GotEditResponse date timeInDay
+                << Result.withDefault timeOfDay
                 << TimeOfDay.fromString
     in
     arrivedOrLeftInput setEditHalfDay timeOfDay
 
 
-viewOffice : Mode -> Date -> TimeInDay -> Office -> Html Msg
+viewOffice : Mode -> Date.Date -> Api.TimeInDay -> Api.Office -> Html Msg
 viewOffice mode day timeInDay office =
     viewHorizontalForm "Office"
         [ case mode of
@@ -543,7 +517,7 @@ viewOffice mode day timeInDay office =
         ]
 
 
-viewProject : Mode -> List Project -> Date -> TimeInDay -> Project -> Html Msg
+viewProject : Mode -> List Api.Project -> Date.Date -> Api.TimeInDay -> Api.Project -> Html Msg
 viewProject mode projects day timeInDay project =
     viewHorizontalForm "Project"
         [ case mode of
@@ -561,13 +535,13 @@ viewProject mode projects day timeInDay project =
         ]
 
 
-viewArrivedOrLeft : Mode -> TimeOfDay -> Html Msg
+viewArrivedOrLeft : Mode -> TimeOfDay.TimeOfDay -> Html Msg
 viewArrivedOrLeft mode timeOfDay =
     div [ onDoubleClick <| ModeChanged mode ]
         [ text <| TimeOfDay.toString timeOfDay ]
 
 
-viewArrived : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
+viewArrived : Mode -> Date.Date -> Api.TimeInDay -> TimeOfDay.TimeOfDay -> Html Msg
 viewArrived mode day timeInDay arrived =
     viewHorizontalForm "Arrived"
         [ case mode of
@@ -579,7 +553,7 @@ viewArrived mode day timeInDay arrived =
         ]
 
 
-viewLeft : Mode -> Date -> TimeInDay -> TimeOfDay -> Html Msg
+viewLeft : Mode -> Date.Date -> Api.TimeInDay -> TimeOfDay.TimeOfDay -> Html Msg
 viewLeft mode day timeInDay left =
     viewHorizontalForm "Left"
         [ case mode of
@@ -591,7 +565,7 @@ viewLeft mode day timeInDay left =
         ]
 
 
-viewNotes : Mode -> Date -> TimeInDay -> Notes -> List (Html Msg)
+viewNotes : Mode -> Date.Date -> Api.TimeInDay -> Api.Notes -> List (Html Msg)
 viewNotes mode day timeInDay notes =
     case mode of
         EditNotes notes_ ->
@@ -615,7 +589,7 @@ viewNotes mode day timeInDay notes =
                             , id "submit"
                             , onClick <|
                                 EditHalfDaySent <|
-                                    setNotes GotEditResponse day timeInDay notes_
+                                    Request.setNotes GotEditResponse day timeInDay notes_
                             ]
                             [ text "Submit" ]
                         ]
@@ -627,9 +601,9 @@ viewNotes mode day timeInDay notes =
             [ viewHorizontalFormWithAttr
                 [ onDoubleClick <| ModeChanged (EditNotes notes.unNotes) ]
                 "Notes"
-                (if length notes.unNotes /= 0 then
-                    intersperse (br [] [])
-                        (map text (String.lines notes.unNotes))
+                (if String.length notes.unNotes /= 0 then
+                    List.intersperse (br [] [])
+                        (List.map text (String.lines notes.unNotes))
 
                  else
                     [ text "Double click to edit" ]
@@ -637,7 +611,7 @@ viewNotes mode day timeInDay notes =
             ]
 
 
-viewWorked : Mode -> List Project -> Worked -> List (Html Msg)
+viewWorked : Mode -> List Api.Project -> Api.Worked -> List (Html Msg)
 viewWorked mode projects { workedDay, workedTimeInDay, workedArrived, workedLeft, workedOffice, workedNotes, workedProject } =
     [ viewOffice mode workedDay workedTimeInDay workedOffice
     , viewArrived mode workedDay workedTimeInDay workedArrived
@@ -647,7 +621,7 @@ viewWorked mode projects { workedDay, workedTimeInDay, workedArrived, workedLeft
         ++ viewNotes mode workedDay workedTimeInDay workedNotes
 
 
-viewIdle : Mode -> Idle -> List (Html Msg)
+viewIdle : Mode -> Api.Idle -> List (Html Msg)
 viewIdle mode { idleDay, idleTimeInDay, idleDayType } =
     [ viewHorizontalForm "Day off"
         [ case mode of

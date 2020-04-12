@@ -1,78 +1,70 @@
 module Page.Month exposing (Model, Msg, init, update, view)
 
-import Api exposing (DayWithHalfDays, HalfDay(..), Month, MonthWithDays)
-import Api.IdleDayType.Extended as IdleDayType exposing (toString)
-import Api.Month.Extended as Month exposing (fromDate, next, previous, toString)
-import Array exposing (Array, append, empty, foldr, get, initialize, map, toList)
+import Api 
+import Api.IdleDayType.Extended as IdleDayType 
+import Api.Month.Extended as Month 
+import Array
 import Browser exposing (Document)
-import Common exposing (dateUrl, viewNavBar)
+import Common 
 import Date
-    exposing
-        ( Date
-        , Unit(..)
-        , add
-        , day
-        , monthNumber
-        , today
-        , weekdayNumber
-        )
 import Dict exposing (Dict)
 import Html exposing (Html, a, br, div, header, i, li, span, table, td, text, th, tr, ul)
 import Html.Attributes exposing (class, href)
 import Html.Events exposing (onClick)
 import Html.Extra exposing (nothing)
-import List exposing (length)
-import RemoteData exposing (RemoteData(..), WebData, isLoading, withDefault)
-import Request exposing (getMonth)
-import String exposing (fromFloat, fromInt)
-import Task exposing (perform)
+import RemoteData 
+import Request 
+import String 
+import Task 
 
 
 type Msg
-    = GotResponse (WebData MonthWithDays)
-    | MonthChanged Month
+    = GotResponse (RemoteData.WebData Api.MonthWithDays)
+    | MonthChanged Api.Month
 
 
 type alias Model =
-    WebData MonthWithDays
+    RemoteData.WebData Api.MonthWithDays
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Loading, perform (MonthChanged << fromDate) today )
+    ( RemoteData.Loading
+    , Task.perform (MonthChanged << Month.fromDate) Date.today 
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         MonthChanged month ->
-            ( Loading, getMonth GotResponse month )
+            ( RemoteData.Loading, Request.getMonth GotResponse month )
 
         GotResponse response ->
             ( response, Cmd.none )
 
 
-viewHalfDay : Maybe HalfDay -> Html msg
+viewHalfDay : Maybe Api.HalfDay -> Html msg
 viewHalfDay maybeHalfDay =
     case maybeHalfDay of
         Nothing ->
             nothing
 
-        Just (MkHalfDayWorked worked) ->
+        Just (Api.MkHalfDayWorked worked) ->
             text worked.workedProject.unProject
 
-        Just (MkHalfDayIdle idle) ->
+        Just (Api.MkHalfDayIdle idle) ->
             text <| IdleDayType.toString idle.idleDayType
 
 
-viewDay : Month -> DayWithHalfDays -> List (Html msg)
+viewDay : Api.Month -> Api.DayWithHalfDays -> List (Html msg)
 viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
     let
         header =
-            a [ href <| dateUrl dayFDay ]
-                [ text <| fromInt <| day dayFDay ]
+            a [ href <| Common.dateUrl dayFDay ]
+                [ text <| String.fromInt <| Date.day dayFDay ]
     in
-    if monthNumber dayFDay == month.month then
+    if Date.monthNumber dayFDay == month.month then
         [ header
         , br [] []
         , viewHalfDay dayFMorning
@@ -84,7 +76,7 @@ viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
         [ header ]
 
 
-trForDays : Month -> List DayWithHalfDays -> List (Html msg)
+trForDays : Api.Month -> List Api.DayWithHalfDays -> List (Html msg)
 trForDays month days =
     case days of
         x1 :: x2 :: x3 :: x4 :: x5 :: x6 :: x7 :: xs ->
@@ -107,41 +99,41 @@ trForDays month days =
 -- This should never happens
 
 
-beforeMonth : Date -> Array Date
+beforeMonth : Date.Date -> Array.Array Date.Date
 beforeMonth date =
     let
         nbDatesToAdd =
-            weekdayNumber date - 1
+            Date.weekdayNumber date - 1
     in
-    initialize nbDatesToAdd (\i -> add Days (i - nbDatesToAdd) date)
+    Array.initialize nbDatesToAdd (\i -> Date.add Date.Days (i - nbDatesToAdd) date)
 
 
-afterMonth : Date -> Array Date
+afterMonth : Date.Date -> Array.Array Date.Date
 afterMonth date =
     let
         nbDatesToAdd =
-            7 - weekdayNumber date
+            7 - Date.weekdayNumber date
     in
-    initialize nbDatesToAdd (\i -> add Days (i + 1) date)
+    Array.initialize nbDatesToAdd (\i -> Date.add Date.Days (i + 1) date)
 
 
-normalizeMonth : Array DayWithHalfDays -> Array DayWithHalfDays
+normalizeMonth : Array.Array Api.DayWithHalfDays -> Array.Array Api.DayWithHalfDays
 normalizeMonth days =
     let
         dateToDayWithHalfDays date =
-            DayWithHalfDays date Nothing Nothing
+            Api.DayWithHalfDays date Nothing Nothing
 
         getPadding i fct =
-            case get i days of
+            case Array.get i days of
                 Just day ->
                     let
                         arrayOfDates =
                             fct day.dayFDay
                     in
-                    map dateToDayWithHalfDays arrayOfDates
+                    Array.map dateToDayWithHalfDays arrayOfDates
 
                 Nothing ->
-                    empty
+                    Array.empty
 
         before =
             getPadding 0 beforeMonth
@@ -149,16 +141,16 @@ normalizeMonth days =
         after =
             getPadding (Array.length days - 1) afterMonth
     in
-    append (append before days) after
+    Array.append (Array.append before days) after
 
 
-getId : HalfDay -> String
+getId : Api.HalfDay -> String
 getId hd =
     case hd of
-        MkHalfDayWorked { workedProject } ->
+        Api.MkHalfDayWorked { workedProject } ->
             workedProject.unProject
 
-        MkHalfDayIdle { idleDayType } ->
+        Api.MkHalfDayIdle { idleDayType } ->
             IdleDayType.toString idleDayType
 
 
@@ -182,7 +174,7 @@ updateDictWithId maybeId dict =
             Dict.update id (Just << incOrSetToOne) dict
 
 
-stats : Array DayWithHalfDays -> Dict String Float
+stats : Array.Array Api.DayWithHalfDays -> Dict String Float
 stats days =
     let
         foldHalfDayWithDict { dayFMorning, dayFAfternoon } d =
@@ -195,10 +187,10 @@ stats days =
             in
             updateDictWithId maybeIdMorning d |> updateDictWithId maybeIdAfternoon
     in
-    foldr foldHalfDayWithDict Dict.empty days
+    Array.foldr foldHalfDayWithDict Dict.empty days
 
 
-viewMonth : MonthWithDays -> List (Html msg)
+viewMonth : Api.MonthWithDays -> List (Html msg)
 viewMonth { monthFMonth, monthFDays } =
     let
         daysOfWeek =
@@ -217,19 +209,20 @@ viewMonth { monthFMonth, monthFDays } =
         monthTable =
             table [] <|
                 rowLabel
-                    :: (trForDays monthFMonth <| toList <| normalizeMonth monthFDays)
+                    :: (trForDays monthFMonth <| Array.toList <| normalizeMonth monthFDays)
 
         monthStats =
             let
                 monthList =
                     Dict.toList <| stats monthFDays
             in
-            ul [] <| List.map (\( k, v ) -> li [] [ text <| k ++ ": " ++ fromFloat v ]) monthList
+            ul [] 
+                <| List.map (\( k, v ) -> li [] [ text <| k ++ ": " ++ String.fromFloat v ]) monthList
     in
     [ monthTable, br [] [], monthStats ]
 
 
-viewNav : Month -> Html Msg
+viewNav : Api.Month -> Html Msg
 viewNav month =
     let
         items =
@@ -237,12 +230,12 @@ viewNav month =
                 [ div [ class "buttons", class "has-addons" ]
                     [ div
                         [ class "button"
-                        , onClick <| MonthChanged <| previous month
+                        , onClick <| MonthChanged <| Month.previous month
                         ]
                         [ text "Prev" ]
                     , div
                         [ class "button"
-                        , onClick <| MonthChanged <| next month
+                        , onClick <| MonthChanged <| Month.next month
                         ]
                         [ text "Next" ]
                     ]
@@ -251,14 +244,14 @@ viewNav month =
                 [ text <| Month.toString month ]
             ]
     in
-    viewNavBar items
+    Common.viewNavBar items
 
 
 view : Model -> Document Msg
 view model =
     let
         loadingIcon =
-            if isLoading model then
+            if RemoteData.isLoading model then
                 div [ class "card-header-icon" ]
                     [ span [ class "icon" ]
                         [ i [ class "fas fa-spinner fa-spin" ] [] ]
@@ -268,17 +261,19 @@ view model =
                 nothing
 
         viewNavWithDefault =
-            withDefault (viewNavBar []) <| RemoteData.map (viewNav << .monthFMonth) model
+            RemoteData.withDefault (Common.viewNavBar []) 
+                <| RemoteData.map (viewNav << .monthFMonth) model
 
         monthTitleWithDefault =
-            withDefault "" <| RemoteData.map (Month.toString << .monthFMonth) model
+            RemoteData.withDefault "" 
+                <| RemoteData.map (Month.toString << .monthFMonth) model
 
         monthHtml =
             case model of
-                Success month ->
+                RemoteData.Success month ->
                     viewMonth month
 
-                Failure _ ->
+                RemoteData.Failure _ ->
                     [ text "Error" ]
 
                 _ ->

@@ -1,56 +1,56 @@
 module Api.IdleDayType.Extended exposing (fromString, toString)
 
-import Api exposing (IdleDayType(..))
+import Api 
 
 
-toString : IdleDayType -> String
+toString : Api.IdleDayType -> String
 toString dayType =
     case dayType of
-        PaidLeave ->
+        Api.PaidLeave ->
             "Paid leave"
 
-        FamilyEvent ->
+        Api.FamilyEvent ->
             "Family event"
 
-        RTTE ->
+        Api.RTTE ->
             "RTTE"
 
-        RTTS ->
+        Api.RTTS ->
             "RTTS"
 
-        UnpaidLeave ->
+        Api.UnpaidLeave ->
             "Unpaid leave"
 
-        PublicHoliday ->
+        Api.PublicHoliday ->
             "Public holiday"
 
-        PartTime ->
+        Api.PartTime ->
             "Part time"
 
 
-fromString : String -> Result String IdleDayType
+fromString : String -> Result String Api.IdleDayType
 fromString str =
     case str of
         "Paid leave" ->
-            Ok PaidLeave
+            Ok Api.PaidLeave
 
         "Family event" ->
-            Ok FamilyEvent
+            Ok Api.FamilyEvent
 
         "RTTE" ->
-            Ok RTTE
+            Ok Api.RTTE
 
         "RTTS" ->
-            Ok RTTS
+            Ok Api.RTTS
 
         "Unpaid leave" ->
-            Ok UnpaidLeave
+            Ok Api.UnpaidLeave
 
         "Public holiday" ->
-            Ok PublicHoliday
+            Ok Api.PublicHoliday
 
         "Part time" ->
-            Ok PartTime
+            Ok Api.PartTime
 
         _ ->
             Err "Bad string"

@@ -1,32 +1,32 @@
 module Api.TimeInDay.Extended exposing (fromString, toString)
 
-import Api exposing (TimeInDay(..))
+import Api 
 
 
-toString : TimeInDay -> String
+toString : Api.TimeInDay -> String
 toString timeInDay =
     case timeInDay of
-        Morning ->
+        Api.Morning ->
             "Morning"
 
-        Afternoon ->
+        Api.Afternoon ->
             "Afternoon"
 
 
-fromString : String -> Result String TimeInDay
+fromString : String -> Result String Api.TimeInDay
 fromString string =
     case string of
         "Morning" ->
-            Ok Morning
+            Ok Api.Morning
 
         "morning" ->
-            Ok Morning
+            Ok Api.Morning
 
         "Afternoon" ->
-            Ok Afternoon
+            Ok Api.Afternoon
 
         "afternoon" ->
-            Ok Afternoon
+            Ok Api.Afternoon
 
         _ ->
             Err <| "Error parsing string to TimeInDay " ++ string

@@ -1,35 +1,21 @@
 module Main exposing (main)
 
 import Api
-    exposing
-        ( HalfDay(..)
-        , IdleDayType(..)
-        , Office(..)
-        , Project
-        , SetArrived(..)
-        , SetLeft(..)
-        , SetNotes(..)
-        , SetOffice(..)
-        , SetProj(..)
-        , TimeInDay(..)
-        , WorkOption(..)
-        )
-import Browser exposing (Document, UrlRequest(..), application)
-import Browser.Navigation exposing (Key, load, pushUrl)
-import Date exposing (Date, Unit(..), fromIsoString)
+import Browser 
+import Browser.Navigation as Navigation
+import Date 
 import Html
 import Html.Extra exposing (nothing)
-import Page.Day as PD exposing (Model, Msg(..), initWithToday, subscriptions, view)
-import Page.Month as PM exposing (Model, Msg, init, view)
-import Page.Projects as PP exposing (Model, projectsModified, view)
-import Platform.Cmd exposing (batch)
-import Platform.Sub exposing (none)
-import RemoteData exposing (RemoteData(..), WebData)
-import Request exposing (getProjects)
-import Result exposing (toMaybe)
-import Time exposing (Month(..))
-import Url exposing (Url)
-import Url.Parser exposing (Parser, custom, map, oneOf, parse, s)
+import Page.Day as PD
+import Page.Month as PM
+import Page.Projects as PP 
+import Platform.Cmd as Cmd
+import Platform.Sub as Sub
+import RemoteData 
+import Request 
+import Result 
+import Url 
+import Url.Parser as Parser
 
 
 
@@ -44,19 +30,19 @@ type Page
 
 
 type alias Model =
-    { projects : WebData (List Project)
+    { projects : RemoteData.WebData (List Api.Project)
     , page : Page
-    , key : Key
+    , key : Navigation.Key
     }
 
 
 type Msg
-    = GotProjectsResponse (WebData (List Project))
+    = GotProjectsResponse (RemoteData.WebData (List Api.Project))
     | DayMsg PD.Msg
     | MonthMsg PM.Msg
     | ProjectMsg PP.Msg
-    | LinkClicked UrlRequest
-    | UrlChanged Url
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 
@@ -65,7 +51,7 @@ type Msg
 
 main : Program () Model Msg
 main =
-    application
+    Browser.application
         { init = init
         , onUrlChange = UrlChanged
         , onUrlRequest = LinkClicked
@@ -79,7 +65,7 @@ main =
 -- Init
 
 
-init : flags -> Url -> Key -> ( Model, Cmd Msg )
+init : flags -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
         url_ =
@@ -90,10 +76,10 @@ init _ url key =
                 url
 
         ( model, cmd ) =
-            stepUrl url_ { projects = Loading, page = NotFound, key = key }
+            stepUrl url_ { projects = RemoteData.Loading, page = NotFound, key = key }
     in
     ( model
-    , batch [ getProjects GotProjectsResponse, cmd ]
+    , Cmd.batch [ Request.getProjects GotProjectsResponse, cmd ]
     )
 
 
@@ -143,14 +129,14 @@ update msg model =
                             PP.update projectMsg projectModel
 
                         getProjectsIfNeeded =
-                            if projectsModified projectMsg then
-                                getProjects GotProjectsResponse
+                            if PP.projectsModified projectMsg then
+                                Request.getProjects GotProjectsResponse
 
                             else
                                 Cmd.none
                     in
                     ( { model | page = PageProject projectModel_ }
-                    , batch [ Cmd.map ProjectMsg cmd, getProjectsIfNeeded ]
+                    , Cmd.batch [ Cmd.map ProjectMsg cmd, getProjectsIfNeeded ]
                     )
 
                 _ ->
@@ -160,14 +146,14 @@ update msg model =
         -- https://github.com/elm/package.elm-lang.org/blob/master/src/frontend/Main.elm
         LinkClicked urlRequest ->
             case urlRequest of
-                Internal url ->
+                Browser.Internal url ->
                     ( model
-                    , pushUrl model.key (Url.toString url)
+                    , Navigation.pushUrl model.key (Url.toString url)
                     )
 
-                External href ->
+                Browser.External href ->
                     ( model
-                    , load href
+                    , Navigation.load href
                     )
 
         UrlChanged url ->
@@ -178,10 +164,10 @@ update msg model =
 -- View
 
 
-view : Model -> Document Msg
+view : Model -> Browser.Document Msg
 view model =
     case model.projects of
-        Success projects ->
+        RemoteData.Success projects ->
             case model.page of
                 PageDay dayModel ->
                     let
@@ -231,7 +217,7 @@ subscriptions model =
             Sub.map ProjectMsg PP.subscriptions
 
         _ ->
-            none
+            Sub.none
 
 
 stepDayWithToday : Model -> ( Model, Cmd Msg )
@@ -243,7 +229,7 @@ stepDayWithToday model =
     ( { model | page = PageDay dayModel }, Cmd.map DayMsg dayCmd )
 
 
-stepDayWithDate : Model -> Date -> ( Model, Cmd Msg )
+stepDayWithDate : Model -> Date.Date -> ( Model, Cmd Msg )
 stepDayWithDate model date =
     let
         ( dayModelWithDate, dayCmdWithDate ) =
@@ -270,38 +256,38 @@ stepProject model =
     ( { model | page = PageProject projectModel }, Cmd.none )
 
 
-diaryTodayParser : Parser a a
+diaryTodayParser : Parser.Parser a a
 diaryTodayParser =
-    s "diary"
+    Parser.s "diary"
 
 
-diaryDateParser : Parser (Date -> a) a
+diaryDateParser : Parser.Parser (Date.Date -> a) a
 diaryDateParser =
-    custom "DATE" (toMaybe << fromIsoString)
+    Parser.custom "DATE" (Result.toMaybe << Date.fromIsoString)
 
 
-monthParser : Parser a a
+monthParser : Parser.Parser a a
 monthParser =
-    s "month"
+    Parser.s "month"
 
 
-projectsParser : Parser a a
+projectsParser : Parser.Parser a a
 projectsParser =
-    s "projects"
+    Parser.s "projects"
 
 
-stepUrl : Url -> Model -> ( Model, Cmd Msg )
+stepUrl : Url.Url -> Model -> ( Model, Cmd Msg )
 stepUrl url model =
     let
         parser =
-            oneOf
-                [ map (stepDayWithToday model) diaryTodayParser
-                , map (stepDayWithDate model) diaryDateParser
-                , map (stepMonth model) monthParser
-                , map (stepProject model) projectsParser
+            Parser.oneOf
+                [ Parser.map (stepDayWithToday model) diaryTodayParser
+                , Parser.map (stepDayWithDate model) diaryDateParser
+                , Parser.map (stepMonth model) monthParser
+                , Parser.map (stepProject model) projectsParser
                 ]
     in
-    case parse parser url of
+    case Parser.parse parser url of
         Just answer ->
             answer
 

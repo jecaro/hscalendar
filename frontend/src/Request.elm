@@ -15,22 +15,6 @@ module Request exposing
     )
 
 import Api
-    exposing
-        ( HalfDay
-        , IdleDayType
-        , Month
-        , MonthWithDays
-        , Notes
-        , Office
-        , Project
-        , SetArrived(..)
-        , SetLeft(..)
-        , SetNotes(..)
-        , SetOffice(..)
-        , SetProj(..)
-        , TimeInDay
-        , WorkOption(..)
-        )
 import Api.HalfDay as HalfDay exposing (decoder)
 import Api.IdleDayType as IdleDayType exposing (encoder)
 import Api.Month.Extended as Month exposing (toString)
@@ -57,7 +41,7 @@ import Json.Encode as Encode exposing (list)
 import RemoteData exposing (RemoteData(..), WebData, fromResult)
 
 
-getMonth : (WebData MonthWithDays -> m) -> Month -> Cmd m
+getMonth : (WebData Api.MonthWithDays -> m) -> Api.Month -> Cmd m
 getMonth toMsg month =
     get
         { url = "/month/" ++ Month.toString month
@@ -70,7 +54,7 @@ projectUrl =
     "/project"
 
 
-getProjects : (WebData (List Project) -> m) -> Cmd m
+getProjects : (WebData (List Api.Project) -> m) -> Cmd m
 getProjects toMsg =
     get
         { url = projectUrl
@@ -81,7 +65,7 @@ getProjects toMsg =
         }
 
 
-deleteProject : (WebData () -> m) -> Project -> Cmd m
+deleteProject : (WebData () -> m) -> Api.Project -> Cmd m
 deleteProject toMsg project =
     request
         { method = "DELETE"
@@ -94,7 +78,7 @@ deleteProject toMsg project =
         }
 
 
-renameProject : (WebData () -> m) -> Project -> Project -> Cmd m
+renameProject : (WebData () -> m) -> Api.Project -> Api.Project -> Cmd m
 renameProject toMsg from to =
     request
         { method = "PUT"
@@ -107,7 +91,7 @@ renameProject toMsg from to =
         }
 
 
-addProject : (WebData () -> m) -> Project -> Cmd m
+addProject : (WebData () -> m) -> Api.Project -> Cmd m
 addProject toMsg project =
     post
         { url = projectUrl
@@ -121,7 +105,7 @@ toInvertIsoString =
     format "dd-MM-yyyy"
 
 
-diaryUrl : Date -> TimeInDay -> String
+diaryUrl : Date -> Api.TimeInDay -> String
 diaryUrl date timeInDay =
     "/diary/"
         ++ toInvertIsoString date
@@ -129,7 +113,7 @@ diaryUrl date timeInDay =
         ++ TimeInDay.toString timeInDay
 
 
-idleUrl : Date -> TimeInDay -> String
+idleUrl : Date -> Api.TimeInDay -> String
 idleUrl date timeInDay =
     "/diary/idle/"
         ++ toInvertIsoString date
@@ -137,7 +121,7 @@ idleUrl date timeInDay =
         ++ TimeInDay.toString timeInDay
 
 
-getHalfDay : (WebData HalfDay -> m) -> Date -> TimeInDay -> Cmd m
+getHalfDay : (WebData Api.HalfDay -> m) -> Date -> Api.TimeInDay -> Cmd m
 getHalfDay toMsg date timeInDay =
     get
         { url = diaryUrl date timeInDay
@@ -145,52 +129,52 @@ getHalfDay toMsg date timeInDay =
         }
 
 
-setOffice : (WebData () -> m) -> Date -> TimeInDay -> Office -> Cmd m
+setOffice : (WebData () -> m) -> Date -> Api.TimeInDay -> Api.Office -> Cmd m
 setOffice toMsg date timeInDay office =
     let
         workOption =
-            MkSetOffice <| SetOffice office
+            Api.MkSetOffice <| Api.SetOffice office
     in
     setWorkOption toMsg date timeInDay workOption
 
 
-setNotes : (WebData () -> m) -> Date -> TimeInDay -> String -> Cmd m
+setNotes : (WebData () -> m) -> Date -> Api.TimeInDay -> String -> Cmd m
 setNotes toMsg date timeInDay notes =
     let
         workOption =
-            MkSetNotes <| SetNotes <| Notes notes
+            Api.MkSetNotes <| Api.SetNotes <| Api.Notes notes
     in
     setWorkOption toMsg date timeInDay workOption
 
 
-setProject : (WebData () -> m) -> Date -> TimeInDay -> String -> Cmd m
+setProject : (WebData () -> m) -> Date -> Api.TimeInDay -> String -> Cmd m
 setProject toMsg date timeInDay project =
     let
         workOption =
-            MkSetProj <| SetProj <| Project project
+            Api.MkSetProj <| Api.SetProj <| Api.Project project
     in
     setWorkOption toMsg date timeInDay workOption
 
 
-setArrived : (WebData () -> m) -> Date -> TimeInDay -> TimeOfDay -> Cmd m
+setArrived : (WebData () -> m) -> Date -> Api.TimeInDay -> TimeOfDay -> Cmd m
 setArrived toMsg date timeInDay timeOfDay =
     let
         workOption =
-            MkSetArrived <| SetArrived timeOfDay
+            Api.MkSetArrived <| Api.SetArrived timeOfDay
     in
     setWorkOption toMsg date timeInDay workOption
 
 
-setLeft : (WebData () -> m) -> Date -> TimeInDay -> TimeOfDay -> Cmd m
+setLeft : (WebData () -> m) -> Date -> Api.TimeInDay -> TimeOfDay -> Cmd m
 setLeft toMsg date timeInDay timeOfDay =
     let
         workOption =
-            MkSetLeft <| SetLeft timeOfDay
+            Api.MkSetLeft <| Api.SetLeft timeOfDay
     in
     setWorkOption toMsg date timeInDay workOption
 
 
-setWorkOption : (WebData () -> m) -> Date -> TimeInDay -> WorkOption -> Cmd m
+setWorkOption : (WebData () -> m) -> Date -> Api.TimeInDay -> Api.WorkOption -> Cmd m
 setWorkOption toMsg date timeInDay option =
     request
         { method = "PUT"
@@ -203,7 +187,7 @@ setWorkOption toMsg date timeInDay option =
         }
 
 
-setIdleDayType : (WebData () -> m) -> Date -> TimeInDay -> IdleDayType -> Cmd m
+setIdleDayType : (WebData () -> m) -> Date -> Api.TimeInDay -> Api.IdleDayType -> Cmd m
 setIdleDayType toMsg date timeInDay idleDayType =
     request
         { method = "PUT"
@@ -216,7 +200,7 @@ setIdleDayType toMsg date timeInDay idleDayType =
         }
 
 
-delete : (WebData () -> m) -> Date -> TimeInDay -> Cmd m
+delete : (WebData () -> m) -> Date -> Api.TimeInDay -> Cmd m
 delete toMsg date timeInDay =
     request
         { method = "DELETE"

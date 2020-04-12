@@ -7,21 +7,21 @@ module Common exposing
     , viewNavBar
     )
 
-import Date exposing (Date, toIsoString)
+import Date 
 import Html exposing (Html, a, article, br, div, nav, p, text)
 import Html.Attributes exposing (class, href)
 import Html.Extra exposing (nothing)
-import Http exposing (Error)
-import Http.Extended exposing (errorToString)
+import Http 
+import Http.Extended as Http
 import Json.Decode as Decode
-import List exposing (concatMap, member)
-import RemoteData exposing (RemoteData(..), WebData)
-import String exposing (concat)
+import List 
+import RemoteData 
+import String 
 
 
-dateUrl : Date -> String
+dateUrl : Date.Date -> String
 dateUrl date =
-    "/" ++ toIsoString date
+    "/" ++ Date.toIsoString date
 
 
 viewNavBar : List (Html msg) -> Html msg
@@ -43,21 +43,21 @@ viewError messages =
             [ p [] [ text "Error" ] ]
         , div [ class "message-body" ]
             [ p [] <|
-                concatMap (\t -> [ text t, br [] [] ]) messages
+                List.concatMap (\t -> [ text t, br [] [] ]) messages
             ]
         ]
 
 
-viewErrorFromError : Error -> String -> Html msg
+viewErrorFromError : Http.Error -> String -> Html msg
 viewErrorFromError error msg =
-    viewError [ msg, errorToString error ]
+    viewError [ msg, Http.errorToString error ]
 
 
-viewErrorFromWebData : WebData a -> String -> Html msg
+viewErrorFromWebData : RemoteData.WebData a -> String -> Html msg
 viewErrorFromWebData data msg =
     case data of
-        Failure error ->
-            viewError [ msg, errorToString error ]
+        RemoteData.Failure error ->
+            viewError [ msg, Http.errorToString error ]
 
         _ ->
             nothing
@@ -78,7 +78,7 @@ outsideTarget toMsg domEltIds =
                     Decode.succeed toMsg
 
                 else
-                    Decode.fail <| "inside " ++ concat domEltIds
+                    Decode.fail <| "inside " ++ String.concat domEltIds
             )
 
 
@@ -88,7 +88,7 @@ isOutsideDomEltId domEltIds =
         [ Decode.field "id" Decode.string
             |> Decode.andThen
                 (\id ->
-                    if member id domEltIds then
+                    if List.member id domEltIds then
                         -- found match by id
                         Decode.succeed False
 
