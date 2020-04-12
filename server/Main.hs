@@ -1,4 +1,5 @@
 import           RIO
+import qualified RIO.Time as Time
 
 import           Control.Monad.Except (ExceptT(..))
 import           Data.ByteString.Lazy.Char8 as Char8 (pack)
@@ -34,6 +35,7 @@ import           Options.Applicative
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
 import           Servant.API 
     ( Accept(..)
+    , Capture
     , Get
     , MimeRender(..)
     , NoContent(..)
@@ -111,6 +113,10 @@ type ProtectedApi
     = HSBasicAuth 
     :> ( HSCalendarApi 
         :<|> Summary "Root" :> Get '[HTML] RawHtml 
+        :<|> Summary "Day" :> Capture "day" Time.Day :> Get '[HTML] RawHtml
+        :<|> Summary "Diary" :> "diary" :> Get '[HTML] RawHtml
+        :<|> Summary "Month" :> "month" :>  Get '[HTML] RawHtml
+        :<|> Summary "Projects" :> "projects" :>  Get '[HTML] RawHtml
         :<|> Summary "Directory" :> Raw
        )
 
@@ -120,6 +126,10 @@ protectedApi = Proxy
 protectedRioServer :: ServerT ProtectedApi (RIO App)
 protectedRioServer _
     = rioServer 
+    :<|> serveRoot
+    :<|> const serveRoot
+    :<|> serveRoot
+    :<|> serveRoot
     :<|> serveRoot
     :<|> serveDirectoryWebApp "frontend"
 
