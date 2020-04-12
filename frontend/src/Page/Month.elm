@@ -41,7 +41,7 @@ init = ( Loading, perform (MonthChanged << fromDate) today )
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        MonthChanged month -> (model, getMonth GotResponse month)
+        MonthChanged month -> (Loading, getMonth GotResponse month)
         GotResponse response -> (response, Cmd.none)
 
 
@@ -216,7 +216,7 @@ view model =
                     nothing
 
         viewNavWithDefault =
-            withDefault nothing <| RemoteData.map (viewNav << .monthFMonth) model
+            withDefault (viewNavBar []) <| RemoteData.map (viewNav << .monthFMonth) model
 
         monthTitleWithDefault =
             withDefault "" <| RemoteData.map (Month.toString << .monthFMonth) model
