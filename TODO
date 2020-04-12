@@ -25,6 +25,5 @@
   - bug setting half day work when the other half day has weird left or arrived
   time
   - create a not found page
-  - make button loose focus after click (project page)
   - make the requests happen on top level
   - on project page, loading icon when reloading the projects

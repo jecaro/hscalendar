@@ -1,17 +1,19 @@
 module Page.Projects exposing (Model, Msg, init, projectsModified, subscriptions, update, view)
 
-import Api 
-import Browser 
+import Api
+import Browser
+import Browser.Dom as Dom
 import Browser.Events as Events
-import Common 
+import Common
 import Html exposing (Html, button, div, header, i, input, span, text)
 import Html.Attributes exposing (class, classList, id, placeholder, readonly, value)
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (nothing)
 import List
-import RemoteData 
-import Request 
+import RemoteData
+import Request
+import Task
 
 
 type Msg
@@ -95,6 +97,7 @@ viewProject maybeEditedProject project =
                 [ class "button"
                 , class "is-danger"
                 , class "is-outlined"
+                , id project.unProject
                 , onClick (ProjectDeleted project)
                 ]
                 [ span [ class "icon" ]
@@ -138,16 +141,24 @@ update msg model =
     case msg of
         ProjectAdded ->
             ( { model | projectToAdd = "", response = RemoteData.Loading }
-            , Request.addProject GotResponse (Api.Project model.projectToAdd)
+            , Cmd.batch
+                [ blurId "submit"
+                , Request.addProject GotResponse (Api.Project model.projectToAdd)
+                ]
             )
 
         ProjectDeleted project ->
             ( { model | response = RemoteData.Loading }
-            , Request.deleteProject GotResponse project )
+            , Cmd.batch
+                [ blurId project.unProject
+                , Request.deleteProject GotResponse project
+                ]
+            )
 
         ProjectRenamed from to ->
             ( { model | response = RemoteData.Loading }
-            , Request.renameProject GotResponse from to )
+            , Request.renameProject GotResponse from to
+            )
 
         GotResponse response ->
             ( { model | response = response }, Cmd.none )
@@ -167,6 +178,11 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+blurId : String -> Cmd Msg
+blurId id =
+    Task.attempt (\_ -> NoOp) (Dom.blur id)
 
 
 view : Model -> List Api.Project -> Browser.Document Msg
@@ -198,8 +214,9 @@ view model projects =
                             [ div [ class "content" ] <|
                                 List.map (viewProject model.editedProject) projects
                                     ++ [ viewNewProject model.projectToAdd
-                                       , Common.viewErrorFromWebData 
-                                            model.response "The command returned an error"
+                                       , Common.viewErrorFromWebData
+                                            model.response
+                                            "The command returned an error"
                                        ]
                             ]
                         ]
