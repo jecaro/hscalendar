@@ -1,9 +1,12 @@
 -- Code found here: https://github.com/folq/haskell-to-elm/issues/2
+
+
 module Date.Extended exposing (decoder, encode, toStringWithWeekday)
 
 import Date exposing (Date, format, toIsoString)
 import Json.Decode
 import Json.Encode
+
 
 encode : Date -> Json.Encode.Value
 encode =
@@ -25,4 +28,5 @@ decoder =
 
 
 toStringWithWeekday : Date -> String
-toStringWithWeekday date = toIsoString date ++ " " ++ format "EEEE" date
+toStringWithWeekday date =
+    toIsoString date ++ " " ++ format "EEEE" date
