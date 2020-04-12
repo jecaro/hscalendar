@@ -71,15 +71,17 @@ main =
 -- Init
 
 init : flags -> Url -> Key -> ( Model, Cmd Msg )
-init _ _ key =
+init _ url key =
     let
-        (dayModel, dayCmd) = PD.initWithToday 
+        url_ = 
+            if url.path == "/"
+                then { url | path = "/diary" }
+                else url
+        (model, cmd) = 
+            stepUrl url_ { projects = Loading , page = NotFound , key = key }
     in
-    ( { projects = Loading
-      , page = PageDay dayModel
-      , key = key
-      }
-    , batch [ getProjects GotProjectsResponse, Cmd.map DayMsg dayCmd ]
+    ( model
+    , batch [ getProjects GotProjectsResponse, cmd ]
     )
 
 -- Update
