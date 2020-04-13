@@ -14,16 +14,14 @@
 - Better type safety in DayF setter: add function
 - Indent notes in display
 - Add version ID in all the tools
-- server
-  - favicon
 - frontend
   - escape key should cancel
-  - better toString and fromString fct for TimeOfDay
   - widget for editing time
   - date picker
   - week page
   - bug setting half day work when the other half day has weird left or arrived
   time
+  - bug no error when the conversion Date.fromString fail
   - create a not found page
   - make the requests happen on top level
   - on project page, loading icon when reloading the projects

@@ -34,6 +34,9 @@ fromString str =
         [ Just hours, Just minutes, Just seconds ] ->
             Ok (TimeOfDay hours minutes seconds)
 
+        [ Just hours, Just minutes ] ->
+            Ok (TimeOfDay hours minutes 0)
+
         _ ->
             Err "Error"
 
