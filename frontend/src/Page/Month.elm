@@ -244,7 +244,7 @@ viewNav month =
                     ]
                 ]
             , div [ class "navbar-item" ]
-                [ text <| Month.toString month ]
+                [ text <| Month.toHumanString month ]
             ]
     in
     Common.viewNavBar items
@@ -269,7 +269,7 @@ view model =
 
         monthTitleWithDefault =
             RemoteData.withDefault "" <|
-                RemoteData.map (Month.toString << .monthFMonth) model
+                RemoteData.map (Month.toHumanString << .monthFMonth) model
 
         monthHtml =
             case model of
