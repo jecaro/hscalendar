@@ -1,21 +1,22 @@
 module Page.Month exposing (Model, Msg, init, update, view)
 
-import Api 
-import Api.OffDayType.Extended as OffDayType 
-import Api.Month.Extended as Month 
+import Api
+import Api.Month.Extended as Month
+import Api.OffDayType.Extended as OffDayType
+import Api.Office.Extended as Office
 import Array
 import Browser exposing (Document)
-import Common 
+import Common
 import Date
 import Dict exposing (Dict)
 import Html exposing (Html, a, br, div, header, i, li, span, table, td, text, th, tr, ul)
 import Html.Attributes exposing (class, href)
 import Html.Events exposing (onClick)
 import Html.Extra exposing (nothing)
-import RemoteData 
-import Request 
-import String 
-import Task 
+import RemoteData
+import Request
+import String
+import Task
 
 
 type Msg
@@ -30,7 +31,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( RemoteData.Loading
-    , Task.perform (MonthChanged << Month.fromDate) Date.today 
+    , Task.perform (MonthChanged << Month.fromDate) Date.today
     )
 
 
@@ -44,17 +45,20 @@ update msg _ =
             ( response, Cmd.none )
 
 
-viewHalfDay : Maybe Api.HalfDay -> Html msg
+viewHalfDay : Maybe Api.HalfDay -> List (Html msg)
 viewHalfDay maybeHalfDay =
     case maybeHalfDay of
         Nothing ->
-            nothing
+            []
 
         Just (Api.MkHalfDayWorked worked) ->
-            text worked.workedProject.unProject
+            [ text <| Office.toString worked.workedOffice
+            , br [] []
+            , text worked.workedProject.unProject
+            ]
 
         Just (Api.MkHalfDayOff off) ->
-            text <| OffDayType.toString off.offDayType
+            [ text <| OffDayType.toString off.offDayType ]
 
 
 viewDay : Api.Month -> Api.DayWithHalfDays -> List (Html msg)
@@ -65,12 +69,11 @@ viewDay month { dayFDay, dayFMorning, dayFAfternoon } =
                 [ text <| String.fromInt <| Date.day dayFDay ]
     in
     if Date.monthNumber dayFDay == month.month then
-        [ header
-        , br [] []
-        , viewHalfDay dayFMorning
-        , br [] []
-        , viewHalfDay dayFAfternoon
-        ]
+        header
+            :: br [] []
+            :: viewHalfDay dayFMorning
+            ++ br [] []
+            :: viewHalfDay dayFAfternoon
 
     else
         [ header ]
@@ -216,8 +219,8 @@ viewMonth { monthFMonth, monthFDays } =
                 monthList =
                     Dict.toList <| stats monthFDays
             in
-            ul [] 
-                <| List.map (\( k, v ) -> li [] [ text <| k ++ ": " ++ String.fromFloat v ]) monthList
+            ul [] <|
+                List.map (\( k, v ) -> li [] [ text <| k ++ ": " ++ String.fromFloat v ]) monthList
     in
     [ monthTable, br [] [], monthStats ]
 
@@ -261,12 +264,12 @@ view model =
                 nothing
 
         viewNavWithDefault =
-            RemoteData.withDefault (Common.viewNavBar []) 
-                <| RemoteData.map (viewNav << .monthFMonth) model
+            RemoteData.withDefault (Common.viewNavBar []) <|
+                RemoteData.map (viewNav << .monthFMonth) model
 
         monthTitleWithDefault =
-            RemoteData.withDefault "" 
-                <| RemoteData.map (Month.toString << .monthFMonth) model
+            RemoteData.withDefault "" <|
+                RemoteData.map (Month.toString << .monthFMonth) model
 
         monthHtml =
             case model of
