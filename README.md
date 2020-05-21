@@ -2,19 +2,20 @@
 
 [![Build Status][status-png]][status]
 
-This is `hscalendar`, a time tracking software written in the HASKELL
-programming language. It uses the best practices proposed by the FP complete
-team:
+This is `hscalendar`, a time tracking software written in HASKELL and ELM. It
+consists in a couple of command line tools along a web frontend.
+
+As for HASKELL, the code follows the best practices proposed by the FP complete
+team, especially:
 
 - [how to handle exceptions][exceptions]
 - using the [ReaderT pattern][readert] and [RIO][rio] library
-
-It consists in a unit tested API along some command line tools.
 
 This project can demonstrate the use of the following libraries:
 - [QuickCheck][quickcheck]
 - [RIO][rio]
 - [esqueleto][esqueleto]
+- [haskell-to-elm][haskell-to-elm]
 - [hspec][hspec]
 - [optparse-applicative][optparse-applicative]
 - [persistent][persistent]
@@ -40,8 +41,8 @@ A half-day can be either worked or not. In the former case:
 The project is split in different binaries:
 - `hscalendar-cli`: a simple standalone command line tool
 - `hscalendar-server`/`hscalendar-client`: [servant][servant] REST server/client
-- `hscalendar-user`: command line tool to edit the user list allowed to connect
-  to the server
+- `hscalendar-users`: command line tool to edit the user list allowed to connect
+  to the web server
 
 These programs share a common library located in the [src](src) directory.
 The library contains the following sub-directories:
@@ -49,7 +50,65 @@ The library contains the following sub-directories:
   level monad, configuration file, process launching, command line parsing, the
   servant API etc...
 - [src/Db](src/Db): Contains the CRUD functions to edit and query the database
-- [src/*](src/): Other functions related to external libraries
+- [src/\*](src/): Other functions related to external libraries
+
+# Frontend
+
+The frontend is written en ELM and its sources are located in the
+[frontend](frontend) directory. ELM datatypes are generated from the Haskell
+datatypes using the library [haskell-to-elm][haskell-to-elm]. The executable in
+charge of actually writing the ELM sources file is `elm-generator`.
+
+Below are some screenshots of the frontend.
+
+The month page showing a review of what happens during a full month:
+
+<img src="https://raw.githubusercontent.com/jecaro/hscalendar/master/docs/month.png" width="300">
+
+The day page where one can edit individual half-day:
+
+<img src="https://raw.githubusercontent.com/jecaro/hscalendar/master/docs/day.png" width="300">
+
+The project page, to add/rename/remove projects:
+
+<img src="https://raw.githubusercontent.com/jecaro/hscalendar/master/docs/project.png" width="300">
+
+# Deployment and CI
+
+This project is built on each commit on the repository by [travis][status]. A
+docker image is automatically sent on [docker hub][dockerhub] when the build and
+tests succeed.
+
+# How to try it ?
+
+The easiest way is to pull the latest docker image:
+```
+docker pull jecaro/hscalendar-server:latest
+```
+
+Then start a shell in a new container:
+
+```
+docker run -ti --rm --network=host jecaro/hscalendar-server:latest bash
+```
+
+Initialize the default SQLite database:
+```
+./hscalendar-cli migrate
+```
+
+Add a user:
+```
+./hscalendar-users add myusername mysecretpassword
+```
+
+Start the server:
+```
+./hscalendar-server
+```
+
+That's it ! You can know go to the URL: http://localhost:8081/ and authenticate
+yourself.
 
 # Standalone command line tool
 
@@ -220,10 +279,12 @@ example:
 
 
 [digitalocean]: https://www.digitalocean.com/
+[dockerhub]: https://hub.docker.com/r/jecaro/hscalendar-server/tags
 [elm]: https://elm-lang.org/
 [esqueleto]: https://github.com/bitemyapp/esqueleto
 [exceptions]: https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell
 [haskell-gi]: https://github.com/haskell-gi/haskell-gi
+[haskell-to-elm]: https://github.com/folq/haskell-to-elm
 [heroku]: https://www.heroku.com/
 [hspec]: https://github.com/hspec/hspec
 [optparse-applicative]: https://github.com/pcapriotti/optparse-applicative

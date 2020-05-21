@@ -4,12 +4,10 @@
 - Put defaults values in config file for a week
 - Add unit tests for editor features
 - Add unit tests for stats features
-- Add cleanUp command in cli 
+- Add cleanUp command in cli
 - Add documentation for editor
 - Add documentation about logger
-- Add documentation for elm
-- Add CI notes
-- Add installation notes
+- Add documentation for month
 - Rework content of the file in editor command
 - Better type safety in DayF setter: add function
 - Indent notes in display
