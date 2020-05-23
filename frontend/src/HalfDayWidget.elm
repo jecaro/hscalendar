@@ -9,13 +9,13 @@ module HalfDayWidget exposing
     )
 
 import Api
-import Api.OffDayType.Extended as OffDayType 
-import Api.Office.Extended as Office 
-import Api.TimeInDay.Extended as TimeInDay 
-import Api.TimeOfDay as TimeOfDay 
+import Api.OffDayType.Extended as OffDayType
+import Api.Office.Extended as Office
+import Api.TimeInDay.Extended as TimeInDay
+import Api.TimeOfDay as TimeOfDay
 import Browser.Dom as Dom
-import Common 
-import Date 
+import Common
+import Date
 import Html
     exposing
         ( Attribute
@@ -45,15 +45,15 @@ import Html.Attributes
 import Html.Events exposing (onBlur, onClick, onDoubleClick, onInput)
 import Html.Events.Extended exposing (onEnter)
 import Html.Extra exposing (nothing, viewIf)
-import Http 
-import List 
+import Http
+import List
 import Maybe.Extra as Maybe
-import RemoteData 
+import RemoteData
 import Request
-import Result 
-import String 
-import Task 
-import Time 
+import Result
+import String
+import Task
+import Time
 
 
 

@@ -7,16 +7,16 @@ module Common exposing
     , viewNavBar
     )
 
-import Date 
+import Date
 import Html exposing (Html, a, article, br, div, nav, p, text)
 import Html.Attributes exposing (class, href)
 import Html.Extra exposing (nothing)
-import Http 
+import Http
 import Http.Extended as Http
 import Json.Decode as Decode
-import List 
-import RemoteData 
-import String 
+import List
+import RemoteData
+import String
 
 
 dateUrl : Date.Date -> String

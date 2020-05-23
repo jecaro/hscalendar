@@ -1,20 +1,20 @@
 module Main exposing (main)
 
 import Api
-import Browser 
+import Browser
 import Browser.Navigation as Navigation
-import Date 
+import Date
 import Html
 import Html.Extra exposing (nothing)
 import Page.Day as PD
 import Page.Month as PM
-import Page.Projects as PP 
+import Page.Projects as PP
 import Platform.Cmd as Cmd
 import Platform.Sub as Sub
-import RemoteData 
-import Request 
-import Result 
-import Url 
+import RemoteData
+import Request
+import Result
+import Url
 import Url.Parser as Parser
 
 

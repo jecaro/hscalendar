@@ -9,15 +9,15 @@ module Page.Day exposing
     )
 
 import Api
-import Browser 
+import Browser
 import Browser.Events as Events
-import Common 
-import Date 
+import Common
+import Date
 import Date.Extended as Date
 import HalfDayWidget as HDW
 import Html exposing (Html, a, div, section, text)
 import Html.Attributes exposing (class, href)
-import Task 
+import Task
 
 
 

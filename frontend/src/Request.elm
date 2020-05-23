@@ -7,18 +7,18 @@ module Request exposing
     , getProjects
     , renameProject
     , setArrived
-    , setOffType
     , setLeft
     , setNotes
+    , setOffType
     , setOffice
     , setProject
     )
 
 import Api
 import Api.HalfDay as HalfDay exposing (decoder)
-import Api.OffDayType as OffDayType exposing (encoder)
 import Api.Month.Extended as Month exposing (toString)
 import Api.MonthWithDays as MonthWithDays exposing (decoder)
+import Api.OffDayType as OffDayType exposing (encoder)
 import Api.Project as Project exposing (decoder)
 import Api.RenameArgs as RenameArgs exposing (decoder)
 import Api.TimeInDay.Extended as TimeInDay exposing (toString)

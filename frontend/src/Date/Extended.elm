@@ -3,7 +3,7 @@
 
 module Date.Extended exposing (decoder, encode, toStringWithWeekday)
 
-import Date 
+import Date
 import Json.Decode
 import Json.Encode
 

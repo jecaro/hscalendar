@@ -1,6 +1,6 @@
 module Api.TimeInDay.Extended exposing (fromString, toString)
 
-import Api 
+import Api
 
 
 toString : Api.TimeInDay -> String

@@ -1,6 +1,6 @@
 module Html.Events.Extended exposing (onEnter)
 
-import Html 
+import Html
 import Html.Events as Events
 import Json.Decode as Decode exposing (fail, map2, succeed)
 

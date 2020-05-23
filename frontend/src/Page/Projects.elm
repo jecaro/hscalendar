@@ -1,4 +1,12 @@
-module Page.Projects exposing (Model, Msg, init, projectsModified, subscriptions, update, view)
+module Page.Projects exposing
+    ( Model
+    , Msg
+    , init
+    , projectsModified
+    , subscriptions
+    , update
+    , view
+    )
 
 import Api
 import Browser

@@ -1,6 +1,6 @@
 module Api.OffDayType.Extended exposing (fromString, toString)
 
-import Api 
+import Api
 
 
 toString : Api.OffDayType -> String

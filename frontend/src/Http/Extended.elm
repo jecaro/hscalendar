@@ -4,7 +4,7 @@
 
 module Http.Extended exposing (errorToString)
 
-import Http 
+import Http
 
 
 errorToString : Http.Error -> String

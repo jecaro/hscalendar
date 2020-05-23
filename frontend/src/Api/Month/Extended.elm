@@ -1,4 +1,10 @@
-module Api.Month.Extended exposing (fromDate, next, previous, toHumanString, toString)
+module Api.Month.Extended exposing
+    ( fromDate
+    , next
+    , previous
+    , toHumanString
+    , toString
+    )
 
 import Api
 import Date
