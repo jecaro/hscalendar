@@ -1,50 +1,49 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Orphans
-where
 
-import           RIO
-import qualified RIO.Time as Time (Day(..), TimeOfDay(..))
-import qualified RIO.Vector.Boxed as VB (Vector)
+module Orphans where
 
+import App.Api (RenameArgs)
+import App.WorkOption
+    ( SetArrived,
+      SetLeft,
+      SetNotes,
+      SetOffice,
+      SetProj,
+      WorkOption,
+    )
 import qualified Data.Aeson as A
+import Db.DayF (DayWithHalfDays)
+import Db.HalfDay (HalfDay)
+import Db.Month (Month)
+import Db.MonthF (MonthWithDays)
+import Db.Notes (Notes)
+import Db.Off (Off)
+import Db.OffDayType (OffDayType)
+import Db.Office (Office)
+import Db.Project (Project)
+import Db.TimeInDay (TimeInDay)
+import Db.Worked (Worked)
 import qualified Generics.SOP as SOP
-import qualified Language.Elm.Type as T (apps)
 import qualified Language.Elm.Expression as E (apps)
-import           Language.Haskell.To.Elm
-    ( HasElmEncoder(..)
-    , HasElmDecoder(..)
-    , HasElmType(..)
-    , Options(..)
-    , defaultOptions
-    , deriveElmJSONEncoder
-    , deriveElmJSONDecoder
-    , deriveElmTypeDefinition
+import qualified Language.Elm.Type as T (apps)
+import Language.Haskell.To.Elm
+    ( HasElmDecoder (..),
+      HasElmEncoder (..),
+      HasElmType (..),
+      Options (..),
+      defaultOptions,
+      deriveElmJSONDecoder,
+      deriveElmJSONEncoder,
+      deriveElmTypeDefinition,
     )
-
-import           App.Api (RenameArgs)
-import           App.WorkOption
-    ( WorkOption
-    , SetArrived
-    , SetLeft
-    , SetNotes
-    , SetOffice
-    , SetProj
-    )
-import           Db.DayF (DayWithHalfDays)
-import           Db.HalfDay (HalfDay)
-import           Db.Off (Off)
-import           Db.OffDayType (OffDayType)
-import           Db.Month (Month)
-import           Db.MonthF (MonthWithDays)
-import           Db.Notes (Notes)
-import           Db.Office (Office)
-import           Db.Project (Project)
-import           Db.TimeInDay (TimeInDay)
-import           Db.Worked (Worked)
+import RIO
+import qualified RIO.Time as Time (Day (..), TimeOfDay (..))
+import qualified RIO.Vector.Boxed as VB (Vector)
 
 --
 
 instance SOP.Generic TimeInDay
+
 instance SOP.HasDatatypeInfo TimeInDay
 
 instance HasElmType TimeInDay where
@@ -62,6 +61,7 @@ instance HasElmEncoder A.Value TimeInDay where
 --
 
 instance SOP.Generic OffDayType
+
 instance SOP.HasDatatypeInfo OffDayType
 
 instance HasElmType OffDayType where
@@ -79,6 +79,7 @@ instance HasElmEncoder A.Value OffDayType where
 --
 
 instance SOP.Generic Off
+
 instance SOP.HasDatatypeInfo Off
 
 instance HasElmType Off where
@@ -96,6 +97,7 @@ instance HasElmEncoder A.Value Off where
 --
 
 instance SOP.Generic Office
+
 instance SOP.HasDatatypeInfo Office
 
 instance HasElmType Office where
@@ -113,6 +115,7 @@ instance HasElmEncoder A.Value Office where
 --
 
 instance SOP.Generic Notes
+
 instance SOP.HasDatatypeInfo Notes
 
 instance HasElmType Notes where
@@ -130,6 +133,7 @@ instance HasElmEncoder A.Value Notes where
 --
 
 instance SOP.Generic Project
+
 instance SOP.HasDatatypeInfo Project
 
 instance HasElmType Project where
@@ -147,6 +151,7 @@ instance HasElmEncoder A.Value Project where
 --
 
 instance SOP.Generic Worked
+
 instance SOP.HasDatatypeInfo Worked
 
 instance HasElmType Worked where
@@ -164,6 +169,7 @@ instance HasElmEncoder A.Value Worked where
 --
 
 instance SOP.Generic HalfDay
+
 instance SOP.HasDatatypeInfo HalfDay
 
 instance HasElmType HalfDay where
@@ -181,6 +187,7 @@ instance HasElmEncoder A.Value HalfDay where
 --
 
 instance SOP.Generic WorkOption
+
 instance SOP.HasDatatypeInfo WorkOption
 
 instance HasElmType WorkOption where
@@ -198,6 +205,7 @@ instance HasElmEncoder A.Value WorkOption where
 --
 
 instance SOP.Generic SetArrived
+
 instance SOP.HasDatatypeInfo SetArrived
 
 instance HasElmType SetArrived where
@@ -215,6 +223,7 @@ instance HasElmEncoder A.Value SetArrived where
 --
 
 instance SOP.Generic SetLeft
+
 instance SOP.HasDatatypeInfo SetLeft
 
 instance HasElmType SetLeft where
@@ -232,6 +241,7 @@ instance HasElmEncoder A.Value SetLeft where
 --
 
 instance SOP.Generic SetNotes
+
 instance SOP.HasDatatypeInfo SetNotes
 
 instance HasElmType SetNotes where
@@ -249,6 +259,7 @@ instance HasElmEncoder A.Value SetNotes where
 --
 
 instance SOP.Generic SetOffice
+
 instance SOP.HasDatatypeInfo SetOffice
 
 instance HasElmType SetOffice where
@@ -266,6 +277,7 @@ instance HasElmEncoder A.Value SetOffice where
 --
 
 instance SOP.Generic SetProj
+
 instance SOP.HasDatatypeInfo SetProj
 
 instance HasElmType SetProj where
@@ -283,6 +295,7 @@ instance HasElmEncoder A.Value SetProj where
 --
 
 instance SOP.Generic RenameArgs
+
 instance SOP.HasDatatypeInfo RenameArgs
 
 instance HasElmType RenameArgs where
@@ -303,26 +316,27 @@ instance HasElmType VB.Vector where
     elmType = "Array.Array"
 
 instance HasElmEncoder A.Value VB.Vector where
-  elmEncoder = "Json.Encode.array"
+    elmEncoder = "Json.Encode.array"
 
 instance HasElmDecoder A.Value VB.Vector where
-  elmDecoder = "Json.Decode.array"
+    elmDecoder = "Json.Decode.array"
 
 instance (HasElmType a) => HasElmType (VB.Vector a) where
-  elmType =
-    T.apps (elmType @Vector) [elmType @a]
+    elmType =
+        T.apps (elmType @Vector) [elmType @a]
 
 instance (HasElmDecoder A.Value a) => HasElmDecoder A.Value (VB.Vector a) where
-  elmDecoder =
-    E.apps (elmDecoder @A.Value @VB.Vector) [elmDecoder @A.Value @a]
+    elmDecoder =
+        E.apps (elmDecoder @A.Value @VB.Vector) [elmDecoder @A.Value @a]
 
 instance (HasElmEncoder A.Value a) => HasElmEncoder A.Value (VB.Vector a) where
-  elmEncoder =
-    E.apps (elmEncoder @A.Value @VB.Vector) [elmEncoder @A.Value @a]
+    elmEncoder =
+        E.apps (elmEncoder @A.Value @VB.Vector) [elmEncoder @A.Value @a]
 
 --
 
 instance SOP.Generic MonthWithDays
+
 instance SOP.HasDatatypeInfo MonthWithDays
 
 instance HasElmType MonthWithDays where
@@ -340,6 +354,7 @@ instance HasElmEncoder A.Value MonthWithDays where
 --
 
 instance SOP.Generic DayWithHalfDays
+
 instance SOP.HasDatatypeInfo DayWithHalfDays
 
 instance HasElmType DayWithHalfDays where
@@ -357,6 +372,7 @@ instance HasElmEncoder A.Value DayWithHalfDays where
 --
 
 instance SOP.Generic Month
+
 instance SOP.HasDatatypeInfo Month
 
 instance HasElmType Month where
@@ -374,49 +390,53 @@ instance HasElmEncoder A.Value Month where
 --
 
 instance HasElmType Integer where
-  elmType = "Basics.Int"
+    elmType = "Basics.Int"
 
 instance HasElmEncoder A.Value Integer where
-  elmEncoder = "Json.Encode.int"
+    elmEncoder = "Json.Encode.int"
 
 instance HasElmDecoder A.Value Integer where
-  elmDecoder = "Json.Decode.int"
+    elmDecoder = "Json.Decode.int"
 
 --
 
 deriving instance Generic Time.Day
+
 instance SOP.Generic Time.Day
+
 instance SOP.HasDatatypeInfo Time.Day
 
 instance HasElmType Time.Day where
     elmType = "Date.Date"
 
 instance HasElmEncoder A.Value Time.Day where
-  elmEncoder = "Date.Extended.encode"
+    elmEncoder = "Date.Extended.encode"
 
 instance HasElmDecoder A.Value Time.Day where
-  elmDecoder = "Date.Extended.decoder"
+    elmDecoder = "Date.Extended.decoder"
 
 --
 
 deriving instance Generic Time.TimeOfDay
+
 instance SOP.Generic Time.TimeOfDay
+
 instance SOP.HasDatatypeInfo Time.TimeOfDay
 
 instance HasElmType Time.TimeOfDay where
     elmType = "Api.TimeOfDay.TimeOfDay"
 
 instance HasElmEncoder A.Value Time.TimeOfDay where
-  elmEncoder = "Api.TimeOfDay.encode"
+    elmEncoder = "Api.TimeOfDay.encode"
 
 instance HasElmDecoder A.Value Time.TimeOfDay where
-  elmDecoder = "Api.TimeOfDay.decoder"
+    elmDecoder = "Api.TimeOfDay.decoder"
 
 --
 
 -- | Remove the first underscore of a string
 removeUnderscore :: String -> String
-removeUnderscore ('_':xs) = xs
+removeUnderscore ('_' : xs) = xs
 removeUnderscore x = x
 
 -- | Options to rewrite the fields name. It seems that Elm doesn't accept

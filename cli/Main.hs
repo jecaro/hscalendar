@@ -1,18 +1,18 @@
-import           RIO
+module Main where
 
-import           Options.Applicative
-    ( Parser
-    , ParserInfo
-    , execParser
-    , helper
-    , info
-    , idm
-    , (<**>)
+import App.App (initAppAndRun)
+import App.CommandLine (Cmd, Options (..), cmd, options)
+import Options.Applicative
+    ( (<**>),
+      Parser,
+      ParserInfo,
+      execParser,
+      helper,
+      idm,
+      info,
     )
-
-import           App.App (initAppAndRun)
-import           App.CommandLine (Cmd, Options(..), cmd, options)
-import           Run (run)
+import RIO
+import Run (run)
 
 optionsAndCmd :: Parser (Options, Cmd)
 optionsAndCmd = curry id <$> options <*> cmd

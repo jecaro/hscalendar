@@ -1,32 +1,30 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+
 -- | This is the internal model. It defines the persistent data types with
 -- template haskell.
+module Db.Internal.DBModel where
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-
-module Db.Internal.DBModel
-where
-
-import           RIO
+import Database.Persist.TH
+    ( mkMigrate,
+      mkPersist,
+      persistLowerCase,
+      share,
+      sqlSettings,
+    )
+import Db.Internal.DBHalfDayType (DBHalfDayType (..))
+import Db.Office (Office)
+import Db.TimeInDay (TimeInDay)
+import RIO
 import qualified RIO.Text ()
 import qualified RIO.Time as Time (Day, TimeOfDay)
 
-import           Database.Persist.TH
-   ( mkMigrate
-   , mkPersist
-   , persistLowerCase
-   , share
-   , sqlSettings
-   )
-
-import           Db.Internal.DBHalfDayType (DBHalfDayType(..))
-import           Db.Office (Office)
-import           Db.TimeInDay (TimeInDay)
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+share
+    [mkPersist sqlSettings, mkMigrate "migrateAll"]
+    [persistLowerCase|
 DBProject
     -- Fields
     name       Text
@@ -69,4 +67,3 @@ DBUser
     deriving Show
     deriving Eq
 |]
-

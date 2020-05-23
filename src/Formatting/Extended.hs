@@ -1,10 +1,8 @@
 -- | Fonctions related to the "Formatting" module
-module Formatting.Extended (formatTwoDigitsPadZero)
-where
+module Formatting.Extended (formatTwoDigitsPadZero) where
 
+import Formatting ((%.), int, left, sformat)
 import RIO
-
-import Formatting (int, left, sformat, (%.))
 
 -- | Print a 'Int', suitable to output day or month numbers
 formatTwoDigitsPadZero :: Int -> Text

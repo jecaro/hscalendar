@@ -1,29 +1,32 @@
--- | Type to define the office used on working half-day
 {-# LANGUAGE TemplateHaskell #-}
+
+-- | Type to define the office used on working half-day
 module Db.Office
-    ( Office(..)
-    , parser
-    ) where
-import           RIO
-import           Data.Attoparsec.Text
-    ( Parser
-    , asciiCI
+    ( Office (..),
+      parser,
     )
-import           Data.Yaml
-    ( FromJSON
-    , ToJSON
+where
+
+import Data.Attoparsec.Text
+    ( Parser,
+      asciiCI,
     )
-
-import           Database.Persist.TH (derivePersistField)
-
-import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
+import Data.Yaml
+    ( FromJSON,
+      ToJSON,
+    )
+import Database.Persist.TH (derivePersistField)
+import RIO
+import Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
 -- | Simple sum type for defining a work location
 data Office = Rennes | Home | Poool | OutOfOffice
     deriving (Bounded, Enum, Eq, Generic, Ord, Read, Show)
+
 derivePersistField "Office"
 
 instance FromJSON Office
+
 instance ToJSON Office
 
 -- | Arbitrary instance for QuickCheck
@@ -38,8 +41,8 @@ instance Display Office where
 
 -- | Parser for the 'Office' type
 parser :: Parser Office
-parser =   asciiCI "home"   $> Home
-       <|> asciiCI "out"    $> OutOfOffice
-       <|> asciiCI "poool"  $> Poool
-       <|> asciiCI "rennes" $> Rennes
-
+parser =
+    asciiCI "home" $> Home
+        <|> asciiCI "out" $> OutOfOffice
+        <|> asciiCI "poool" $> Poool
+        <|> asciiCI "rennes" $> Rennes

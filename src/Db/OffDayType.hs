@@ -1,24 +1,23 @@
 -- | A type for a non-working day
-module Db.OffDayType
-where
+module Db.OffDayType where
 
-import RIO
-
-import           Data.Aeson (FromJSON, ToJSON)
-import           Data.Attoparsec.Text
-    ( Parser
-    , asciiCI
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Attoparsec.Text
+    ( Parser,
+      asciiCI,
     )
-import           Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
+import RIO
+import Test.QuickCheck (Arbitrary, arbitrary, arbitraryBoundedEnum)
 
 -- | All the different kinds of non-working half-day
-data OffDayType = PaidLeave
-                 | FamilyEvent
-                 | RTTE
-                 | RTTS
-                 | UnpaidLeave
-                 | PublicHoliday
-                 | PartTime
+data OffDayType
+    = PaidLeave
+    | FamilyEvent
+    | RTTE
+    | RTTS
+    | UnpaidLeave
+    | PublicHoliday
+    | PartTime
     deriving (Bounded, Enum, Eq, Generic, Show)
 
 -- | Arbitrary instance for QuickCheck
@@ -26,6 +25,7 @@ instance Arbitrary OffDayType where
     arbitrary = arbitraryBoundedEnum
 
 instance ToJSON OffDayType
+
 instance FromJSON OffDayType
 
 instance Hashable OffDayType
@@ -41,11 +41,11 @@ instance Display OffDayType where
 
 -- | Parser for this type
 parser :: Parser OffDayType
-parser =   asciiCI "pl"   $> PaidLeave
-       <|> asciiCI "fe"   $> FamilyEvent
-       <|> asciiCI "rtte" $> RTTE
-       <|> asciiCI "rtts" $> RTTS
-       <|> asciiCI "ul"   $> UnpaidLeave
-       <|> asciiCI "ph"   $> PublicHoliday
-       <|> asciiCI "pt"   $> PartTime
-
+parser =
+    asciiCI "pl" $> PaidLeave
+        <|> asciiCI "fe" $> FamilyEvent
+        <|> asciiCI "rtte" $> RTTE
+        <|> asciiCI "rtts" $> RTTS
+        <|> asciiCI "ul" $> UnpaidLeave
+        <|> asciiCI "ph" $> PublicHoliday
+        <|> asciiCI "pt" $> PartTime

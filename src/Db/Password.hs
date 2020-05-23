@@ -1,47 +1,46 @@
 -- | Functions related to 'Password
 module Db.Password
-    ( Password
-    , mkPassword
-    , mkPasswordLit
-    , parser
-    , unPassword
+    ( Password,
+      mkPassword,
+      mkPasswordLit,
+      parser,
+      unPassword,
     )
 where
 
-import           RIO
-
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Attoparsec.Text
+    ( Parser,
+      many1,
+      satisfy,
+    )
+import Data.Char (isPrint)
+import Data.Either.Combinators (rightToMaybe)
+import Data.Typeable (typeOf)
+import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
-
-import           Data.Aeson (FromJSON, ToJSON)
-import           Data.Attoparsec.Text
-    ( Parser
-    , many1
-    , satisfy
+import Refined
+    ( Predicate,
+      Refined,
+      refine,
+      throwRefineOtherException,
+      unrefine,
+      validate,
     )
-import           Data.Char (isPrint)
-import           Data.Either.Combinators (rightToMaybe)
-import           Data.Typeable (typeOf)
-import           Refined
-    ( Predicate
-    , Refined
-    , refine
-    , throwRefineOtherException
-    , unrefine
-    , validate
+import Test.QuickCheck
+    ( Arbitrary,
+      arbitrary,
+      choose,
+      sized,
+      suchThat,
+      vectorOf,
     )
-import           Test.QuickCheck
-    ( Arbitrary
-    , arbitrary
-    , choose
-    , sized
-    , suchThat
-    , vectorOf
-    )
-import           Test.QuickCheck.Instances.Text()
+import Test.QuickCheck.Instances.Text ()
 
 -- | The type for storing the password
 newtype Password = MkPassword
-    { unPassword :: Text.Text -- ^ Unwrap the content
+    { -- | Unwrap the content
+      unPassword :: Text.Text
     }
     deriving (Eq, Generic, Ord, Show)
 
@@ -53,8 +52,9 @@ type PasswordText = Refined PasswordData Text
 
 -- | Predicate instance to validate what is allowable for a password
 instance Predicate PasswordData Text where
-    validate p password = unless (passwordValid password) $
-        throwRefineOtherException (typeOf p) "Not a valid password"
+    validate p password =
+        unless (passwordValid password) $
+            throwRefineOtherException (typeOf p) "Not a valid password"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Password where
@@ -64,6 +64,7 @@ instance Arbitrary Password where
         pure $ MkPassword $ Text.pack xs
 
 instance FromJSON Password
+
 instance ToJSON Password
 
 -- | Maximum length of a password
@@ -72,8 +73,9 @@ passwordMaxLength = 20
 
 -- | Check the validity of a password
 passwordValid :: Text -> Bool
-passwordValid password = Text.length password <= passwordMaxLength &&
-    Text.all isPrint password
+passwordValid password =
+    Text.length password <= passwordMaxLength
+        && Text.all isPrint password
 
 -- | Smart constructor which cannot fail
 mkPasswordLit :: PasswordText -> Password
@@ -88,4 +90,4 @@ parser = do
     str <- many1 $ satisfy isPrint
     case mkPassword (Text.pack str) of
         Nothing -> fail "Unable to parse password"
-        Just p  -> pure p
+        Just p -> pure p

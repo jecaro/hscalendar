@@ -1,47 +1,46 @@
 -- | Functions related to 'Login'
 module Db.Login
-    ( Login
-    , mkLogin
-    , mkLoginLit
-    , unLogin
-    , parser
+    ( Login,
+      mkLogin,
+      mkLoginLit,
+      unLogin,
+      parser,
     )
 where
 
-import           RIO
-
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Attoparsec.Text
+    ( Parser,
+      inClass,
+      many1,
+      satisfy,
+    )
+import Data.Either.Combinators (rightToMaybe)
+import Data.Typeable (typeOf)
+import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
-
-import           Data.Aeson (FromJSON, ToJSON)
-import           Data.Attoparsec.Text
-    ( Parser
-    , inClass
-    , many1
-    , satisfy
+import Refined
+    ( Predicate,
+      Refined,
+      refine,
+      throwRefineOtherException,
+      unrefine,
+      validate,
     )
-import           Data.Either.Combinators (rightToMaybe)
-import           Data.Typeable (typeOf)
-import           Refined
-    ( Predicate
-    , Refined
-    , refine
-    , throwRefineOtherException
-    , unrefine
-    , validate
+import Test.QuickCheck
+    ( Arbitrary,
+      arbitrary,
+      choose,
+      elements,
+      sized,
+      vectorOf,
     )
-import           Test.QuickCheck
-    ( Arbitrary
-    , arbitrary
-    , choose
-    , elements
-    , sized
-    , vectorOf
-    )
-import           Test.QuickCheck.Instances.Text()
+import Test.QuickCheck.Instances.Text ()
 
 -- | The type for storing the login
 newtype Login = MkLogin
-    { unLogin :: Text.Text -- ^ Unwrap the content
+    { -- | Unwrap the content
+      unLogin :: Text.Text
     }
     deriving (Eq, Generic, Ord, Show)
 
@@ -53,8 +52,9 @@ type LoginText = Refined LoginData Text
 
 -- | Predicate instance to validate what is allowable for login
 instance Predicate LoginData Text where
-    validate p login = unless (loginValid login) $
-        throwRefineOtherException (typeOf p) "Not a valid login"
+    validate p login =
+        unless (loginValid login) $
+            throwRefineOtherException (typeOf p) "Not a valid login"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Login where
@@ -64,6 +64,7 @@ instance Arbitrary Login where
         pure $ MkLogin $ Text.pack xs
 
 instance FromJSON Login
+
 instance ToJSON Login
 
 -- | Maximum length of a login
@@ -72,12 +73,13 @@ loginMaxLength = 20
 
 -- | Allowed characters for a login
 loginAllowedChars :: String
-loginAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
+loginAllowedChars = ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9'] <> ['_']
 
 -- | Check the validity of a login
 loginValid :: Text -> Bool
-loginValid login = Text.length login <= loginMaxLength &&
-    Text.all (`elem` loginAllowedChars) login
+loginValid login =
+    Text.length login <= loginMaxLength
+        && Text.all (`elem` loginAllowedChars) login
 
 -- | Smart constructor which cannot fail
 mkLoginLit :: LoginText -> Login
@@ -92,4 +94,4 @@ parser = do
     str <- many1 $ satisfy $ inClass loginAllowedChars
     case mkLogin (Text.pack str) of
         Nothing -> fail "Unable to parse login"
-        Just p  -> pure p
+        Just p -> pure p

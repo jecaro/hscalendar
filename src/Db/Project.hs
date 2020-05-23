@@ -1,53 +1,53 @@
 -- | Functions related to the 'Project' type
 module Db.Project
-    ( Project
-    , mkProject
-    , mkProjectLit
-    , parser
-    , unProject
+    ( Project,
+      mkProject,
+      mkProjectLit,
+      parser,
+      unProject,
     )
 where
 
-import           RIO
-
+import Data.Aeson ((.:), FromJSON (..), ToJSON, withObject)
+import Data.Attoparsec.Text
+    ( Parser,
+      inClass,
+      many1,
+      satisfy,
+    )
+import Data.Either.Combinators (rightToMaybe)
+import Data.Typeable (typeOf)
+import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
-
-import           Data.Aeson (FromJSON(..), ToJSON, withObject, (.:))
-import           Data.Attoparsec.Text
-    ( Parser
-    , inClass
-    , many1
-    , satisfy
+import Refined
+    ( Predicate,
+      Refined,
+      refine,
+      throwRefineOtherException,
+      unrefine,
+      validate,
     )
-import           Data.Either.Combinators (rightToMaybe)
-import           Data.Typeable (typeOf)
-import           Refined
-    ( Predicate
-    , Refined
-    , refine
-    , throwRefineOtherException
-    , unrefine
-    , validate
+import Test.QuickCheck
+    ( Arbitrary,
+      arbitrary,
+      choose,
+      elements,
+      sized,
+      vectorOf,
     )
-import           Test.QuickCheck
-    ( Arbitrary
-    , arbitrary
-    , elements
-    , choose
-    , sized
-    , vectorOf
-    )
-import           Test.QuickCheck.Instances.Text()
+import Test.QuickCheck.Instances.Text ()
 
 -- | A type for a project name
 newtype Project = MkProject
-    { unProject :: Text.Text -- ^ Unwrap
+    { -- | Unwrap
+      unProject :: Text.Text
     }
     deriving (Eq, Generic, Ord, Show)
 
 instance Hashable Project
 
 instance ToJSON Project
+
 instance FromJSON Project where
     parseJSON = withObject "Project" $ \o -> do
         p <- o .: "unProject"
@@ -64,13 +64,14 @@ projNameMaxLength = 20
 
 -- | Allowed chars for project name
 projNameAllowedChars :: String
-projNameAllowedChars = ['A'..'Z'] <> ['a'..'z'] <> ['0'..'9'] <> ['_']
+projNameAllowedChars = ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9'] <> ['_']
 
 -- | Predicate to check if the project is valid
 projNameValid :: Text -> Bool
-projNameValid name =  Text.length name > 0
-                   && Text.length name <= projNameMaxLength
-                   && Text.all (`elem` projNameAllowedChars) name
+projNameValid name =
+    Text.length name > 0
+        && Text.length name <= projNameMaxLength
+        && Text.all (`elem` projNameAllowedChars) name
 
 -- | Arbitrary instance for project. Only project with allowed characters
 instance Arbitrary Project where
@@ -88,8 +89,9 @@ type ProjNameText = Refined ProjName Text
 
 -- | Predicate instance to validate what is allowable for a project name
 instance Predicate ProjName Text where
-    validate p name = unless (projNameValid name) $
-        throwRefineOtherException (typeOf p) "Not a valid project name"
+    validate p name =
+        unless (projNameValid name) $
+            throwRefineOtherException (typeOf p) "Not a valid project name"
 
 -- | Smart constructor which cannot fail
 mkProjectLit :: ProjNameText -> Project
@@ -104,4 +106,4 @@ parser = do
     str <- many1 $ satisfy $ inClass projNameAllowedChars
     case mkProject (Text.pack str) of
         Nothing -> fail "Unable to parse project"
-        Just p  -> pure p
+        Just p -> pure p

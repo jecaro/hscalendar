@@ -1,43 +1,42 @@
 -- | Functions related to 'Notes'
 module Db.Notes
-    ( Notes
-    , mkNotes
-    , mkNotesLit
-    , unNotes
-    , parser
+    ( Notes,
+      mkNotes,
+      mkNotesLit,
+      unNotes,
+      parser,
     )
 where
 
-import           RIO
-
+import Data.Aeson ((.:), FromJSON (..), ToJSON, withObject)
+import Data.Attoparsec.Text (Parser, satisfy)
+import Data.Char (isPrint)
+import Data.Either.Combinators (rightToMaybe)
+import Data.Typeable (typeOf)
+import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
-
-import           Data.Char (isPrint)
-import           Data.Aeson (FromJSON(..), ToJSON, withObject, (.:))
-import           Data.Attoparsec.Text (Parser, satisfy)
-import           Data.Either.Combinators (rightToMaybe)
-import           Data.Typeable (typeOf)
-import           Refined
-    ( Predicate
-    , Refined
-    , refine
-    , throwRefineOtherException
-    , unrefine
-    , validate
+import Refined
+    ( Predicate,
+      Refined,
+      refine,
+      throwRefineOtherException,
+      unrefine,
+      validate,
     )
-import           Test.QuickCheck
-    ( Arbitrary
-    , arbitrary
-    , choose
-    , sized
-    , suchThat
-    , vectorOf
+import Test.QuickCheck
+    ( Arbitrary,
+      arbitrary,
+      choose,
+      sized,
+      suchThat,
+      vectorOf,
     )
-import           Test.QuickCheck.Instances.Text()
+import Test.QuickCheck.Instances.Text ()
 
 -- | The type for storing notes
 newtype Notes = MkNotes
-    { unNotes :: Text.Text -- ^ Unwrap the content
+    { -- | Unwrap the content
+      unNotes :: Text.Text
     }
     deriving (Generic, Eq, Show)
 
@@ -49,8 +48,9 @@ type NotesText = Refined NotesData Text
 
 -- | Predicate instance to validate what is allowable for notes
 instance Predicate NotesData Text where
-    validate p notes = unless (notesValid notes) $
-        throwRefineOtherException (typeOf p) "Not a valid note"
+    validate p notes =
+        unless (notesValid notes) $
+            throwRefineOtherException (typeOf p) "Not a valid note"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Notes where
@@ -60,6 +60,7 @@ instance Arbitrary Notes where
         pure $ MkNotes $ Text.pack xs
 
 instance ToJSON Notes
+
 instance FromJSON Notes where
     parseJSON = withObject "Notes" $ \o -> do
         n <- o .: "unNotes"
@@ -80,8 +81,9 @@ printableOrEOLOrTab x = isPrint x || elem x ['\n', '\t']
 
 -- | Check the validity of a note
 notesValid :: Text -> Bool
-notesValid notes = Text.length notes <= notesMaxLength &&
-    Text.all printableOrEOLOrTab notes
+notesValid notes =
+    Text.length notes <= notesMaxLength
+        && Text.all printableOrEOLOrTab notes
 
 -- | Smart constructor which cannot fail
 mkNotesLit :: NotesText -> Notes
@@ -96,5 +98,4 @@ parser = do
     str <- many $ satisfy printableOrEOLOrTab
     case mkNotes (Text.pack str) of
         Nothing -> fail "Unable to parse notes"
-        Just p  -> pure p
-
+        Just p -> pure p
