@@ -42,9 +42,11 @@ dependencies:
 - servant-server
 - temporary
 - time
+- transformers-except
 - unordered-containers
 - wai-extra
 - warp
+- world-peace
 - yaml
 name: hscalendar
 version: 0.1.0.0

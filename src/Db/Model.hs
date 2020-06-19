@@ -8,6 +8,7 @@ module Db.Model
       TimesAreWrong (..),
       UserExists (..),
       UserNotFound (..),
+      renderUserError,
 
       -- * Half-day functions
       hdGet,
@@ -50,10 +51,13 @@ where
 -- We use esqueleto symbols
 
 import Control.Monad (void, when)
+import Control.Monad.Except (ExceptT, MonadError (..), throwError)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans.Except.Extra (firstExceptT, hoistMaybe)
 import Crypto.KDF.BCrypt (hashPassword, validatePassword)
 import Crypto.Random.Types (MonadRandom)
 import Data.Maybe (isJust)
+import Data.WorldPeace (Contains, OpenUnion, catchesOpenUnion, openUnionLift, relaxOpenUnion)
 import Database.Esqueleto
     ( (&&.),
       (<=.),
@@ -112,7 +116,7 @@ import Db.Week (Week (..), monday, sunday)
 import qualified Db.WeekF as WeekF (WeekWithDays, add, empty)
 import RIO hiding ((^.), on)
 import RIO.List as L (headMaybe)
-import qualified RIO.Text as Text (unpack)
+import qualified RIO.Text as Text (pack, unpack)
 import qualified RIO.Time as Time
     ( Day,
       TimeOfDay (..),
@@ -201,9 +205,25 @@ cleanDB = do
     deleteWhere ([] :: [Filter DBUser])
 
 -- Exported user functions
+renderUserError ::
+    Contains err '[UserNotFound, UserExists] =>
+    OpenUnion err ->
+    Text
+renderUserError = renderUserError' . relaxOpenUnion
+    where
+        renderUserError' :: OpenUnion '[UserNotFound, UserExists] -> Text
+        renderUserError' = catchesOpenUnion (renderUserNotFound, renderUserExists)
+        renderUserNotFound :: UserNotFound -> Text
+        renderUserNotFound = Text.pack . show
+        renderUserExists :: UserExists -> Text
+        renderUserExists = Text.pack . show
 
 -- | Check the password of a user
-userCheck :: (MonadIO m) => Login -> Password -> SqlPersistT m Bool
+userCheck ::
+    (MonadIO m) =>
+    Login ->
+    Password ->
+    ExceptT (OpenUnion '[UserNotFound]) (SqlPersistT m) Bool
 userCheck login password = do
     (Entity _ (DBUser _ hash)) <- userGetInt login
     pure $ validatePassword (encodeUtf8 $ unPassword password) (encodeUtf8 hash)
@@ -214,29 +234,36 @@ userAdd ::
     Login ->
     Password ->
     Int ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[UserExists]) (SqlPersistT m) ()
 userAdd login password cost = do
     guardUserNotExistsInt login
     hash <- liftIO $ hashTxt password cost
-    void $ insert (DBUser (unLogin login) hash)
+    lift . void $ insert (DBUser (unLogin login) hash)
 
 -- | Check if a user exists in the DB
 userExists :: (MonadIO m) => Login -> SqlPersistT m Bool
 userExists login = isJust <$> getBy (UniqueLogin $ unLogin login)
 
 -- | Delete a user
-userRm :: (MonadIO m) => Login -> SqlPersistT m ()
-userRm login = delete . entityKey =<< userGetInt login
+userRm ::
+    (MonadIO m) =>
+    Login ->
+    ExceptT (OpenUnion '[UserNotFound]) (SqlPersistT m) ()
+userRm login = userGetInt login >>= lift . delete . entityKey
 
 -- | Display the list of users
 userList :: (MonadIO m) => SqlPersistT m [Login]
 userList = mapMaybe (mkLogin . dBUserLogin . entityVal) <$> selectList [] [Asc DBUserLogin]
 
-userRename :: (MonadIO m) => Login -> Login -> SqlPersistT m ()
+userRename ::
+    (MonadIO m) =>
+    Login ->
+    Login ->
+    ExceptT (OpenUnion '[UserNotFound, UserExists]) (SqlPersistT m) ()
 userRename login1 login2 = do
-    guardUserNotExistsInt login2
-    (Entity uId _) <- userGetInt login1
-    update uId [DBUserLogin =. unLogin login2]
+    firstExceptT relaxOpenUnion $ guardUserNotExistsInt login2
+    (Entity uId _) <- firstExceptT relaxOpenUnion $ userGetInt login1
+    lift $ update uId [DBUserLogin =. unLogin login2]
 
 -- | Change the password for a user
 userChangePassword ::
@@ -244,26 +271,31 @@ userChangePassword ::
     Login ->
     Password ->
     Int ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[UserNotFound]) (SqlPersistT m) ()
 userChangePassword login password cost = do
     (Entity uId _) <- userGetInt login
     hash <- liftIO $ hashTxt password cost
-    update uId [DBUserHash =. hash]
+    lift $ update uId [DBUserHash =. hash]
 
 -- Private user functions
 
 -- | Get a user by its login
-userGetInt :: (MonadIO m) => Login -> SqlPersistT m (Entity DBUser)
-userGetInt login = getBy (UniqueLogin $ unLogin login)
-    >>= \case
-        Nothing -> throwIO $ UserNotFound login
-        Just e -> pure e
+userGetInt ::
+    (MonadIO m) =>
+    Login ->
+    ExceptT (OpenUnion '[UserNotFound]) (SqlPersistT m) (Entity DBUser)
+userGetInt login = do
+    mbEntity <- lift $ getBy (UniqueLogin $ unLogin login)
+    hoistMaybe (openUnionLift $ UserNotFound login) mbEntity
 
 -- | Throw an exception if a user already exists
-guardUserNotExistsInt :: (MonadIO m) => Login -> SqlPersistT m ()
+guardUserNotExistsInt ::
+    (MonadIO m) =>
+    Login ->
+    ExceptT (OpenUnion '[UserExists]) (SqlPersistT m) ()
 guardUserNotExistsInt login = do
-    exists <- userExists login
-    when exists (throwIO $ UserExists login)
+    exists <- lift $ userExists login
+    when exists (throwError . openUnionLift $ UserExists login)
 
 -- | Hash function operating on 'Text'
 hashTxt :: MonadRandom m => Password -> Int -> m Text

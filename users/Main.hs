@@ -2,12 +2,17 @@
 -- common commands found in CRUD API
 module Main where
 
-import App.App (HasConnPool, initAppAndRun, logException, runDB)
+import App.App (HasConnPool, initAppAndRun, runDB)
 import App.CommandLine (Options (..), attoReadM, options)
+import Control.Monad.Except (ExceptT, runExceptT)
+import Data.Either.Combinators (whenLeft)
+import Data.WorldPeace (Contains, OpenUnion)
+import Database.Persist.Sql (SqlPersistM)
 import qualified Db.Login as Login (Login, parser, unLogin)
 import Db.Model
     ( UserExists (..),
       UserNotFound (..),
+      renderUserError,
       userAdd,
       userChangePassword,
       userCheck,
@@ -99,35 +104,36 @@ optionsAndCmd = curry id <$> options <*> userCmd
 optionsInfo :: ParserInfo (Options, UserCmd)
 optionsInfo = info (optionsAndCmd <**> helper) idm
 
+logUserError ::
+    (HasLogFunc env, Contains err '[UserNotFound, UserExists]) =>
+    OpenUnion err ->
+    RIO env ()
+logUserError = logError . display . renderUserError
+
+runAndLogError ::
+    (Contains err '[UserNotFound, UserExists], HasConnPool env, HasLogFunc env) =>
+    ExceptT (OpenUnion err) SqlPersistM a ->
+    RIO env ()
+runAndLogError a = do
+    r <- runDB $ runExceptT a
+    whenLeft r logUserError
+
 run :: (HasLogFunc env, HasConnPool env) => UserCmd -> RIO env ()
 
 -- | Print the users present in the database
 run UserList = runDB userList >>= mapM_ (logInfo . display . Login.unLogin)
-run (UserRm login) =
-    catch
-        (runDB $ userRm login)
-        (\e@(UserNotFound _) -> logException e)
+run (UserRm login) = runAndLogError $ userRm login
 run (UserAdd login password cost) =
-    catch
-        (void $ runDB $ userAdd login password cost)
-        (\e@(UserExists _) -> logException e)
-run (UserRename login1 login2) =
-    catches
-        (runDB $ userRename login1 login2)
-        [ Handler (\e@(UserExists _) -> logException e),
-          Handler (\e@(UserNotFound _) -> logException e)
-        ]
+    runAndLogError $ userAdd login password cost
+run (UserRename login1 login2) = runAndLogError $ userRename login1 login2
 run (UserChangePassword login password cost) =
-    catch
-        (runDB $ userChangePassword login password cost)
-        (\e@(UserExists _) -> logException e)
+    runAndLogError $ userChangePassword login password cost
 run (UserCheck login password) =
-    catch
-        ( do
-              res <- runDB $ userCheck login password
-              logInfo $ if res then "OK" else "NOK"
-        )
-        (\e@(UserExists _) -> logException e)
+    runDB (runExceptT (userCheck login password))
+        >>= \case
+            Right True -> logInfo "OK"
+            Right False -> logInfo "NOK"
+            Left err -> logUserError err
 
 -- | Main function
 main :: IO ()
