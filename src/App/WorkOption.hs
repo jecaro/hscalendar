@@ -11,23 +11,24 @@ module App.WorkOption
     )
 where
 
-import App.App
-    ( HasConfig (..),
-      HasConnPool (..),
-      runDB,
-    )
 import App.Config
-    ( DefaultHours (..),
+    ( Config,
+      DefaultHours (..),
       afternoon,
       defaultHours,
       defaultOffice,
       morning,
     )
+import Control.Monad.Except (ExceptT (..), runExceptT, throwError)
+import Control.Monad.Trans.Except.Extra (firstExceptT)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.WorldPeace (OpenUnion, openUnionLift, relaxOpenUnion)
 import Database.Persist.Sql (SqlPersistT)
 import Db.HalfDay (HalfDay (..))
 import Db.Model
     ( HdNotFound (..),
+      ProjNotFound,
+      TimesAreWrong,
       hdGet,
       hdSetArrived,
       hdSetArrivedAndLeft,
@@ -153,15 +154,20 @@ dispatchEdit ::
     Time.Day ->
     TimeInDay ->
     WorkOption ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[HdNotFound, TimesAreWrong, ProjNotFound]) (SqlPersistT m) ()
 -- Set arrived time
-dispatchEdit day tid (MkSetArrived (SetArrived time)) = hdSetArrived day tid time
+dispatchEdit day tid (MkSetArrived (SetArrived time)) =
+    firstExceptT relaxOpenUnion $ hdSetArrived day tid time
 -- Set left time
-dispatchEdit day tid (MkSetLeft (SetLeft time)) = hdSetLeft day tid time
+dispatchEdit day tid (MkSetLeft (SetLeft time)) =
+    firstExceptT relaxOpenUnion $ hdSetLeft day tid time
 -- Simple actions handling
-dispatchEdit day tid (MkSetNotes (SetNotes notes)) = hdSetNotes day tid notes
-dispatchEdit day tid (MkSetOffice (SetOffice office)) = hdSetOffice day tid office
-dispatchEdit day tid (MkSetProj (SetProj project)) = hdSetProject day tid project
+dispatchEdit day tid (MkSetNotes (SetNotes notes)) =
+    firstExceptT relaxOpenUnion $ hdSetNotes day tid notes
+dispatchEdit day tid (MkSetOffice (SetOffice office)) =
+    firstExceptT relaxOpenUnion $ hdSetOffice day tid office
+dispatchEdit day tid (MkSetProj (SetProj project)) =
+    firstExceptT relaxOpenUnion $ hdSetProject day tid project
 
 -- | Execute the work options. In order to do that, the fct checks if the record
 --   is already a work half-day. If not it searches the mandatory project
@@ -170,14 +176,15 @@ dispatchEdit day tid (MkSetProj (SetProj project)) = hdSetProject day tid projec
 --   options. Error is handled with exceptions by the "Db.Model" module and catch
 --   by the caller.
 runWorkOptions ::
-    (HasConnPool env, HasConfig env) =>
+    (MonadIO m, MonadUnliftIO m) =>
+    Config ->
     Time.Day ->
     TimeInDay ->
     [WorkOption] ->
-    RIO env ()
-runWorkOptions day tid wopts = do
+    ExceptT (OpenUnion '[HdNotFound, TimesAreWrong, ProjNotFound, ProjCmdIsMandatory]) (SqlPersistT m) ()
+runWorkOptions config day tid wopts = do
     -- Get hdw
-    eiHd <- try $ runDB $ hdGet day tid
+    eiHd <- lift . runExceptT $ hdGet day tid
 
     -- Create it with a project if needed
     otherOpts <- case (eiHd, findProjCmd wopts) of
@@ -185,7 +192,6 @@ runWorkOptions day tid wopts = do
         (Right (MkHalfDayWorked _), _) -> pure wopts
         -- Nothing or off but a project
         (_, (Just (SetProj proj), otherOpts)) -> do
-            config <- view configL
             -- Get the default times from the config file
             let (DefaultHours dArrived dLeft) = case tid of
                     Morning -> config ^. defaultHours . morning
@@ -198,17 +204,18 @@ runWorkOptions day tid wopts = do
                 arrived = maybe dArrived (\(SetArrived a) -> a) mbArrived
                 left = maybe dLeft (\(SetLeft a) -> a) mbLeft
             -- Carry on, we have now everything to create the hwd
-            runDB $ hdSetWork day tid proj (config ^. defaultOffice) arrived left
+            firstExceptT relaxOpenUnion $ hdSetWork day tid proj (config ^. defaultOffice) arrived left
             pure otherOpts''
         -- Holiday but no project
-        (Right (MkHalfDayOff _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
+        (Right (MkHalfDayOff _), (Nothing, _)) -> throwError $ openUnionLift ProjCmdIsMandatory
         -- No hd, but no project either
-        (Left (HdNotFound _ _), (Nothing, _)) -> throwIO ProjCmdIsMandatory
+        (Left (_ :: OpenUnion '[HdNotFound]), (Nothing, _)) -> throwError $ openUnionLift ProjCmdIsMandatory
 
     -- Apply set arrived set left when we have the two options
     let (mbAL, otherOpts') = findArrivedAndLeftCmd otherOpts
     case mbAL of
-        Just (SetArrived a, SetLeft l) -> runDB $ hdSetArrivedAndLeft day tid a l
+        Just (SetArrived a, SetLeft l) -> firstExceptT relaxOpenUnion $ hdSetArrivedAndLeft day tid a l
         Nothing -> pure ()
+
     -- Then apply remaining commands
-    runDB $ mapM_ (dispatchEdit day tid) otherOpts'
+    firstExceptT relaxOpenUnion $ mapM_ (dispatchEdit day tid) otherOpts'

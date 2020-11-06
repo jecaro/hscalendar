@@ -48,10 +48,8 @@ module Db.Model
     )
 where
 
--- We use esqueleto symbols
-
 import Control.Monad (void, when)
-import Control.Monad.Except (ExceptT, MonadError (..), throwError)
+import Control.Monad.Except (ExceptT (..), MonadError (..), runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Except.Extra (firstExceptT, hoistMaybe)
 import Crypto.KDF.BCrypt (hashPassword, validatePassword)
@@ -127,8 +125,6 @@ import qualified RIO.Time as Time
 -- | The requested project has not been found
 newtype ProjNotFound = ProjNotFound Project
 
-instance Exception ProjNotFound
-
 instance Show ProjNotFound where
     show (ProjNotFound project) = "The project " <> name <> " is not in the database"
         where
@@ -136,8 +132,6 @@ instance Show ProjNotFound where
 
 -- | A project with the same name already exists in the db
 newtype ProjExists = ProjExists Project
-
-instance Exception ProjExists
 
 instance Show ProjExists where
     show (ProjExists project) = "The project " <> name <> " exists in the database"
@@ -147,8 +141,6 @@ instance Show ProjExists where
 -- | The project has associated hds
 newtype ProjHasHd = ProjHasHd Project
 
-instance Exception ProjHasHd
-
 instance Show ProjHasHd where
     show (ProjHasHd project) = "The project " <> name <> " has associated half-day work"
         where
@@ -157,23 +149,17 @@ instance Show ProjHasHd where
 -- | Requested user does not exist
 newtype UserNotFound = UserNotFound Login
 
-instance Exception UserNotFound
-
 instance Show UserNotFound where
     show (UserNotFound login) = "The user " <> Text.unpack (unLogin login) <> " is not in the database"
 
 -- | A user with the same login already exists in the db
 newtype UserExists = UserExists Login
 
-instance Exception UserExists
-
 instance Show UserExists where
     show (UserExists login) = "The user " <> Text.unpack (unLogin login) <> " exists in the database"
 
 -- | There is no record for specified half-day
 data HdNotFound = HdNotFound Time.Day TimeInDay
-
-instance Exception HdNotFound
 
 instance Show HdNotFound where
     show (HdNotFound day tid) = "Nothing for " <> Text.unpack (textDisplay day) <> " " <> show tid
@@ -310,49 +296,65 @@ projExists :: MonadIO m => Project -> SqlPersistT m Bool
 projExists project = isJust <$> getBy (UniqueName $ unProject project)
 
 -- | Add a project
-projAdd :: (MonadIO m) => Project -> SqlPersistT m ()
+projAdd ::
+    (MonadIO m) =>
+    Project ->
+    ExceptT (OpenUnion '[ProjExists]) (SqlPersistT m) ()
 projAdd project = do
     guardProjNotExistsInt project
-    void $ insert $ projectToDb project
+    lift . void . insert $ projectToDb project
 
 -- | Get the list of the projects present in the database
 projList :: MonadIO m => SqlPersistT m [Project]
 projList = mapMaybe (dbToProject . entityVal) <$> selectList [] [Asc DBProjectName]
 
 -- | Delete a project
-projRm :: (MonadIO m) => Project -> SqlPersistT m ()
+projRm ::
+    (MonadIO m) =>
+    Project ->
+    ExceptT (OpenUnion '[ProjNotFound, ProjHasHd]) (SqlPersistT m) ()
 projRm project = do
     -- The following can throw exception same exception apply to this function
     -- so we dont catch it here
-    pId <- projGetInt project
+    pId <- firstExceptT relaxOpenUnion $ projGetInt project
     -- Test if there is hdw using this project
-    selectFirst [DBHalfDayWorkedProjectId P.==. pId] []
-        >>= \case
-            Nothing -> delete pId
-            Just _ -> throwIO $ ProjHasHd project
+    mbHasHd <- lift (selectFirst [DBHalfDayWorkedProjectId P.==. pId] [])
+    case mbHasHd of
+        Nothing -> lift $ delete pId
+        Just _ -> throwError $ openUnionLift $ ProjHasHd project
 
 -- | Rename a project
-projRename :: (MonadIO m) => Project -> Project -> SqlPersistT m ()
+projRename ::
+    (MonadIO m) =>
+    Project ->
+    Project ->
+    ExceptT (OpenUnion '[ProjNotFound, ProjExists]) (SqlPersistT m) ()
 projRename p1 p2 = do
-    pId <- projGetInt p1
-    guardProjNotExistsInt p2
-    replace pId $ projectToDb p2
+    pId <- firstExceptT relaxOpenUnion $ projGetInt p1
+    firstExceptT relaxOpenUnion $ guardProjNotExistsInt p2
+    lift $ replace pId $ projectToDb p2
 
 -- Internal project functions
 
 -- | Get a project with error handling
-projGetInt :: (MonadIO m) => Project -> SqlPersistT m (Key DBProject)
-projGetInt project = getBy (UniqueName $ unProject project)
-    >>= \case
-        Nothing -> throwIO $ ProjNotFound project
-        Just (Entity pId _) -> pure pId
+projGetInt ::
+    (MonadIO m) =>
+    Project ->
+    ExceptT (OpenUnion '[ProjNotFound]) (SqlPersistT m) (Key DBProject)
+projGetInt project = do
+    mbEntity <- lift $ getBy (UniqueName $ unProject project)
+    let mbId = entityKey <$> mbEntity
+    hoistMaybe (openUnionLift $ ProjNotFound project) mbId
 
 -- | Guard to check if a project is already present in the db. If so, raise an
 -- exception
-guardProjNotExistsInt :: (MonadIO m) => Project -> SqlPersistT m ()
+guardProjNotExistsInt ::
+    (MonadIO m) =>
+    Project ->
+    ExceptT (OpenUnion '[ProjExists]) (SqlPersistT m) ()
 guardProjNotExistsInt project = do
-    exists <- projExists project
-    when exists (throwIO $ ProjExists project)
+    exists <- lift $ projExists project
+    when exists (throwError . openUnionLift $ ProjExists project)
 
 -- Exported hd functions
 
@@ -361,19 +363,20 @@ hdGet ::
     (MonadIO m, MonadUnliftIO m) =>
     Time.Day ->
     TimeInDay ->
-    SqlPersistT m HalfDay
+    ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) HalfDay
 hdGet day tid =
-    ( select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
-          where_
-              ( hd ^. DBHalfDayDay ==. val day
-                    &&. hd ^. DBHalfDayTimeInDay ==. val tid
-              )
-          on (mbProj ?. DBProjectId ==. mbHdw ?. DBHalfDayWorkedProjectId)
-          on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
-          pure (hd, mbHdw, mbProj)
-    )
+    lift
+        ( select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
+              where_
+                  ( hd ^. DBHalfDayDay ==. val day
+                        &&. hd ^. DBHalfDayTimeInDay ==. val tid
+                  )
+              on (mbProj ?. DBProjectId ==. mbHdw ?. DBHalfDayWorkedProjectId)
+              on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
+              pure (hd, mbHdw, mbProj)
+        )
         >>= \case
-            [] -> throwIO $ HdNotFound day tid
+            [] -> (throwError . openUnionLift) $ HdNotFound day tid
             (x : _) -> dbToHalfDayInt x
 
 -- | Get the half-days on a complete week
@@ -398,23 +401,33 @@ monthGet month = do
         toMonthF = foldr (\hd fm -> fromMaybe fm $ MonthF.add hd fm) (MonthF.empty Nothing month)
 
 -- | Set the office for a day-time in day
-hdSetOffice :: (MonadIO m) => Time.Day -> TimeInDay -> Office -> SqlPersistT m ()
+hdSetOffice ::
+    (MonadIO m) =>
+    Time.Day ->
+    TimeInDay ->
+    Office ->
+    ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) ()
 hdSetOffice day tid office = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [DBHalfDayWorkedOffice =. office]
+    lift $ update hdwId [DBHalfDayWorkedOffice =. office]
 
 -- | Set the notes for a day-time in day
-hdSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> SqlPersistT m ()
+hdSetNotes :: (MonadIO m) => Time.Day -> TimeInDay -> Notes -> ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) ()
 hdSetNotes day tid notes = do
     (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    update hdwId [DBHalfDayWorkedNotes =. unNotes notes]
+    lift $ update hdwId [DBHalfDayWorkedNotes =. unNotes notes]
 
 -- | Set a work half-day with a project
-hdSetProject :: (MonadIO m) => Time.Day -> TimeInDay -> Project -> SqlPersistT m ()
+hdSetProject ::
+    (MonadIO m) =>
+    Time.Day ->
+    TimeInDay ->
+    Project ->
+    ExceptT (OpenUnion '[HdNotFound, ProjNotFound]) (SqlPersistT m) ()
 hdSetProject day tid project = do
-    (_, Entity hdwId _, _) <- hdHdwProjGetInt day tid
-    pId <- projGetInt project
-    update hdwId [DBHalfDayWorkedProjectId =. pId]
+    (_, Entity hdwId _, _) <- firstExceptT relaxOpenUnion $ hdHdwProjGetInt day tid
+    pId <- firstExceptT relaxOpenUnion $ projGetInt project
+    lift $ update hdwId [DBHalfDayWorkedProjectId =. pId]
 
 -- | Set arrived time for a working half-day
 hdSetArrived ::
@@ -422,12 +435,12 @@ hdSetArrived ::
     Time.Day ->
     TimeInDay ->
     Time.TimeOfDay ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[HdNotFound, TimesAreWrong]) (SqlPersistT m) ()
 hdSetArrived day tid tod = do
-    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- firstExceptT relaxOpenUnion $ hdHdwProjGetInt day tid
     let hdw' = hdw {dBHalfDayWorkedArrived = tod}
-    guardNewTimesAreOk day tid hdw'
-    replace hdwId hdw'
+    firstExceptT relaxOpenUnion $ guardNewTimesAreOk day tid hdw'
+    lift $ replace hdwId hdw'
 
 -- | Set left time for a working half-day
 hdSetLeft ::
@@ -435,12 +448,12 @@ hdSetLeft ::
     Time.Day ->
     TimeInDay ->
     Time.TimeOfDay ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[HdNotFound, TimesAreWrong]) (SqlPersistT m) ()
 hdSetLeft day tid tod = do
-    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- firstExceptT relaxOpenUnion $ hdHdwProjGetInt day tid
     let hdw' = hdw {dBHalfDayWorkedLeft = tod}
-    guardNewTimesAreOk day tid hdw'
-    replace hdwId hdw'
+    firstExceptT relaxOpenUnion $ guardNewTimesAreOk day tid hdw'
+    lift $ replace hdwId hdw'
 
 -- | Set both arrived and left times for a working half-day
 hdSetArrivedAndLeft ::
@@ -449,16 +462,16 @@ hdSetArrivedAndLeft ::
     TimeInDay ->
     Time.TimeOfDay ->
     Time.TimeOfDay ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[HdNotFound, TimesAreWrong]) (SqlPersistT m) ()
 hdSetArrivedAndLeft day tid tArrived tLeft = do
-    (_, Entity hdwId hdw, _) <- hdHdwProjGetInt day tid
+    (_, Entity hdwId hdw, _) <- firstExceptT relaxOpenUnion $ hdHdwProjGetInt day tid
     let hdw' =
             hdw
                 { dBHalfDayWorkedArrived = tArrived,
                   dBHalfDayWorkedLeft = tLeft
                 }
-    guardNewTimesAreOk day tid hdw'
-    replace hdwId hdw'
+    firstExceptT relaxOpenUnion $ guardNewTimesAreOk day tid hdw'
+    lift $ replace hdwId hdw'
 
 -- | Set a half-day as off
 hdSetOff ::
@@ -467,10 +480,10 @@ hdSetOff ::
     TimeInDay ->
     OffDayType ->
     SqlPersistT m ()
-hdSetOff day tid hdt = try (hdGetInt day tid)
-    >>= \case
-        -- Create a new entry
-        Left (HdNotFound _ _) -> void $ insert $ DBHalfDay day tid dbHdt
+hdSetOff day tid hdt = do
+    eiHd <- runExceptT $ hdGetInt day tid
+    case eiHd of
+        Left (_ :: OpenUnion '[HdNotFound]) -> void $ insert $ DBHalfDay day tid dbHdt
         -- Edit existing entry
         Right (Entity hdId _) -> do
             -- Delete entry from HalfDayWorked if it exists
@@ -489,47 +502,54 @@ hdSetWork ::
     Office ->
     Time.TimeOfDay ->
     Time.TimeOfDay ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[ProjNotFound, TimesAreWrong]) (SqlPersistT m) ()
 hdSetWork day tid project office tArrived tLeft = do
     -- Get the proj entry if it exists
-    projId <- projGetInt project
+    projId <- firstExceptT relaxOpenUnion $ projGetInt project
     let hdw = DBHalfDayWorked "" tArrived tLeft office (toSqlKey 0) (toSqlKey 0)
-    guardNewTimesAreOk day tid hdw
-    eiHd <- try $ hdGetInt day tid
+    firstExceptT relaxOpenUnion $ guardNewTimesAreOk day tid hdw
+    eiHd <- lift . runExceptT $ hdGetInt day tid
     hdId <- case eiHd of
         -- Create a new entry
-        Left (HdNotFound _ _) -> insert $ DBHalfDay day tid DBWorked
+        Left (_ :: OpenUnion '[HdNotFound]) -> lift $ insert $ DBHalfDay day tid DBWorked
         -- Edit existing entry
         Right (Entity hdId _) -> do
             -- Update entry
-            update hdId [DBHalfDayType =. DBWorked]
+            lift $ update hdId [DBHalfDayType =. DBWorked]
             pure hdId
     let hdw' =
             hdw
                 { dBHalfDayWorkedProjectId = projId,
                   dBHalfDayWorkedHalfDayId = hdId
                 }
-    getBy (UniqueHalfDayId hdId)
-        >>= \case
-            Nothing -> void $ insert hdw'
-            Just (Entity hdwId _) -> replace hdwId hdw'
+    mbEntity <- lift $ getBy (UniqueHalfDayId hdId)
+    case mbEntity of
+        Nothing -> lift $ void $ insert hdw'
+        Just (Entity hdwId _) -> lift $ replace hdwId hdw'
 
 -- | Remove a half-day from the db
-hdRm :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m ()
+hdRm ::
+    (MonadIO m) =>
+    Time.Day ->
+    TimeInDay ->
+    ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) ()
 hdRm day tid = do
     (Entity hdId _) <- hdGetInt day tid
     -- Delete entry from HalfDayWorked if it exists
-    deleteWhere [DBHalfDayWorkedHalfDayId P.==. hdId]
-    delete hdId
+    lift $ deleteWhere [DBHalfDayWorkedHalfDayId P.==. hdId]
+    lift $ delete hdId
 
 -- Internal project functions
 
 -- | Get a half day if it exists or raise an exception
-hdGetInt :: (MonadIO m) => Time.Day -> TimeInDay -> SqlPersistT m (Entity DBHalfDay)
-hdGetInt day tid = getBy (DayAndTimeInDay day tid)
-    >>= \case
-        Nothing -> throwIO $ HdNotFound day tid
-        Just e -> pure e
+hdGetInt ::
+    (MonadIO m) =>
+    Time.Day ->
+    TimeInDay ->
+    ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) (Entity DBHalfDay)
+hdGetInt day tid = do
+    mbHd <- lift $ getBy (DayAndTimeInDay day tid)
+    hoistMaybe (openUnionLift $ HdNotFound day tid) mbHd
 
 -- | Private function to get a half-day work along with the project from a day
 -- and a time in day
@@ -537,9 +557,9 @@ hdHdwProjGetInt ::
     (MonadIO m) =>
     Time.Day ->
     TimeInDay ->
-    SqlPersistT m (Entity DBHalfDay, Entity DBHalfDayWorked, Entity DBProject)
+    ExceptT (OpenUnion '[HdNotFound]) (SqlPersistT m) (Entity DBHalfDay, Entity DBHalfDayWorked, Entity DBProject)
 hdHdwProjGetInt day tid = do
-    hdHdwProjs <- select $ from $ \(hd, hdw, proj) -> do
+    hdHdwProjs <- lift $ select $ from $ \(hd, hdw, proj) -> do
         where_
             ( hd ^. DBHalfDayDay ==. val day
                   &&. hd ^. DBHalfDayTimeInDay ==. val tid
@@ -547,7 +567,9 @@ hdHdwProjGetInt day tid = do
                   &&. hdw ^. DBHalfDayWorkedHalfDayId ==. hd ^. DBHalfDayId
             )
         pure (hd, hdw, proj)
-    maybe (throwIO $ HdNotFound day tid) pure (L.headMaybe hdHdwProjs)
+    case L.headMaybe hdHdwProjs of
+        Nothing -> throwError $ openUnionLift $ HdNotFound day tid
+        Just hd -> pure hd
 
 -- | Convert output of a join query to a 'HalfDay'. Throw an exception in case
 -- of inconsistencies in the DB along the way
@@ -572,8 +594,8 @@ rangeGet :: (MonadIO m, MonadUnliftIO m) => Time.Day -> Time.Day -> SqlPersistT 
 rangeGet day1 day2 = do
     tupleList <- select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_
-            ( hd ^. DBHalfDayDay >=. val (day1)
-                  &&. hd ^. DBHalfDayDay <=. val (day2)
+            ( hd ^. DBHalfDayDay >=. val day1
+                  &&. hd ^. DBHalfDayDay <=. val day2
             )
         on (mbProj ?. DBProjectId ==. mbHdw ?. DBHalfDayWorkedProjectId)
         on (just (hd ^. DBHalfDayId) ==. mbHdw ?. DBHalfDayWorkedHalfDayId)
@@ -605,11 +627,11 @@ guardNewTimesAreOk ::
     Time.Day ->
     TimeInDay ->
     DBHalfDayWorked ->
-    SqlPersistT m ()
+    ExceptT (OpenUnion '[TimesAreWrong]) (SqlPersistT m) ()
 guardNewTimesAreOk day tid hdw = do
-    eiHdHdwProj <- try $ hdHdwProjGetInt day $ other tid
+    eiHdHdwProj <- lift . runExceptT $ hdHdwProjGetInt day $ other tid
     let mbOtherHdw = case eiHdHdwProj of
-            Left (HdNotFound _ _) -> Nothing
+            Left (_ :: OpenUnion '[HdNotFound]) -> Nothing
             Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Check if it works
     unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO TimesAreWrong)

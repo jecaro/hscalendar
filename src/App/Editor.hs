@@ -18,6 +18,7 @@ import App.WorkOption
       SetProj (..),
       WorkOption (..),
     )
+import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Attoparsec.Text
     ( Parser,
       endOfInput,
@@ -149,12 +150,12 @@ hdAsText (Right (MkHalfDayWorked (MkWorked wDay wTid wArrived wLeft wOffice wNot
 -- current half-day.
 editorToOptions ::
     (HasProcessContext env, HasLogFunc env) =>
-    (DayDesc -> TimeInDay -> RIO env HalfDay) ->
+    (DayDesc -> TimeInDay -> ExceptT HdNotFound (RIO env) HalfDay) ->
     DayDesc ->
     TimeInDay ->
     RIO env [App.WorkOption.WorkOption]
 editorToOptions hdGet cd tid = do
-    oldRecord <- hdAsText <$> try (hdGet cd tid)
+    oldRecord <- hdAsText <$> runExceptT (hdGet cd tid)
     -- Bracket to make sure the temporary file will be deleted no matter what
     fileContent <-
         bracket

@@ -12,6 +12,7 @@
 - Better type safety in DayF setter: add function
 - Indent notes in display
 - Add version ID in all the tools
+- Remove show instance for errors in the model
 - frontend
   - escape key should cancel
   - widget for editing time
