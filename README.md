@@ -75,9 +75,9 @@ The project page, to add/rename/remove projects:
 
 # Deployment and CI
 
-This project is built on each commit on the repository by [travis][status]. A
-docker image is automatically sent on [docker hub][dockerhub] when the build and
-tests succeed.
+This project is built on each commit on the repository by [GitHub 
+actions][status]. A docker image is automatically sent on [docker 
+hub][dockerhub] when the build and tests succeed.
 
 # How to try it ?
 
@@ -265,19 +265,6 @@ example:
 - `http://myuser:mypassword@localhost:8081` for http
 - `https://myuser:mypassword@droplet:443` for joining the server over https
 
-# Roadmap
-
-- ~~Command line tool~~
-- ~~Unit tests with [hspec][hspec]~~
-- ~~[QuickCheck][quickcheck] property based testing~~
-- ~~CI with [travis][status]~~
-- ~~web server with [servant][servant]~~
-- ~~deployement on [heroku][heroku]~~
-- ~~dockerize the app~~
-- ~~deploy on [digital ocean][digitalocean]~~
-- ~~web frontend with [Elm][elm]~~
-
-
 [digitalocean]: https://www.digitalocean.com/
 [dockerhub]: https://hub.docker.com/r/jecaro/hscalendar-server/tags
 [elm]: https://elm-lang.org/
@@ -294,6 +281,6 @@ example:
 [refined]: https://github.com/nikita-volkov/refined
 [rio]: https://github.com/commercialhaskell/rio
 [servant]: https://github.com/haskell-servant/servant
-[status-png]: https://travis-ci.org/jecaro/hscalendar.svg?branch=master
-[status]: https://travis-ci.org/jecaro/hscalendar?branch=master
+[status-png]: https://github.com/jecaro/hscalendar/workflows/CI/badge.svg
+[status]: https://github.com/jecaro/hscalendar/actions
 [yaml]: https://github.com/snoyberg/yaml
