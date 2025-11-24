@@ -4,7 +4,9 @@ COMMIT := $(shell git rev-parse --short HEAD)
 # Travis checkout the repo in detached HEAD so it's quite tricky to get the
 # branch name:
 # https://stackoverflow.com/questions/6059336/how-to-find-the-current-git-branch-in-detached-head-state
-BRANCH := $(shell git for-each-ref --format='%(objectname) %(refname:short)' refs/heads | awk "/^$$(git rev-parse HEAD)/ {print \$$2}")
+BRANCH_RAW := $(shell git for-each-ref --format='%(objectname) %(refname:short)' refs/heads | awk "/^$$(git rev-parse HEAD)/ {print \$$2}")
+# Dependabot creates branches with slashes, which are not allowed in docker tags
+BRANCH := $(shell echo $(BRANCH_RAW) | tr '/' '-')
 VERSION := $(BRANCH).$(DATE).$(COMMIT)
 
 # Docker images
