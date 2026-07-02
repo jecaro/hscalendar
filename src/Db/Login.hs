@@ -1,48 +1,48 @@
 -- | Functions related to 'Login'
 module Db.Login
-    ( Login,
-      mkLogin,
-      mkLoginLit,
-      unLogin,
-      parser,
-    )
+  ( Login,
+    mkLogin,
+    mkLoginLit,
+    unLogin,
+    parser,
+  )
 where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Attoparsec.Text
-    ( Parser,
-      inClass,
-      many1,
-      satisfy,
-    )
+  ( Parser,
+    inClass,
+    many1,
+    satisfy,
+  )
 import Data.Either.Combinators (rightToMaybe)
 import Data.Typeable (typeRep)
 import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 import Refined
-    ( Predicate,
-      Refined,
-      refine,
-      throwRefineOtherException,
-      unrefine,
-      validate,
-    )
+  ( Predicate,
+    Refined,
+    refine,
+    throwRefineOtherException,
+    unrefine,
+    validate,
+  )
 import Test.QuickCheck
-    ( Arbitrary,
-      arbitrary,
-      choose,
-      elements,
-      sized,
-      vectorOf,
-    )
+  ( Arbitrary,
+    arbitrary,
+    choose,
+    elements,
+    sized,
+    vectorOf,
+  )
 import Test.QuickCheck.Instances.Text ()
 
 -- | The type for storing the login
 newtype Login = MkLogin
-    { -- | Unwrap the content
-      unLogin :: Text.Text
-    }
-    deriving (Eq, Generic, Ord, Show)
+  { -- | Unwrap the content
+    unLogin :: Text.Text
+  }
+  deriving (Eq, Generic, Ord, Show)
 
 -- | Simple type to refine 'Text' for 'Login'
 data LoginData
@@ -52,16 +52,16 @@ type LoginText = Refined LoginData Text
 
 -- | Predicate instance to validate what is allowable for login
 instance Predicate LoginData Text where
-    validate p login
-        | loginValid login = Nothing
-        | otherwise = throwRefineOtherException (typeRep p) "Not a valid login"
+  validate p login
+    | loginValid login = Nothing
+    | otherwise = throwRefineOtherException (typeRep p) "Not a valid login"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Login where
-    arbitrary = sized $ \s -> do
-        n <- choose (0, s `min` loginMaxLength)
-        xs <- vectorOf n (elements loginAllowedChars)
-        pure $ MkLogin $ Text.pack xs
+  arbitrary = sized $ \s -> do
+    n <- choose (0, s `min` loginMaxLength)
+    xs <- vectorOf n (elements loginAllowedChars)
+    pure $ MkLogin $ Text.pack xs
 
 instance FromJSON Login
 
@@ -78,8 +78,9 @@ loginAllowedChars = ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9'] <> ['_']
 -- | Check the validity of a login
 loginValid :: Text -> Bool
 loginValid login =
-    Text.length login <= loginMaxLength
-        && Text.all (`elem` loginAllowedChars) login
+  Text.length login
+    <= loginMaxLength
+    && Text.all (`elem` loginAllowedChars) login
 
 -- | Smart constructor which cannot fail
 mkLoginLit :: LoginText -> Login
@@ -91,7 +92,7 @@ mkLogin login = mkLoginLit <$> rightToMaybe (refine login)
 
 parser :: Parser Login
 parser = do
-    str <- many1 $ satisfy $ inClass loginAllowedChars
-    case mkLogin (Text.pack str) of
-        Nothing -> fail "Unable to parse login"
-        Just p -> pure p
+  str <- many1 $ satisfy $ inClass loginAllowedChars
+  case mkLogin (Text.pack str) of
+    Nothing -> fail "Unable to parse login"
+    Just p -> pure p

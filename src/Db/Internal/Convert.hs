@@ -1,12 +1,12 @@
 -- | The functions to convert the data between the DBModel and the business model
 module Db.Internal.Convert
-    ( dbToOffDayType,
-      dbToOff,
-      dbToProject,
-      dbToWorked,
-      offDayTypeToDb,
-      projectToDb,
-    )
+  ( dbToOffDayType,
+    dbToOff,
+    dbToProject,
+    dbToWorked,
+    offDayTypeToDb,
+    projectToDb,
+  )
 where
 
 import Db.Internal.DBHalfDayType (DBHalfDayType (..))
@@ -31,14 +31,14 @@ dbToProject project = mkProject $ dBProjectName project
 -- | Convert from db to business. May fail.
 dbToOff :: DBHalfDay -> Maybe Off
 dbToOff (DBHalfDay day timeInDay halfDayType) =
-    mkOff <$> dbToOffDayType halfDayType
-    where
-        mkOff halfDayType' =
-            MkOff
-                { _offDay = day,
-                  _offTimeInDay = timeInDay,
-                  _offDayType = halfDayType'
-                }
+  mkOff <$> dbToOffDayType halfDayType
+  where
+    mkOff halfDayType' =
+      MkOff
+        { _offDay = day,
+          _offTimeInDay = timeInDay,
+          _offDayType = halfDayType'
+        }
 
 -- | Convert an 'OffDayType' to a 'DBHalfDayType'
 offDayTypeToDb :: OffDayType -> DBHalfDayType
@@ -64,19 +64,19 @@ dbToOffDayType DBWorked = Nothing
 -- | Create a 'Worked' with the information in the db. May fail.
 dbToWorked :: DBHalfDay -> DBHalfDayWorked -> DBProject -> Maybe Worked
 dbToWorked
-    (DBHalfDay day timeInDay DBWorked)
-    (DBHalfDayWorked dbNotes arrived left office _ _)
-    dbProject = do
-        notes <- mkNotes dbNotes
-        project <- dbToProject dbProject
-        pure
-            MkWorked
-                { _workedDay = day,
-                  _workedTimeInDay = timeInDay,
-                  _workedArrived = arrived,
-                  _workedLeft = left,
-                  _workedOffice = office,
-                  _workedNotes = notes,
-                  _workedProject = project
-                }
+  (DBHalfDay day timeInDay DBWorked)
+  (DBHalfDayWorked dbNotes arrived left office _ _)
+  dbProject = do
+    notes <- mkNotes dbNotes
+    project <- dbToProject dbProject
+    pure
+      MkWorked
+        { _workedDay = day,
+          _workedTimeInDay = timeInDay,
+          _workedArrived = arrived,
+          _workedLeft = left,
+          _workedOffice = office,
+          _workedNotes = notes,
+          _workedProject = project
+        }
 dbToWorked _ _ _ = Nothing

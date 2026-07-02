@@ -16,22 +16,22 @@ import RIO.Time.Extended ()
 
 -- | Data associated with a half-day worked
 data Worked = MkWorked
-    { -- | The day
-      _workedDay :: !Time.Day,
-      -- | Morning/Afternoon ?
-      _workedTimeInDay :: !TimeInDay,
-      -- | Arrival time
-      _workedArrived :: !Time.TimeOfDay,
-      -- | Departure time
-      _workedLeft :: !Time.TimeOfDay,
-      -- | Which office
-      _workedOffice :: !Office,
-      -- | Some notes
-      _workedNotes :: !Notes,
-      -- | And the project
-      _workedProject :: !Project
-    }
-    deriving (Eq, Generic, Show)
+  { -- | The day
+    _workedDay :: !Time.Day,
+    -- | Morning/Afternoon ?
+    _workedTimeInDay :: !TimeInDay,
+    -- | Arrival time
+    _workedArrived :: !Time.TimeOfDay,
+    -- | Departure time
+    _workedLeft :: !Time.TimeOfDay,
+    -- | Which office
+    _workedOffice :: !Office,
+    -- | Some notes
+    _workedNotes :: !Notes,
+    -- | And the project
+    _workedProject :: !Project
+  }
+  deriving (Eq, Generic, Show)
 
 makeFields ''Worked
 
@@ -40,20 +40,21 @@ instance FromJSON Worked
 instance ToJSON Worked
 
 instance Display Worked where
-    display worked =
-        "\t\t" <> display (worked ^. office)
-            <> ": "
-            <> display (worked ^. arrived)
-            <> " - "
-            <> display (worked ^. left)
-            <> "\n"
-            <> "\t\tProject: "
-            <> display (worked ^. project)
-            <> "\n"
-            <> "\t\tNotes:"
-            <> eolAfterNoteLabel
-            <> display (worked ^. notes)
-        where
-            eolAfterNoteLabel
-                | Text.null (unNotes $ worked ^. notes) = ""
-                | otherwise = "\n"
+  display worked =
+    "\t\t"
+      <> display (worked ^. office)
+      <> ": "
+      <> display (worked ^. arrived)
+      <> " - "
+      <> display (worked ^. left)
+      <> "\n"
+      <> "\t\tProject: "
+      <> display (worked ^. project)
+      <> "\n"
+      <> "\t\tNotes:"
+      <> eolAfterNoteLabel
+      <> display (worked ^. notes)
+    where
+      eolAfterNoteLabel
+        | Text.null (unNotes $ worked ^. notes) = ""
+        | otherwise = "\n"

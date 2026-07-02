@@ -2,60 +2,60 @@
 --   any calendar day or today, yesterday and tomorrow. It can also use an easy
 --   numbering system.
 module App.DayDesc
-    ( DayDesc (..),
-      parser,
-      toDay,
-      today,
-    )
+  ( DayDesc (..),
+    parser,
+    toDay,
+    today,
+  )
 where
 
 import Data.Attoparsec.Text
-    ( Parser,
-      asciiCI,
-      char,
-      decimal,
-    )
+  ( Parser,
+    asciiCI,
+    char,
+    decimal,
+  )
 import Formatting.Extended (formatTwoDigitsPadZero)
 import RIO
 import qualified RIO.Text as Text (intercalate)
 import qualified RIO.Time as Time
-    ( Day,
-      addDays,
-      fromGregorian,
-      getZonedTime,
-      localDay,
-      toGregorian,
-      zonedTimeToLocalTime,
-    )
+  ( Day,
+    addDays,
+    fromGregorian,
+    getZonedTime,
+    localDay,
+    toGregorian,
+    zonedTimeToLocalTime,
+  )
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Servant.API.Extended (runAtto)
 
 -- | The day description
 data DayDesc
-    = -- | Fully defined day
-      MkDayDesc Time.Day
-    | -- | The year and the month are not present
-      MkDayDescNum Int
-    | -- | The year is not present
-      MkDayDescMonthNum Int Int
-    | Today
-    | Yesterday
-    | Tomorrow
-    deriving (Eq, Show)
+  = -- | Fully defined day
+    MkDayDesc Time.Day
+  | -- | The year and the month are not present
+    MkDayDescNum Int
+  | -- | The year is not present
+    MkDayDescMonthNum Int Int
+  | Today
+  | Yesterday
+  | Tomorrow
+  deriving (Eq, Show)
 
 instance FromHttpApiData DayDesc where
-    parseQueryParam = runAtto parser
+  parseQueryParam = runAtto parser
 
 instance ToHttpApiData DayDesc where
-    toQueryParam (MkDayDesc day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
-        where
-            (y, m, d) = Time.toGregorian day
-            intY = fromIntegral y
-    toQueryParam (MkDayDescNum d) = formatTwoDigitsPadZero d
-    toQueryParam (MkDayDescMonthNum d m) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m])
-    toQueryParam Today = "today"
-    toQueryParam Yesterday = "yesterday"
-    toQueryParam Tomorrow = "tomorrow"
+  toQueryParam (MkDayDesc day) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m, intY])
+    where
+      (y, m, d) = Time.toGregorian day
+      intY = fromIntegral y
+  toQueryParam (MkDayDescNum d) = formatTwoDigitsPadZero d
+  toQueryParam (MkDayDescMonthNum d m) = Text.intercalate "-" (fmap formatTwoDigitsPadZero [d, m])
+  toQueryParam Today = "today"
+  toQueryParam Yesterday = "yesterday"
+  toQueryParam Tomorrow = "tomorrow"
 
 -- | Get today
 today :: (MonadIO m) => m Time.Day
@@ -68,22 +68,29 @@ toDay Yesterday = Time.addDays (-1) <$> today
 toDay Tomorrow = Time.addDays 1 <$> today
 toDay (MkDayDesc x) = pure x
 toDay (MkDayDescNum d) = do
-    (y, m, _) <- Time.toGregorian <$> today
-    pure $ Time.fromGregorian y m d
+  (y, m, _) <- Time.toGregorian <$> today
+  pure $ Time.fromGregorian y m d
 toDay (MkDayDescMonthNum d m) = do
-    (y, _, _) <- Time.toGregorian <$> today
-    pure $ Time.fromGregorian y m d
+  (y, _, _) <- Time.toGregorian <$> today
+  pure $ Time.fromGregorian y m d
 
 -- | Parser for a 'DayDesc'
 parser :: Parser DayDesc
 parser =
-    asciiCI "today" $> Today
-        <|> asciiCI "yesterday" $> Yesterday
-        <|> asciiCI "tomorrow" $> Tomorrow
-        <|> mkDayFromGregorian <$> decimal
-            <*> (char '-' *> decimal)
-            <*> (char '-' *> decimal)
-        <|> MkDayDescMonthNum <$> decimal <*> (char '-' *> decimal)
-        <|> MkDayDescNum <$> decimal
-    where
-        mkDayFromGregorian d m y = MkDayDesc $ Time.fromGregorian y m d
+  asciiCI "today"
+    $> Today
+    <|> asciiCI "yesterday"
+    $> Yesterday
+    <|> asciiCI "tomorrow"
+    $> Tomorrow
+    <|> mkDayFromGregorian
+    <$> decimal
+    <*> (char '-' *> decimal)
+    <*> (char '-' *> decimal)
+    <|> MkDayDescMonthNum
+    <$> decimal
+    <*> (char '-' *> decimal)
+    <|> MkDayDescNum
+    <$> decimal
+  where
+    mkDayFromGregorian d m y = MkDayDesc $ Time.fromGregorian y m d

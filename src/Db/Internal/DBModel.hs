@@ -9,12 +9,12 @@
 module Db.Internal.DBModel where
 
 import Database.Persist.TH
-    ( mkMigrate,
-      mkPersist,
-      persistLowerCase,
-      share,
-      sqlSettings,
-    )
+  ( mkMigrate,
+    mkPersist,
+    persistLowerCase,
+    share,
+    sqlSettings,
+  )
 import Db.Internal.DBHalfDayType (DBHalfDayType (..))
 import Db.Office (Office)
 import Db.TimeInDay (TimeInDay)
@@ -23,8 +23,8 @@ import qualified RIO.Text ()
 import qualified RIO.Time as Time (Day, TimeOfDay)
 
 share
-    [mkPersist sqlSettings, mkMigrate "migrateAll"]
-    [persistLowerCase|
+  [mkPersist sqlSettings, mkMigrate "migrateAll"]
+  [persistLowerCase|
 DBProject
     -- Fields
     name       Text

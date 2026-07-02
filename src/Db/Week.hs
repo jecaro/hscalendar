@@ -1,15 +1,15 @@
 -- | Simple data type to represent a Week
 module Db.Week
-    ( Week (..),
-      friday,
-      fromDay,
-      monday,
-      saturday,
-      sunday,
-      thursday,
-      tuesday,
-      wednesday,
-    )
+  ( Week (..),
+    friday,
+    fromDay,
+    monday,
+    saturday,
+    sunday,
+    thursday,
+    tuesday,
+    wednesday,
+  )
 where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -18,7 +18,7 @@ import RIO
 import qualified RIO.Time as Time (Day)
 
 data Week = MkWeek {_year :: !Integer, _week :: !Int}
-    deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Show)
 
 instance FromJSON Week
 
@@ -50,5 +50,5 @@ toDay MkWeek {_year = year, _week = week} = fromWeekDate year week
 
 fromDay :: Time.Day -> (Week, Int)
 fromDay day =
-    let (y, w, d) = toWeekDate day
-     in (MkWeek y w, d)
+  let (y, w, d) = toWeekDate day
+   in (MkWeek y w, d)

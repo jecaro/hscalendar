@@ -13,14 +13,14 @@ import RIO.Time.Extended ()
 
 -- | Simple type for a non-working half-day
 data Off = MkOff
-    { -- | The day
-      _offDay :: !Time.Day,
-      -- | morning/afternoon
-      _offTimeInDay :: !TimeInDay,
-      -- | The type of the non working half-day
-      _offDayType :: !OffDayType
-    }
-    deriving (Eq, Generic, Show)
+  { -- | The day
+    _offDay :: !Time.Day,
+    -- | morning/afternoon
+    _offTimeInDay :: !TimeInDay,
+    -- | The type of the non working half-day
+    _offDayType :: !OffDayType
+  }
+  deriving (Eq, Generic, Show)
 
 makeFields ''Off
 
@@ -29,5 +29,5 @@ instance ToJSON Off
 instance FromJSON Off
 
 instance Display Off where
-    display off =
-        "\t\t" <> display (off ^. dayType)
+  display off =
+    "\t\t" <> display (off ^. dayType)
