@@ -1,21 +1,20 @@
 module Servant.API.BasicAuth.Extended
-    ( parse
-    )
+  ( parse,
+  )
 where
 
-import           RIO
+import Data.Attoparsec.Text (Parser, char, inClass, satisfy)
+import Data.Char (isPrint)
+import RIO
 import qualified RIO.Text as Text
-
-import           Data.Attoparsec.Text (Parser, char, inClass, satisfy)
-import           Data.Char (isPrint)
-import           Servant.API.BasicAuth (BasicAuthData(..))
+import Servant.API.BasicAuth (BasicAuthData (..))
 
 parse :: Parser BasicAuthData
 parse = do
-    login <- many (satisfy $ inClass "0-9a-zA-Z_")
-    _ <- char ':'
-    password <- many (satisfy (\c -> isPrint c && c /= '@'))
-    pure $ BasicAuthData
-        (encodeUtf8 $ Text.pack login) (encodeUtf8 $ Text.pack password)
-
-
+  login <- many (satisfy $ inClass "0-9a-zA-Z_")
+  _ <- char ':'
+  password <- many (satisfy (\c -> isPrint c && c /= '@'))
+  pure
+    $ BasicAuthData
+      (encodeUtf8 $ Text.pack login)
+      (encodeUtf8 $ Text.pack password)

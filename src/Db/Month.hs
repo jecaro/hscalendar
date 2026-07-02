@@ -4,14 +4,14 @@ module Db.Month (Month (..), day, nbDays, firstDay, fromDay, lastDay) where
 import Data.Aeson (FromJSON, ToJSON)
 import RIO
 import qualified RIO.Time as Time
-    ( Day,
-      fromGregorian,
-      gregorianMonthLength,
-      toGregorian,
-    )
+  ( Day,
+    fromGregorian,
+    gregorianMonthLength,
+    toGregorian,
+  )
 
 data Month = MkMonth {_year :: !Integer, _month :: !Int}
-    deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Show)
 
 instance FromJSON Month
 
@@ -22,8 +22,8 @@ firstDay month = day month 1
 
 lastDay :: Month -> Time.Day
 lastDay month@(MkMonth y m) = day month last
-    where
-        last = Time.gregorianMonthLength y m
+  where
+    last = Time.gregorianMonthLength y m
 
 day :: Month -> Int -> Time.Day
 day (MkMonth year month) = Time.fromGregorian year month
@@ -33,5 +33,5 @@ nbDays (MkMonth year month) = Time.gregorianMonthLength year month
 
 fromDay :: Time.Day -> Month
 fromDay d = MkMonth y m
-    where
-        (y, m, _) = Time.toGregorian d
+  where
+    (y, m, _) = Time.toGregorian d
