@@ -8,8 +8,6 @@ import           RIO
 import qualified RIO.ByteString.Lazy as BL
 import qualified RIO.Text.Extended as T (indent)
 
-import           Data.Functor (($>))
-import           Control.Applicative ((<|>))
 import           Data.Attoparsec.Text (Parser, string)
 import           Network.HTTP.Types.Header.Extended ()
 import           Network.HTTP.Types.Status.Extended ()

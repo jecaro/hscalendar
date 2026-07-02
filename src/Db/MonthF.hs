@@ -8,7 +8,7 @@ import qualified Db.HalfDay as HalfDay (HalfDay, day, timeInDay)
 import Db.Month (Month, day, fromDay, nbDays)
 import qualified Db.Stats as Stats (Stats (..), empty)
 import Db.TimeInDay (TimeInDay (..))
-import Lens.Micro.Platform ((.~), (?~), _3, ix, makeFields)
+import Lens.Micro.Platform ((?~), _3, ix, makeFields)
 import RIO
 import qualified RIO.Time as Time
 import qualified RIO.Vector.Boxed as VB ((!?), Vector, generate)

@@ -9,7 +9,6 @@ import           RIO
 import           RIO.Orphans ()
 import           RIO.Process (HasProcessContext)
 
-import           Control.Monad (void)
 import           Database.Persist.Sql (runMigration)
 
 import           App.App

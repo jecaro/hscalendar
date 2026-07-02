@@ -24,8 +24,6 @@ import Db.Project (Project)
 import Db.TimeInDay (TimeInDay)
 import Db.Worked (Worked)
 import qualified Generics.SOP as SOP
-import qualified Language.Elm.Expression as E (apps)
-import qualified Language.Elm.Type as T (apps)
 import Language.Haskell.To.Elm
     ( HasElmDecoder (..),
       HasElmEncoder (..),
