@@ -26,7 +26,6 @@ import Servant.API
       DeleteNoContent,
       Get,
       JSON,
-      NoContent (..),
       PostNoContent,
       PutNoContent,
       ReqBody,
@@ -43,22 +42,22 @@ instance ToJSON RenameArgs
 type HSCalendarApi =
     Summary "Initialize the database"
         :> "migrate"
-        :> PutNoContent '[JSON] NoContent
+        :> PutNoContent
         :<|> Summary "List all projects"
             :> "project"
             :> Get '[JSON] [Project]
         :<|> Summary "Add a project"
             :> "project"
             :> ReqBody '[JSON] Project
-            :> PostNoContent '[JSON] NoContent
+            :> PostNoContent
         :<|> Summary "Delete a project"
             :> "project"
             :> ReqBody '[JSON] Project
-            :> DeleteNoContent '[JSON] NoContent
+            :> DeleteNoContent
         :<|> Summary "Rename a project"
             :> "project"
             :> ReqBody '[JSON] RenameArgs
-            :> PutNoContent '[JSON] NoContent
+            :> PutNoContent
         :<|> Summary "Display a half-day"
             :> "diary"
             :> Capture "day" DayDesc
@@ -78,17 +77,17 @@ type HSCalendarApi =
             :> Capture "day" DayDesc
             :> Capture "time in day" TimeInDay
             :> ReqBody '[JSON] OffDayType
-            :> PutNoContent '[JSON] NoContent
+            :> PutNoContent
         :<|> Summary "Set a working half-day"
             :> "diary"
             :> Capture "day" DayDesc
             :> Capture "time in day" TimeInDay
             :> ReqBody '[JSON] [WorkOption]
-            :> PutNoContent '[JSON] NoContent
+            :> PutNoContent
         :<|> Summary "Delete a half-day"
             :> "diary"
             :> Capture "day" DayDesc
             :> Capture "time in day" TimeInDay
-            :> DeleteNoContent '[JSON] NoContent
+            :> DeleteNoContent
 
 type HSBasicAuth = BasicAuth "basic-realm" Login

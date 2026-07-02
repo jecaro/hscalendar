@@ -16,7 +16,7 @@ import Data.Attoparsec.Text
     )
 import Data.Char (isPrint)
 import Data.Either.Combinators (rightToMaybe)
-import Data.Typeable (typeOf)
+import Data.Typeable (typeRep)
 import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 import Refined
@@ -52,9 +52,9 @@ type PasswordText = Refined PasswordData Text
 
 -- | Predicate instance to validate what is allowable for a password
 instance Predicate PasswordData Text where
-    validate p password =
-        unless (passwordValid password) $
-            throwRefineOtherException (typeOf p) "Not a valid password"
+    validate p password
+        | passwordValid password = Nothing
+        | otherwise = throwRefineOtherException (typeRep p) "Not a valid password"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Password where

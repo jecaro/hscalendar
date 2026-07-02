@@ -321,18 +321,6 @@ instance HasElmEncoder A.Value VB.Vector where
 instance HasElmDecoder A.Value VB.Vector where
     elmDecoder = "Json.Decode.array"
 
-instance (HasElmType a) => HasElmType (VB.Vector a) where
-    elmType =
-        T.apps (elmType @Vector) [elmType @a]
-
-instance (HasElmDecoder A.Value a) => HasElmDecoder A.Value (VB.Vector a) where
-    elmDecoder =
-        E.apps (elmDecoder @A.Value @VB.Vector) [elmDecoder @A.Value @a]
-
-instance (HasElmEncoder A.Value a) => HasElmEncoder A.Value (VB.Vector a) where
-    elmEncoder =
-        E.apps (elmEncoder @A.Value @VB.Vector) [elmEncoder @A.Value @a]
-
 --
 
 instance SOP.Generic MonthWithDays
@@ -400,8 +388,6 @@ instance HasElmDecoder A.Value Integer where
 
 --
 
-deriving instance Generic Time.Day
-
 instance SOP.Generic Time.Day
 
 instance SOP.HasDatatypeInfo Time.Day
@@ -416,8 +402,6 @@ instance HasElmDecoder A.Value Time.Day where
     elmDecoder = "Date.Extended.decoder"
 
 --
-
-deriving instance Generic Time.TimeOfDay
 
 instance SOP.Generic Time.TimeOfDay
 

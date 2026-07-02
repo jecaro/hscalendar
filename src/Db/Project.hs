@@ -16,7 +16,7 @@ import Data.Attoparsec.Text
       satisfy,
     )
 import Data.Either.Combinators (rightToMaybe)
-import Data.Typeable (typeOf)
+import Data.Typeable (typeRep)
 import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 import Refined
@@ -89,9 +89,9 @@ type ProjNameText = Refined ProjName Text
 
 -- | Predicate instance to validate what is allowable for a project name
 instance Predicate ProjName Text where
-    validate p name =
-        unless (projNameValid name) $
-            throwRefineOtherException (typeOf p) "Not a valid project name"
+    validate p name
+        | projNameValid name = Nothing
+        | otherwise = throwRefineOtherException (typeRep p) "Not a valid project name"
 
 -- | Smart constructor which cannot fail
 mkProjectLit :: ProjNameText -> Project
