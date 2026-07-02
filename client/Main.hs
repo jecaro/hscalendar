@@ -15,7 +15,6 @@ import App.Editor (editorToOptions)
 import App.MonthDesc (MonthDesc)
 import App.WeekDesc (WeekDesc)
 import App.WorkOption (WorkOption)
-import Control.Applicative (many)
 import Data.Attoparsec.Text as Att
     ( Parser,
       char,
@@ -35,7 +34,6 @@ import Network.HTTP.Types.Header.Extended ()
 import Network.HTTP.Types.Status.Extended ()
 import Options.Applicative as Opt
     ( (<**>),
-      (<|>),
       Parser,
       ParserInfo,
       ReadM,

@@ -10,7 +10,6 @@ import App.WorkOption
       SetProj,
       WorkOption,
     )
-import Control.Applicative (optional)
 import qualified Data.HashMap.Lazy as HM
 import Db.DayF (DayWithHalfDays)
 import Db.HalfDay (HalfDay)

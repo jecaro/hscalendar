@@ -49,12 +49,9 @@ where
 
 -- We use esqueleto symbols
 
-import Control.Monad (void, when)
-import Control.Monad.IO.Class (MonadIO)
 import Crypto.KDF.BCrypt (hashPassword, validatePassword)
 import Crypto.Random.Types (MonadRandom)
-import Data.Maybe (isJust)
-import Database.Esqueleto
+import Database.Esqueleto.Legacy
     ( (&&.),
       (<=.),
       (==.),
@@ -76,7 +73,6 @@ import Database.Persist
     ( (=.),
       Entity (..),
       Filter,
-      Key,
       SelectOpt (Asc),
       delete,
       deleteWhere,
@@ -326,7 +322,7 @@ guardProjNotExistsInt project = do
 
 -- | This is the main request function
 hdGet ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadIO m =>
     Time.Day ->
     TimeInDay ->
     SqlPersistT m HalfDay
@@ -346,7 +342,7 @@ hdGet day tid =
 
 -- | Get the half-days on a complete week
 weekGet ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Week ->
     SqlPersistT m WeekF.WeekWithDays
 weekGet week = do
@@ -356,7 +352,7 @@ weekGet week = do
         toWeekF = foldr (\hd fw -> fromMaybe fw $ WeekF.add hd fw) (WeekF.empty Nothing week)
 
 monthGet ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Month ->
     SqlPersistT m MonthF.MonthWithDays
 monthGet month = do
@@ -386,7 +382,7 @@ hdSetProject day tid project = do
 
 -- | Set arrived time for a working half-day
 hdSetArrived ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     Time.TimeOfDay ->
@@ -399,7 +395,7 @@ hdSetArrived day tid tod = do
 
 -- | Set left time for a working half-day
 hdSetLeft ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     Time.TimeOfDay ->
@@ -412,7 +408,7 @@ hdSetLeft day tid tod = do
 
 -- | Set both arrived and left times for a working half-day
 hdSetArrivedAndLeft ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     Time.TimeOfDay ->
@@ -430,7 +426,7 @@ hdSetArrivedAndLeft day tid tArrived tLeft = do
 
 -- | Set a half-day as off
 hdSetOff ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     OffDayType ->
@@ -450,7 +446,7 @@ hdSetOff day tid hdt = try (hdGetInt day tid)
 
 -- | Set a half-day as working on a project.
 hdSetWork ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     Project ->
@@ -536,7 +532,7 @@ dbToHalfDayInt _ = throwIO DbInconsistency
 -- hd private functions
 
 -- | Get a list of 'HalfDay' between a range of two 'Day'
-rangeGet :: (MonadIO m, MonadUnliftIO m) => Time.Day -> Time.Day -> SqlPersistT m [HalfDay]
+rangeGet :: MonadIO m => Time.Day -> Time.Day -> SqlPersistT m [HalfDay]
 rangeGet day1 day2 = do
     tupleList <- select $ from $ \(hd `LeftOuterJoin` mbHdw `LeftOuterJoin` mbProj) -> do
         where_
@@ -582,7 +578,7 @@ morningBeforeAfternoon morningHdw afternoonHdw =
 --   - arrived < left
 --   - consistent with the potential other hdw
 guardNewTimesAreOk ::
-    (MonadIO m, MonadUnliftIO m) =>
+    MonadUnliftIO m =>
     Time.Day ->
     TimeInDay ->
     DBHalfDayWorked ->

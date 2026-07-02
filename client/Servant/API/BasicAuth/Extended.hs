@@ -6,7 +6,6 @@ where
 import           RIO
 import qualified RIO.Text as Text
 
-import           Control.Applicative (many)
 import           Data.Attoparsec.Text (Parser, char, inClass, satisfy)
 import           Data.Char (isPrint)
 import           Servant.API.BasicAuth (BasicAuthData(..))

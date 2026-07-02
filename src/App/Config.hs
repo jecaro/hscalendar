@@ -35,7 +35,7 @@ import Data.Yaml
       encodeFile,
     )
 import Db.Office (Office (..))
-import Lens.Micro.Platform ((%~), makeFields)
+import Lens.Micro.Platform (makeFields)
 import Path
     ( (</>),
       Abs,
@@ -56,7 +56,6 @@ import RIO
 import qualified RIO.Text as Text
 import qualified RIO.Time as Time (TimeOfDay (..))
 import System.Environment (lookupEnv)
-import Text.Read (readMaybe)
 
 -- | Two default hours for a half-day worked
 data DefaultHours = DefaultHours

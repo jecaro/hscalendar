@@ -24,15 +24,13 @@ import Data.Attoparsec.Text as Atto
       parseOnly,
       string,
     )
-import Data.Functor (($>))
 import qualified Db.Notes as Notes (Notes, parser)
 import qualified Db.OffDayType as ODT (OffDayType (..), parser)
 import qualified Db.Office as Office (Office (..), parser)
 import qualified Db.Project as Project (Project, parser)
 import Db.TimeInDay (TimeInDay (..))
 import Options.Applicative as Opt
-    ( (<|>),
-      Parser,
+    ( Parser,
       ReadM,
       argument,
       command,
@@ -46,7 +44,6 @@ import Options.Applicative as Opt
       option,
       progDesc,
       short,
-      some,
       subparser,
       switch,
       value,

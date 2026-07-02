@@ -1,8 +1,9 @@
+*~
 .stack-work/
 dist-newstyle/
-result
-*~
 file.db
+result
+scratch
 stack.yaml.lock
 tags
 # To exclude elm-stuff and elm.js

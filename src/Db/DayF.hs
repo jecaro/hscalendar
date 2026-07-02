@@ -21,7 +21,7 @@ import Db.HalfDay (HalfDay (..))
 import Db.Off (dayType)
 import qualified Db.Stats as Stats (Stats, off, week, worked)
 import qualified Db.Worked as Worked (project)
-import Lens.Micro.Platform ((%~), (+~), makeFields)
+import Lens.Micro.Platform ((+~), makeFields)
 import RIO
 import qualified RIO.HashMap as HM (HashMap, insertWith)
 import qualified RIO.Time as Time (Day)
@@ -87,7 +87,7 @@ stats d s =
                 else Stats.week %~ id
      in s' & updateWeek
 
-addOneFor :: (Eq k, Hashable k, Num v) => k -> HM.HashMap k v -> HM.HashMap k v
+addOneFor :: (Hashable k, Num v) => k -> HM.HashMap k v -> HM.HashMap k v
 addOneFor k = HM.insertWith (+) k 1
 
 statsOnMaybeHalfDay :: Maybe HalfDay -> Stats.Stats -> Stats.Stats
