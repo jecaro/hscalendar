@@ -16,7 +16,7 @@ import Data.Attoparsec.Text
       satisfy,
     )
 import Data.Either.Combinators (rightToMaybe)
-import Data.Typeable (typeOf)
+import Data.Typeable (typeRep)
 import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 import Refined
@@ -52,9 +52,9 @@ type LoginText = Refined LoginData Text
 
 -- | Predicate instance to validate what is allowable for login
 instance Predicate LoginData Text where
-    validate p login =
-        unless (loginValid login) $
-            throwRefineOtherException (typeOf p) "Not a valid login"
+    validate p login
+        | loginValid login = Nothing
+        | otherwise = throwRefineOtherException (typeRep p) "Not a valid login"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Login where

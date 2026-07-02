@@ -1,0 +1,233 @@
+cabal-version: 2.2
+
+name: hscalendar
+version: 0.1.0.0
+homepage: https://github.com/jecaro/haskell#readme
+bug-reports: https://github.com/jecaro/haskell/issues
+author: Jean-Charles Quillet
+maintainer: jeancharles.quillet@gmail.com
+copyright: 2019 Jean-Charles Quillet
+license: BSD-3-Clause
+license-file: LICENSE
+build-type: Simple
+
+source-repository head
+  type: git
+  location: https://github.com/jecaro/haskell
+  subdir: hscalendar
+
+common defaults
+  default-language: Haskell2010
+  default-extensions:
+    DataKinds
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    LambdaCase
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NoImplicitPrelude
+    OverloadedStrings
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wpartial-fields
+    -Wredundant-constraints
+  build-depends:
+    QuickCheck,
+    aeson,
+    attoparsec,
+    base >=4.7 && <5,
+    bytestring,
+    case-insensitive,
+    containers,
+    cryptonite,
+    data-default,
+    directory,
+    either,
+    elm-syntax,
+    esqueleto,
+    formatting,
+    generics-sop,
+    haskell-to-elm,
+    hspec,
+    http-client,
+    http-client-tls,
+    http-media,
+    http-types,
+    microlens-platform,
+    monad-logger,
+    mtl,
+    optparse-applicative,
+    path,
+    path-io,
+    persistent,
+    persistent-postgresql,
+    persistent-sqlite,
+    persistent-template,
+    prettyprinter,
+    quickcheck-instances,
+    refined,
+    rio,
+    rio-orphans,
+    servant,
+    servant-client,
+    servant-server,
+    temporary,
+    time,
+    unordered-containers,
+    wai-extra,
+    warp,
+    yaml,
+
+common exe
+  import: defaults
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends: hscalendar
+
+library
+  import: defaults
+  hs-source-dirs: src
+  autogen-modules: Paths_hscalendar
+  other-modules: Paths_hscalendar
+  exposed-modules:
+    App.Api
+    App.App
+    App.CommandLine
+    App.Config
+    App.DayDesc
+    App.Editor
+    App.MonthDesc
+    App.WeekDesc
+    App.WorkOption
+    Db.DayF
+    Db.HalfDay
+    Db.Internal.Convert
+    Db.Internal.DBHalfDayType
+    Db.Internal.DBModel
+    Db.Login
+    Db.Model
+    Db.Month
+    Db.MonthF
+    Db.Notes
+    Db.Off
+    Db.OffDayType
+    Db.Office
+    Db.Password
+    Db.Project
+    Db.Stats
+    Db.TimeInDay
+    Db.Week
+    Db.WeekF
+    Db.Worked
+    Formatting.Extended
+    RIO.Text.Extended
+    RIO.Time.Extended
+    Servant.API.Extended
+
+executable hscalendar-cli
+  import: exe
+  hs-source-dirs: cli
+  main-is: Main.hs
+  autogen-modules: Paths_hscalendar
+  other-modules:
+    Run
+    Paths_hscalendar
+
+executable hscalendar-server
+  import: exe
+  hs-source-dirs: server
+  main-is: Main.hs
+  autogen-modules: Paths_hscalendar
+  other-modules: Paths_hscalendar
+
+executable hscalendar-client
+  import: exe
+  hs-source-dirs: client
+  main-is: Main.hs
+  autogen-modules: Paths_hscalendar
+  other-modules:
+    Network.HTTP.Types.Header.Extended
+    Network.HTTP.Types.Status.Extended
+    Paths_hscalendar
+    Servant.API.BasicAuth.Extended
+    Servant.Client.Extended
+
+executable hscalendar-users
+  import: exe
+  hs-source-dirs: users
+  main-is: Main.hs
+  autogen-modules: Paths_hscalendar
+  other-modules: Paths_hscalendar
+
+executable elm-generator
+  import: exe
+  hs-source-dirs: elm-generator
+  main-is: Main.hs
+  autogen-modules: Paths_hscalendar
+  other-modules:
+    Orphans
+    Paths_hscalendar
+
+test-suite hscalendar-test
+  import: exe
+  type: exitcode-stdio-1.0
+  hs-source-dirs:
+    test
+    src
+  main-is: Spec.hs
+  autogen-modules: Paths_hscalendar
+  other-modules:
+    App.Api
+    App.App
+    App.CommandLine
+    App.Config
+    App.DayDesc
+    App.Editor
+    App.MonthDesc
+    App.WeekDesc
+    App.WorkOption
+    Db.DayF
+    Db.HalfDay
+    Db.Internal.Convert
+    Db.Internal.DBHalfDayType
+    Db.Internal.DBModel
+    Db.Login
+    Db.Model
+    Db.Month
+    Db.MonthF
+    Db.Notes
+    Db.Off
+    Db.OffDayType
+    Db.Office
+    Db.Password
+    Db.Project
+    Db.Stats
+    Db.TimeInDay
+    Db.Week
+    Db.WeekF
+    Db.Worked
+    Formatting.Extended
+    Paths_hscalendar
+    RIO.Text.Extended
+    RIO.Time.Extended
+    Servant.API.Extended

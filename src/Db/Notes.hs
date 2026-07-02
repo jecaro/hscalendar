@@ -12,7 +12,7 @@ import Data.Aeson ((.:), FromJSON (..), ToJSON, withObject)
 import Data.Attoparsec.Text (Parser, satisfy)
 import Data.Char (isPrint)
 import Data.Either.Combinators (rightToMaybe)
-import Data.Typeable (typeOf)
+import Data.Typeable (typeRep)
 import RIO
 import qualified RIO.Text as Text (Text, all, length, pack)
 import Refined
@@ -48,9 +48,9 @@ type NotesText = Refined NotesData Text
 
 -- | Predicate instance to validate what is allowable for notes
 instance Predicate NotesData Text where
-    validate p notes =
-        unless (notesValid notes) $
-            throwRefineOtherException (typeOf p) "Not a valid note"
+    validate p notes
+        | notesValid notes = Nothing
+        | otherwise = throwRefineOtherException (typeRep p) "Not a valid note"
 
 -- | Arbitrary instance for QuickCheck
 instance Arbitrary Notes where

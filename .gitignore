@@ -1,5 +1,6 @@
 .stack-work/
-hscalendar.cabal
+dist-newstyle/
+result
 *~
 file.db
 stack.yaml.lock
