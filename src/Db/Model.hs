@@ -549,21 +549,34 @@ rangeGet day1 day2 = do
         pure (hd, mbHdw, mbProj)
     mapM dbToHalfDayInt tupleList
 
--- | Check that the constraints on the times are valid between the two half-days
+-- | Check that the times of a half-day and its potential other half-day are
+-- ordered: arrived is strictly before left within each half-day and the morning
+-- ends before or when the afternoon starts.
 timesAreOrderedInDay ::
     TimeInDay ->
     DBHalfDayWorked ->
     Maybe DBHalfDayWorked ->
     Bool
-timesAreOrderedInDay Morning hdw mbOtherHdw =
-    isOrdered $ timesOfDay hdw ++ otherTimes
-    where
-        otherTimes = concatMap timesOfDay mbOtherHdw
--- We switch the arguments and call the same function
+-- Reduce the afternoon case to the morning one so that hdw is the morning
 timesAreOrderedInDay Afternoon hdw (Just otherHdw) =
     timesAreOrderedInDay Morning otherHdw (Just hdw)
--- Afternoon only, just need to check for half day
-timesAreOrderedInDay Afternoon hdw Nothing = isOrdered $ timesOfDay hdw
+-- A lone afternoon: only its own times matter
+timesAreOrderedInDay Afternoon hdw Nothing =
+    arrivedBeforeLeft hdw
+-- The morning, possibly followed by an afternoon
+timesAreOrderedInDay Morning hdw mbOtherHdw =
+    arrivedBeforeLeft hdw
+        && all arrivedBeforeLeft mbOtherHdw
+        && all (morningBeforeAfternoon hdw) mbOtherHdw
+
+-- | Arrived is strictly before left within a half-day
+arrivedBeforeLeft :: DBHalfDayWorked -> Bool
+arrivedBeforeLeft h = dBHalfDayWorkedArrived h < dBHalfDayWorkedLeft h
+
+-- | The morning ends before or when the afternoon starts
+morningBeforeAfternoon :: DBHalfDayWorked -> DBHalfDayWorked -> Bool
+morningBeforeAfternoon morningHdw afternoonHdw =
+    dBHalfDayWorkedLeft morningHdw <= dBHalfDayWorkedArrived afternoonHdw
 
 -- | Make sure that the times in hdw are ok:
 --   - arrived < left
@@ -581,13 +594,3 @@ guardNewTimesAreOk day tid hdw = do
             Right (_, Entity _ oHdw, _) -> Just oHdw
     -- Check if it works
     unless (timesAreOrderedInDay tid hdw mbOtherHdw) (throwIO TimesAreWrong)
-
--- | Return the times in the day in a list
-timesOfDay :: DBHalfDayWorked -> [Time.TimeOfDay]
-timesOfDay hdw = [dBHalfDayWorkedArrived hdw, dBHalfDayWorkedLeft hdw]
-
--- | Return true if the list is sorted
-isOrdered :: (Ord a) => [a] -> Bool
-isOrdered [] = True
-isOrdered [_] = True
-isOrdered (x : y : xs) = x <= y && isOrdered (y : xs)
