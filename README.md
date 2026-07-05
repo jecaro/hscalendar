@@ -5,26 +5,9 @@
 This is `hscalendar`, a time tracking software written in HASKELL and ELM. It
 consists in a couple of command line tools along a web frontend.
 
-As for HASKELL, the code follows the best practices proposed by the FP complete
-team, especially:
-
-- [how to handle exceptions][exceptions]
-- using the [ReaderT pattern][readert] and [RIO][rio] library
-
-This project can demonstrate the use of the following libraries:
-- [QuickCheck][quickcheck]
-- [RIO][rio]
-- [esqueleto][esqueleto]
-- [haskell-to-elm][haskell-to-elm]
-- [hspec][hspec]
-- [optparse-applicative][optparse-applicative]
-- [persistent][persistent]
-- [refined][refined]
-- [servant][servant]
-- [yaml][yaml]
-
-If you do find some of this code useful, please, let me know by sending me an
-email at jeancharles.quillet@gmail.com
+This is the project I used to get to learn Haskell. If you do find some of this 
+code useful, please, let me know by sending me an email at 
+[jeancharles.quillet@gmail.com](mailto:jeancharles.quillet@gmail.com)
 
 # Introduction
 
@@ -73,33 +56,21 @@ The project page, to add/rename/remove projects:
 
 <img src="https://raw.githubusercontent.com/jecaro/hscalendar/master/docs/project.png" width="300">
 
-# Deployment and CI
+# Getting started
 
-This project is built on each commit on the repository by [GitHub 
-actions][status]. A docker image is automatically sent on [docker 
-hub][dockerhub] when the build and tests succeed.
-
-# How to try it ?
-
-The easiest way is to pull the latest docker image:
+Build the project with [nix][nix]:
 ```
-docker pull jecaro/hscalendar-server:latest
-```
-
-Then start a shell in a new container:
-
-```
-docker run -ti --rm --network=host jecaro/hscalendar-server:latest bash
+nix build
 ```
 
 Initialize the default SQLite database:
 ```
-./hscalendar-cli migrate
+./result/bin/hascalendar-cli migrate
 ```
 
 Add a user:
 ```
-./hscalendar-users add myusername mysecretpassword
+./result/bin/hascalendar-users add myusername mysecretpassword
 ```
 
 Start the server:
@@ -265,22 +236,9 @@ example:
 - `http://myuser:mypassword@localhost:8081` for http
 - `https://myuser:mypassword@droplet:443` for joining the server over https
 
-[digitalocean]: https://www.digitalocean.com/
-[dockerhub]: https://hub.docker.com/r/jecaro/hscalendar-server/tags
 [elm]: https://elm-lang.org/
-[esqueleto]: https://github.com/bitemyapp/esqueleto
-[exceptions]: https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell
-[haskell-gi]: https://github.com/haskell-gi/haskell-gi
 [haskell-to-elm]: https://github.com/folq/haskell-to-elm
-[heroku]: https://www.heroku.com/
-[hspec]: https://github.com/hspec/hspec
-[optparse-applicative]: https://github.com/pcapriotti/optparse-applicative
-[persistent]: https://github.com/yesodweb/persistent
-[quickcheck]: https://github.com/nick8325/quickcheck
-[readert]: https://www.fpcomplete.com/blog/2017/06/readert-design-pattern
-[refined]: https://github.com/nikita-volkov/refined
-[rio]: https://github.com/commercialhaskell/rio
+[nix]: https://nixos.org/
 [servant]: https://github.com/haskell-servant/servant
 [status-png]: https://github.com/jecaro/hscalendar/workflows/CI/badge.svg
 [status]: https://github.com/jecaro/hscalendar/actions
-[yaml]: https://github.com/snoyberg/yaml
