@@ -1,6 +1,7 @@
 # hscalendar
 
-[![Build Status][status-png]][status]
+[![Nix 
+build](https://github.com/jecaro/hscalendar/actions/workflows/ci.yml/badge.svg)](https://github.com/jecaro/hscalendar/actions/workflows/ci.yml)
 
 This is `hscalendar`, a time tracking software written in HASKELL and ELM. It
 consists in a couple of command line tools along a web frontend.
@@ -240,5 +241,3 @@ example:
 [haskell-to-elm]: https://github.com/folq/haskell-to-elm
 [nix]: https://nixos.org/
 [servant]: https://github.com/haskell-servant/servant
-[status-png]: https://github.com/jecaro/hscalendar/workflows/CI/badge.svg
-[status]: https://github.com/jecaro/hscalendar/actions
